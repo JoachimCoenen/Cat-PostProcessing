@@ -1,2 +1,4 @@
 # Cat-PostProcessing
-various post-processing effects for Unity
+Various post-processing effects for Unity
+
+The main goal is to create fast and efficient post-processing effects for Unity.
