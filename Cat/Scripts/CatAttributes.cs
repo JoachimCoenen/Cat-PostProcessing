@@ -18,10 +18,15 @@ namespace Cat.Common
     		this.max = max;
     		this.labelText = labeltext;
     	}
-    }
+	}
 
-    public class ReadOnly : PropertyAttribute {
-    	public ReadOnly () {
-    	}
-    }
+	public class ReadOnly : PropertyAttribute {
+		public ReadOnly () {
+		}
+	}
+
+	public class Inlined : PropertyAttribute {
+		public Inlined () {
+		}
+	}
 }

@@ -8,97 +8,114 @@ namespace Cat.PostProcessing {
 	[ExecuteInEditMode]
 	[ImageEffectAllowedInSceneView]
 	[AddComponentMenu("Cat/PostProcessing/Tempral Anti-Alialising")]
-	public class CatAA : PostProcessingBase {
+	public class CatAA : PostProcessingBaseImageEffect {
+		private const bool disableTAAInSceneView = true;
+
+		[Serializable]
+		public struct Settings {
+
+			//[Range(0.0f, 2.0f)]
+			public const float jitterStrength = 1f;
+
+			[Range(0.0f, 2.0f)]
+			public float sharpness;
+
+			public const bool enableVelocityPrediction = true;
+
+			[CustomLabelRange(0.0f, 80.0f, "Velocity Scale")]
+			public float velocityWeightScale;
+
+			[Range(1e-3f, 1)]
+			public float response;
+
+			[Range(0, 5)]
+			public float toleranceMargin;
+
+			public JitterMatrixType jitterMatrix;
+
+			[CustomLabelRange(4, 16, "Halton Seq. Length")]
+			public int haltonSequenceLength;
+
+			public static Settings defaultSettings { 
+				get {
+					return new Settings {
+					//	jitterStrength = 1f,
+						sharpness = 0.075f,
+					//	enableVelocityPrediction = true,
+						velocityWeightScale = 40,
+						response			= 0.075f,
+						toleranceMargin		= 1,
+						jitterMatrix = JitterMatrixType.HaltonSequence,
+						haltonSequenceLength = 8
+					};
+				}
+			}
+		}
+
+		[SerializeField]
+		[Inlined]
+		private Settings m_Settings = Settings.defaultSettings;
+		public Settings settings {
+			get { return m_Settings; }
+			set { 
+				m_Settings = value;
+				OnValidate();
+			}
+		}
+
 		public enum JitterMatrixType {
 			ps0, ps, psy, HaltonSequence, psx, ps4
 		}
 
-		[Range(0.0f, 2.0f)]
-		[SerializeField]
-		float jitterStrength = 1f;
+		private readonly RenderTextureContainer lastFrame1 = new RenderTextureContainer();
 
-		[Range(0.0f, 2.0f)]
-		[SerializeField]
-		float sharpness = 0.3f;
-        
-		private const bool enableVelocityPrediction = true;
-        
-        [Range(0.0f, 80.0f)]
-		[SerializeField]
-        float velocityWeightScale = 20;
-        
-		[SerializeField]
-        JitterMatrixType jitterMatrix = JitterMatrixType.ps;
+		override protected string shaderName { get { return "Hidden/CatAA"; } }
+		override public string effectName { get { return "Cat Temporal Antialialising"; } }
+		override internal DepthTextureMode requiredDepthTextureMode { get { return DepthTextureMode.MotionVectors | DepthTextureMode.Depth; } }
+		override public bool isActive { get { return true; } }
 
-		[Range(2, 16)]
-		[SerializeField]
-		int haltonSequenceLength = 8;
+		static class PropertyIDs {
+			// jitterStrength
+			internal static readonly int Sharpness_f					= Shader.PropertyToID("_Sharpness");
+			internal static readonly int IsVelocityPredictionEnabled_b	= Shader.PropertyToID("_IsVelocityPredictionEnabled");
+			internal static readonly int VelocityWeightScale_f			= Shader.PropertyToID("_VelocityWeightScale");
+			internal static readonly int Response_f						= Shader.PropertyToID("_Response");
+			internal static readonly int ToleranceMargin_f				= Shader.PropertyToID("_ToleranceMargin");
+			// jitterMatrix
+			// haltonSequenceLengt
 
-		private RenderTexture lastFrame1;
-		private RenderTexture lastFrame2;
-		private RenderTexture lastFrame3;
+			internal static readonly int History1_t						= Shader.PropertyToID("_HistoryTex1");
+			internal static readonly int History2_t						= Shader.PropertyToID("_HistoryTex2");
+			internal static readonly int History3_t						= Shader.PropertyToID("_HistoryTex3");
+			internal static readonly int Temp_t							= Shader.PropertyToID("__IDTemp_t__");
 
-		int IDHistory1_t;
-		int IDHistory2_t;
-		int IDHistory3_t;
-		int IDTemp_t;
-		int IDJitterVelocity_v;
-		int IDDirectionality_v;
-
-		override protected string shaderName {
-			get { return "Hidden/CatAA"; }
-		}
-		override public string effectName {
-			get { return "Cat Temporal Antialialising"; }
-		}
-		override internal DepthTextureMode requiredDepthTextureMode {
-			get { return DepthTextureMode.MotionVectors | DepthTextureMode.Depth; }
-		}
-		override public bool isActive { get { return true; }
+			internal static readonly int TAAJitterVelocity_v			= Shader.PropertyToID("_TAAJitterVelocity");
+			internal static readonly int Directionality_v				= Shader.PropertyToID("_Directionality");
 		}
 
 		override protected void UpdateRenderTextures(VectorInt2 cameraSize) {
-			CreateRT(ref lastFrame1, cameraSize, RenderTextureFormat.DefaultHDR, FilterMode.Bilinear);
-		//	CreateRT(ref lastFrame2, cameraSize, RenderTextureFormat.DefaultHDR, FilterMode.Bilinear);
-		//	CreateRT(ref lastFrame3, cameraSize, RenderTextureFormat.DefaultHDR, FilterMode.Bilinear);
-			Shader.SetGlobalTexture(IDHistory1_t, lastFrame1);
-		//	Shader.SetGlobalTexture(IDHistory2_t, lastFrame2);
-		//	Shader.SetGlobalTexture(IDHistory3_t, lastFrame3);
+			CreateCopyRT(lastFrame1, cameraSize, RenderTextureFormat.DefaultHDR, FilterMode.Bilinear);
+			material.SetTexture(PropertyIDs.History1_t, lastFrame1);
+
+			//	CreateRT(ref lastFrame2, cameraSize, RenderTextureFormat.DefaultHDR, FilterMode.Bilinear);
+			//	material.SetTexture(PropertyIDs.History2_t, lastFrame2);
+			//	CreateRT(ref lastFrame3, cameraSize, RenderTextureFormat.DefaultHDR, FilterMode.Bilinear);
+			//	Smaterial.SetTexture(PropertyIDs.History3_t, lastFrame3);
 		}
 
 		int TMSAACounter = 0;
 
-		//[ImageEffectTransformsToLDR]
-		void OnRenderImage(RenderTexture source, RenderTexture destination) {
-			//	Graphics.Blit(source, lastFrame1);
-			#if UNITY_EDITOR
-			var isSceneView = UnityEditor.SceneView.currentDrawingSceneView != null && UnityEditor.SceneView.currentDrawingSceneView.camera == camera;
-			if (isSceneView) {
-				BlitNow(source, destination);
+		override protected void UpdateCameraMatricesPerFrame(Camera camera) {
+			var settings = this.settings;
+			if (postProcessingManager.isSceneView && disableTAAInSceneView) {
 				return;
 			}
-			#endif
-
-			var tempTex = RenderTexture.GetTemporary(source.width, source.height, 0, source.format);
-			BlitNow(source, tempTex, material, 0);
-		//	Debug.LogFormat("{0}", destination != null);
-			BlitNow(tempTex, lastFrame1);
-			BlitNow(lastFrame1, destination);
-
-			//Graphics.Blit(source, tempTex, material, 3);
-			//Graphics.Blit(tempTex, lastFrame1, material, 4);
-			//Graphics.Blit(tempTex, destination, material, 4);
-	
-			RenderTexture.ReleaseTemporary(tempTex);
-		}
-
-		override protected void UpdateCameraMatricesPerFrame(Camera camera) {
 			
 			Vector2[] jitterVectors = {
 				Vector2.zero, Vector2.zero,
 				Vector2.zero, Vector2.zero
 			};
-			switch (jitterMatrix) {
+			switch (settings.jitterMatrix) {
 			case JitterMatrixType.ps0:
 				jitterVectors = ps0; break;
 			case JitterMatrixType.ps:
@@ -112,114 +129,152 @@ namespace Cat.PostProcessing {
 			case JitterMatrixType.ps4:
 				jitterVectors = ps4; break;
 			}
-		//	camera.ResetProjectionMatrix();
-			if (jitterMatrix == JitterMatrixType.HaltonSequence) {
-				TMSAACounter = (TMSAACounter + 1) % haltonSequenceLength ;
+			//	camera.ResetProjectionMatrix();
+			if (settings.jitterMatrix == JitterMatrixType.HaltonSequence) {
+				TMSAACounter = (TMSAACounter + 1) % settings.haltonSequenceLength ;
 			} else {
 				TMSAACounter = (TMSAACounter + 1) % 4 ;
 			}
 
-			var newP = jitterVectors[TMSAACounter] * jitterStrength;
+			var newP = jitterVectors[TMSAACounter] * Settings.jitterStrength;
 
-			newP.x /= Mathf.Max(1, (float)cameraSize.x);
-			newP.y /= Mathf.Max(1, (float)cameraSize.y);
-		//	camera.projectionMatrix = Matrix4x4.TRS(newP, Quaternion.identity, Vector3.one) * camera.nonJitteredProjectionMatrix;
-		//	camera.projectionMatrix = getOffsetMatrix(newP) * camera.nonJitteredProjectionMatrix;
-			var pMat = camera.nonJitteredProjectionMatrix;
-			var x = newP.x;
-			pMat[0, 0] += x * pMat[2, 0];
-			pMat[0, 1] += x * pMat[2, 1];
-			pMat[0, 2] += x * pMat[2, 2];
-			pMat[0, 3] += x * pMat[2, 3];
-			var y = newP.y;
-			pMat[1, 0] += y * pMat[2, 0];
-			pMat[1, 1] += y * pMat[2, 1];
-			pMat[1, 2] += y * pMat[2, 2];
-			pMat[1, 3] += y * pMat[2, 3];
-			#if UNITY_EDITOR
-			var isSceneView = UnityEditor.SceneView.currentDrawingSceneView != null && UnityEditor.SceneView.currentDrawingSceneView.camera == camera;
-			if (isSceneView) {
-				return;
+
+			newP.x /= (float)postProcessingManager.cameraSize.x;
+			newP.y /= (float)postProcessingManager.cameraSize.y;
+			if (camera.orthographic) {
+				camera.projectionMatrix = GetOrthographicProjectionMatrix(newP);
+			} else {
+				camera.projectionMatrix = GetPerspectiveProjectionMatrix(newP);
 			}
-			#endif
-			camera.projectionMatrix = pMat;
-			Shader.SetGlobalVector(IDJitterVelocity_v, 0.5f*newP);
+			Shader.SetGlobalVector(PropertyIDs.TAAJitterVelocity_v, postProcessingManager.isSceneView ? Vector2.zero : newP);
 
 		}
 
 		override protected void UpdateMaterialPerFrame(Material material) {
-			material.SetVector(IDDirectionality_v, new Vector2(TMSAACounter % 2 == 0 ? 1 : -1, 1));
-			// NOPE!
+			material.SetVector(PropertyIDs.Directionality_v, new Vector2(TMSAACounter % 2 == 0 ? 1 : -1, 1));
+			setMaterialDirty();
 		}
 
 		override protected void UpdateMaterial(Material material) {
-			var isSceneView = false;
-		#if UNITY_EDITOR
-			isSceneView = UnityEditor.SceneView.currentDrawingSceneView != null && UnityEditor.SceneView.currentDrawingSceneView.camera == camera;
-		#endif
-			var allowVelocityPrediction = enableVelocityPrediction && !isSceneView;
-			material.SetInt("_EnableVelocityPrediction", allowVelocityPrediction ? 1 : 0);
-			material.SetFloat("_VelocityWeightScale", velocityWeightScale);
-			material.SetFloat("_Sharpness", sharpness);
-		}
-
-		void getShaderPropertyIDs() {
-			IDHistory1_t = Shader.PropertyToID("_HistoryTex1");
-			IDHistory2_t = Shader.PropertyToID("_HistoryTex2");
-			IDHistory3_t = Shader.PropertyToID("_HistoryTex3");
-			IDTemp_t = Shader.PropertyToID("__IDTemp_t__");
-
-			IDJitterVelocity_v = Shader.PropertyToID("_JitterVelocity");
-			IDDirectionality_v = Shader.PropertyToID("_Directionality");
+			var allowVelocityPrediction = Settings.enableVelocityPrediction && !postProcessingManager.isSceneView;
+			material.SetFloat(PropertyIDs.Sharpness_f, settings.sharpness);
+			material.SetInt(PropertyIDs.IsVelocityPredictionEnabled_b, allowVelocityPrediction ? 1 : 0);
+			material.SetFloat(PropertyIDs.VelocityWeightScale_f, settings.velocityWeightScale);
+			material.SetFloat(PropertyIDs.Response_f, settings.response);
+			material.SetFloat(PropertyIDs.ToleranceMargin_f, settings.toleranceMargin);
+		//	material.SetTexture(PropertyIDs.History1_t, lastFrame1);
 		}
 
 		override protected void OnPostRender() {
-			camera.ResetProjectionMatrix();
+			postProcessingManager.camera.ResetProjectionMatrix();
 			base.OnPostRender();
 		}
 
+		//[ImageEffectTransformsToLDR]
+		void OnRenderImage(RenderTexture source, RenderTexture destination) {
+			if (postProcessingManager.isSceneView && disableTAAInSceneView) {
+				Blit(source, destination);
+				return;
+			}
+
+			if (isFirstFrame) {
+		//		Blit(source, lastFrame1, material, 1);
+			}
+
+			var tempTex = RenderTexture.GetTemporary(source.width, source.height, 0, source.format);
+			Blit(source, tempTex, material, 0);
+			//	Debug.LogFormat("{0}", destination != null);
+			Blit(tempTex, lastFrame1);
+			Blit(tempTex, destination);
+
+			//Graphics.Blit(source, tempTex, material, 3);
+			//Graphics.Blit(tempTex, lastFrame1, material, 4);
+			//Graphics.Blit(tempTex, destination, material, 4);
+
+			RenderTexture.ReleaseTemporary(tempTex);
+		}
+
+
 		override protected void OnDisable() {
 			//camera.ResetWorldToCameraMatrix();
-			camera.ResetProjectionMatrix();
+			postProcessingManager.camera.ResetProjectionMatrix();
+			Shader.SetGlobalVector(PropertyIDs.TAAJitterVelocity_v, Vector2.zero);
 			base.OnDisable();
 		}
-
-		void Awake() {
-			getShaderPropertyIDs();
-		}
-
+			
 		void OnValidate () {
 			setMaterialDirty();
-		//	setBufferDirty();
 		}
 
-		Matrix4x4 getOffsetMatrix(Vector2 offset){
+		// Adapted heavily from Unitys TAA code
+		// https://github.com/Unity-Technologies/PostProcessing/blob/v1/PostProcessing/Runtime/Components/TaaComponent.cs
+		Matrix4x4 GetPerspectiveProjectionMatrix(Vector2 offset){
+			float vertical = Mathf.Tan(0.5f * Mathf.Deg2Rad * postProcessingManager.camera.fieldOfView);
+			float horizontal = vertical * postProcessingManager.camera.aspect;
+
+			float n = postProcessingManager.camera.nearClipPlane;
+			float f = postProcessingManager.camera.farClipPlane;
+
 			var matrix = Matrix4x4.zero;
 
-			//	matrix[0, 0] = 1;
-			//	matrix[0, 1] = 0;
-			matrix[0, 2] = offset.x;
-			//	matrix[0, 3] = 0;
+			matrix[0, 0] = 1 / horizontal;
+			// matrix[0, 1] = 0;
+			matrix[0, 2] = -2 * offset.x;
+			// matrix[0, 3] = 0;
 
-			//	matrix[1, 0] = 0;
-			//	matrix[1, 1] = 1;
-			matrix[1, 2] = offset.y;
-			//	matrix[1, 3] = 0;
+			// matrix[1, 0] = 0;
+			matrix[1, 1] = 1 / vertical;
+			matrix[1, 2] = -2 * offset.y;
+			// matrix[1, 3] = 0;
 
-			//	matrix[2, 0] = 0;
-			//	matrix[2, 1] = 0;
-			//	matrix[2, 2] = 1;
-			//	matrix[2, 3] = 0;
+			// matrix[2, 0] = 0;
+			// matrix[2, 1] = 0;
+			matrix[2, 2] = (f + n) / (n - f);
+			matrix[2, 3] = 2 * f * n / (n - f);
 
-			//	matrix[3, 0] = 0;
-			//	matrix[3, 1] = 0;
-			//	matrix[3, 2] = 0;
-			//	matrix[3, 3] = 1;
+			// matrix[3, 0] = 0;
+			// matrix[3, 1] = 0;
+			matrix[3, 2] = -1;
+			// matrix[3, 3] = 0;
+
 			return matrix;
 		}
 
+		// Adapted heavily from Unitys TAA code
+		// https://github.com/Unity-Technologies/PostProcessing/blob/v1/PostProcessing/Runtime/Components/TaaComponent.cs
+		Matrix4x4 GetOrthographicProjectionMatrix(Vector2 offset) {
+			float vertical = postProcessingManager.camera.orthographicSize;
+			float horizontal = vertical * postProcessingManager.camera.aspect;
 
-		Vector2[] HaltonSequence = {
+			float n = postProcessingManager.camera.nearClipPlane;
+			float f = postProcessingManager.camera.farClipPlane;
+
+			var matrix = Matrix4x4.zero;
+
+			matrix[0, 0] = 1 / horizontal;
+			// matrix[0, 1] = 0;
+			// matrix[0, 2] = 0;
+			matrix[0, 3] = 2 * offset.x;
+
+			// matrix[1, 0] = 0;
+			matrix[1, 1] = 1 / vertical;
+			// matrix[1, 2] = 0;
+			matrix[1, 3] = 2 * offset.y;
+
+			// matrix[2, 0] = 0;
+			// matrix[2, 1] = 0;
+			matrix[2, 2] = 2 / (n - f);
+			matrix[2, 3] = (f + n) / (n - f);
+
+			// matrix[3, 0] = 0;
+			// matrix[3, 1] = 0;
+			// matrix[3, 2] = 0;
+			matrix[3, 3] = 1;
+
+			return matrix;
+		}
+
+		static readonly Vector2[] HaltonSequence = {
 			new Vector2(0.500000000f, 0.333333333f),
 			new Vector2(0.250000000f, 0.666666667f),
 			new Vector2(0.750000000f, 0.111111111f),
@@ -256,9 +311,9 @@ namespace Cat.PostProcessing {
 
 		static readonly Vector2[] ps0 = new Vector2[] {
 			new Vector2(-0.75f, -0.50f),
-			new Vector2( 0.50f, -0.75f ),
+			new Vector2( 0.50f, -0.75f),
 			new Vector2( 0.75f,  0.50f),
-			new Vector2(-0.50f,  0.75f )
+			new Vector2(-0.50f,  0.75f)
 		};
 		
 		static readonly Vector2[] ps = new Vector2[] {
@@ -276,17 +331,17 @@ namespace Cat.PostProcessing {
 		};
 		
 		static readonly Vector2[] psx = new Vector2[] {
-			new Vector2(-0.166f, -0.166f) * 2f,
-			new Vector2( 0.166f, -0.166f) * 2f,
-			new Vector2( 0.166f,  0.166f) * 2f,
-			new Vector2(-0.166f,  0.166f) * 2f
+			new Vector2(-1/3f, -1/3f),
+			new Vector2( 1/3f, -1/3f),
+			new Vector2( 1/3f,  1/3f),
+			new Vector2(-1/3f,  1/3f)
 		};
         
 		static readonly Vector2[] ps4 = new Vector2[] {
-			(new Vector2(+0.38268f, -0.92388f)) * 0.5f,
-			(new Vector2(+0.92388f, +0.38268f)) * 0.5f,
-			(new Vector2(-0.38268f, +0.92388f)) * 0.5f,
-			(new Vector2(-0.92388f, -0.38268f)) * 0.5f
+			new Vector2( 0.19134f, -0.46194f),
+			new Vector2( 0.46194f,  0.19134f),
+			new Vector2(-0.19134f,  0.46194f),
+			new Vector2(-0.46194f, -0.19134f)
 		};
 	}
 

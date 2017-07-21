@@ -3,9 +3,12 @@ using UnityEngine;
 
 namespace Cat.Common {
 
+	[Serializable]
 	public struct VectorInt2 {
 		public const float kEpsilon = 1E-05f;
+		[SerializeField]
 		public int x;
+		[SerializeField]
 		public int y;
 		public int this[int index] {
 			get {
@@ -98,7 +101,7 @@ namespace Cat.Common {
 		public static VectorInt2 operator *(int d, VectorInt2 left) {
 			return new VectorInt2(left.x * d, left.y * d);
 		}
-        	public static Vector2 operator *(VectorInt2 left, float d) {
+        public static Vector2 operator *(VectorInt2 left, float d) {
             return (Vector2)left * d;
         }
 		public static Vector2 operator *(float d, VectorInt2 left) {
@@ -127,6 +130,15 @@ namespace Cat.Common {
 		}
 		public static explicit operator VectorInt2(Vector2 v) {
 			return new VectorInt2((int)v.x, (int)v.y);
+		}
+		public static VectorInt2 operator *(TextureResolution left, VectorInt2 right) {
+			return (VectorInt2)(TextureResolutionToFLoat(left) * right);
+		}
+		public static VectorInt2 operator *(VectorInt2 left, TextureResolution right) {
+			return (VectorInt2)(left * TextureResolutionToFLoat(right));
+		}
+		private static float TextureResolutionToFLoat(TextureResolution tr) {
+			return (tr == TextureResolution.FullResolution) ? 1 : (tr == TextureResolution.DoubleResolution) ? 2 : 0.5f;
 		}
 	}
     

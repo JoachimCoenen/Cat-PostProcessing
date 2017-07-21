@@ -4,7 +4,8 @@
 
 #include "HLSLSupport.cginc"
 #include "UnityCG.cginc"
-#include "CatCommon.cginc"
+#include "UnityStandardUtils.cginc"
+//#include "CatCommon.cginc"
 
 #define USE_UNITY_STANDARD_LIGHTING_O		1
 #define USE_ADVANCED_MATERIAL_LIGHTING_O	0
@@ -42,6 +43,13 @@
 		d.occlusion		= unityD.occlusion;
 		d.normal		= normalize(unityD.normalWorld);
 		d.emission		= gbuffer3.rgb;
+		return d;
+	}
+	
+	// NO Projection allowed; Only Rotation and Translation; Scaling ONLY if direction vectors are manually normalized afterwards. 
+	// eg.: "d.normal = normalize(d.normal);"
+	GBufferData TransformGBufferData(GBufferData d, float4x4 transformationMatrix) {
+		d.normal = mul((float3x3)transformationMatrix, d.normal);
 		return d;
 	}
 	
@@ -119,6 +127,15 @@
 		return d;
 	}
 	
+	// NO Projection allowed; Only Rotation and Translation; Scaling ONLY if direction vectors are manually normalized afterwards. 
+	// eg.: "d.normal = normalize(d.normal);"
+	GBufferData TransformGBufferData(GBufferData d, float4x4 transformationMatrix) {
+		d.normal        = mul((float3x3)transformationMatrix, d.normal);
+		d.lowFreqNormal = mul((float3x3)transformationMatrix, d.lowFreqNormal);
+		d.tangent       = mul((float3x3)transformationMatrix, d.tangent);
+		return d;
+	}
+	
 	half3 getReflectionVector(GBufferData d, half3 wsViewDir) {
 		return getReflectionVector(d.normal, d.tangent, d.aspect, wsViewDir);
 	}
@@ -184,6 +201,13 @@
 		return d;
 	}
 	
+	// NO Projection allowed; Only Rotation and Translation; Scaling ONLY if direction vectors are manually normalized afterwards. 
+	// eg.: "d.normal = normalize(d.normal);"
+	GBufferData TransformGBufferData(GBufferData d, float4x4 transformationMatrix) {
+		d.normal = mul((float3x3)transformationMatrix, d.normal);
+		return d;
+	}
+	
 	half3 getReflectionVector(GBufferData d, half3 wsViewDir) {
 		return reflect(-wsViewDir, d.normal);
 	}
@@ -223,5 +247,14 @@
 GBufferData unpackGBuffer(half4 gbuffer0, half4 gbuffer1, half4 gbuffer2) {
 	return unpackGBuffer(gbuffer0, gbuffer1, gbuffer2, 0);
 }
+
+// NO Projection allowed; Only Rotation and Translation; Scaling ONLY if direction vectors are manually normalized afterwards. 
+// eg.: "d.normal = normalize(d.normal);"
+GBufferData TransformGBufferData(GBufferData d, float3x3 transformationMatrix) {
+	const float3x3 tm = transformationMatrix;
+	const float4x4 transMat4x4 = {{tm[0], 0}, {tm[1], 0}, {tm[2], 0}, {0, 0, 0, 0}};
+	return TransformGBufferData(d, transMat4x4);
+}
+
 
 #endif // LIGHTING_COMPATIBILITY_INTERFACE_INCLUDED
