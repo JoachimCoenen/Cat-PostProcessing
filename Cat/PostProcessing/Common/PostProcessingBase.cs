@@ -238,7 +238,7 @@ namespace Cat.PostProcessing {
 			UpdateCameraMatricesPerFrame(postProcessingManager.camera);
 			if (isRenderTextureDirty > 0) {
 				isRenderTextureDirty--;
-				if (isRenderTextureDirty == 0) {
+				if (isRenderTextureDirty >= 0) {
 					RenewAllRenderTextures();
 				}
 			}
