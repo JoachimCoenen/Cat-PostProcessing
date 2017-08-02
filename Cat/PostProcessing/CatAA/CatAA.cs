@@ -162,7 +162,7 @@ namespace Cat.PostProcessing {
 			material.SetFloat(PropertyIDs.VelocityWeightScale_f, settings.velocityWeightScale);
 			material.SetFloat(PropertyIDs.Response_f, settings.response);
 			material.SetFloat(PropertyIDs.ToleranceMargin_f, settings.toleranceMargin);
-		//	material.SetTexture(PropertyIDs.History1_t, lastFrame1);
+			material.SetTexture(PropertyIDs.History1_t, lastFrame1);
 		}
 
 		override protected void OnPostRender() {
