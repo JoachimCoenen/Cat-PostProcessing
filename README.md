@@ -1,14 +1,15 @@
 # Cat-Post Processing Effects for Unity 5
 Various fast and efficient post-processing effects for Unity
 
-![Main Img][coloredBalls_IMG]
+![Main Img 1][ElevatorDoor_IMG]
 The main goal is to create fast and efficient post-processing effects for Unity.
 
-There are currently 4 different post-processing effects included:
+There are currently 5 different post-processing effects included:
 - Temporal Anti-Alialising (TAA)
 - Ambient Occlusion
 - Importance Sampled Screen Space Reflections (SSR) with retro reflections and specular elongation
 - Chromatic Aberration
+- Bloom Effect with energy conservation
 
 ## Temporal Anti-Alialising
 ![TemporalAntiAlialisingGUI_IMG][TemporalAntiAlialisingGUI_IMG]
@@ -21,7 +22,7 @@ There are currently 4 different post-processing effects included:
 
 ## Ambient Occlusion
 ![AmbientOcclusionGUI_IMG][AmbientOcclusionGUI_IMG]
-- **Intensity:** The intensity of ambient occlusion.
+- **Intensity:** The intensity of the ambient occlusion.
 - **Sample Count:** How many samples should be taken? Try to keep it small.
 - **Radius:** The search radius. Try to keep it small, too.
 - **Debug On:** Visualizes the generated Ambient Occlusion.
@@ -73,12 +74,25 @@ Debugging
 ## Chromatic Aberration
 ![ChromaticAberrationGUI_IMG][ChromaticAberrationGUI_IMG]
 
+## Bloom
+![BloomGUI_IMG][BloomGUI_IMG]
+- **Intensity:** The intensity of the bloom.
+- **Dirt Intensity:** Only effective when a Dirt Texture is selected  
+- **Dirt Texture:** The dirt on the lense. (RGB)
+- **Min Luminance:** Minimum luminance required for the bloom to appear.
+- **Knee Strength:** 
+- **Debug On:** Visualizes the Bloom only.
+
 ## Install Intructions
 Simply put the "Cat" folder into your "Assets" folder.
 
+![Main Img 2][coloredBalls_IMG]
 
-[coloredBalls_IMG]:              Media/coloredBalls.png               "All Effects in action"
+
+[coloredBalls_IMG]:              Media/coloredBalls.png               "All Effects in action 1"
+[ElevatorDoor_IMG]:              Media/ElevatorDoor.png               "All Effects in action 2"
 [TemporalAntiAlialisingGUI_IMG]: Media/CatAAGUI.png                   "Temporal Anti-Alialising GUI"
 [AmbientOcclusionGUI_IMG]:       Media/CatAOGUI.png                   "Ambient Occlusion GUI"
 [ScreenSpaceReflectionsGUI_IMG]: Media/CatSSRGUI.png                  "Screen Space Reflections GUI"
 [ChromaticAberrationGUI_IMG]:    Media/CatChromaticAberrationGUI.png  "Chromatic Aberration GUI"
+[BloomGUI_IMG]:                  Media/CatBloomGUI.png                "Bloom Effect GUI"
