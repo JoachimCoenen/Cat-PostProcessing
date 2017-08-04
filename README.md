@@ -11,6 +11,9 @@ There are currently 5 different post-processing effects included:
 - Chromatic Aberration
 - Bloom Effect with energy conservation
 
+## Install Intructions
+[Download here](https://github.com/JoachimCoenen/Cat-PostProcessing/releases "https://github.com/JoachimCoenen/Cat-PostProcessing/releases"), unpack the .zip and then put the "Cat" folder into your "Assets" folder.
+
 ## Temporal Anti-Alialising
 ![TemporalAntiAlialisingGUI_IMG][TemporalAntiAlialisingGUI_IMG]
 - **Sharpness:** Artificially sharpens the image. High values can look cheap.
@@ -82,9 +85,6 @@ Debugging
 - **Min Luminance:** Minimum luminance required for the bloom to appear.
 - **Knee Strength:** 
 - **Debug On:** Visualizes the Bloom only.
-
-## Install Intructions
-Simply put the "Cat" folder into your "Assets" folder.
 
 ![Main Img 2][coloredBalls_IMG]
 
