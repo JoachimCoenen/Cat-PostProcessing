@@ -445,9 +445,18 @@ namespace Cat.PostProcessing {
 	[ImageEffectAllowedInSceneView]
 	public abstract class PostProcessingBaseImageEffect : PostProcessingBase {
 
-		protected RenderTexture GetTemporaryRT(Material material, int ID_t, VectorInt2 rtSize, int rtDepth, RenderTextureFormat rtFormat, FilterMode rtFilterMode = FilterMode.Point, RenderTextureReadWrite rtReadWrite = RenderTextureReadWrite.Default) {
+		protected RenderTexture GetTemporaryRT(int ID_t, VectorInt2 rtSize, int rtDepth, RenderTextureFormat rtFormat, FilterMode rtFilterMode = FilterMode.Point, RenderTextureReadWrite rtReadWrite = RenderTextureReadWrite.Default) {
 			var rt = RenderTexture.GetTemporary(rtSize.x, rtSize.y, rtDepth, rtFormat, rtReadWrite);
 			rt.filterMode = rtFilterMode;
+			return rt;
+		}
+
+		protected RenderTexture GetTemporaryRT(int ID_t, VectorInt2 rtSize, RenderTextureFormat rtFormat, FilterMode rtFilterMode = FilterMode.Point, RenderTextureReadWrite rtReadWrite = RenderTextureReadWrite.Default) {
+			return GetTemporaryRT(ID_t, rtSize, 0, rtFormat, rtFilterMode, rtReadWrite);
+		}
+
+		protected RenderTexture GetTemporaryRT(Material material, int ID_t, VectorInt2 rtSize, int rtDepth, RenderTextureFormat rtFormat, FilterMode rtFilterMode = FilterMode.Point, RenderTextureReadWrite rtReadWrite = RenderTextureReadWrite.Default) {
+			var rt = GetTemporaryRT(material, ID_t, rtSize, rtDepth, rtFormat, rtFilterMode, rtReadWrite);
 			material.SetTexture(ID_t, rt);
 			return rt;
 		}

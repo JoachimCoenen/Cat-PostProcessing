@@ -248,6 +248,19 @@ inline half1 UnityLuminance(half3 c) {
 	return LinearRgbToLuminance(c);
 }
 
+inline half1 EqualLuminance(half3 c) {
+	return (c.r + c.g + c.b) / 3.0;
+}
+
+inline half3 HsvToRgb(half3 hsv) {
+	const half h = hsv.x, s = hsv.y, v = hsv.z;
+	half3 c = saturate(abs(frac(h + half3(3, 2, 1) / 3.0) - 0.5) * 6 - 1);
+	c = c * s - s;
+	c = c * v + v;
+	return c;
+}
+
+
 inline float1 CompressBy(float1 value, float1 amplitude) {
 	float1 invDenom = 1 / (1 + amplitude);
 	return value * invDenom;

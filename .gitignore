@@ -1,3 +1,5 @@
 **/[Hh]istory/
 [Hh]istory.meta
 stochasticSSR_RayTraceLib*
+Cat/Includes/NoiseLib.cginc
+Cat/Includes/NoiseLib.cginc.meta
