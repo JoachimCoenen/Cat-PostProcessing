@@ -189,6 +189,7 @@ inline float4 Lerp3(float4 a, float4 b, float4 c, float4 value) {
 	}
 	inline half2 Lerp3(half2 a, half2 b, half2 c, half2 value) {
 		return lerp(lerp(b, a, max(0, -value)), c, max(0, +value));
+	}
 	inline half3 Lerp3(half3 a, half3 b, half3 c, half3 value) {
 		return lerp(lerp(b, a, max(0, -value)), c, max(0, +value));
 	}
