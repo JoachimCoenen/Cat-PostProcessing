@@ -142,6 +142,62 @@ inline half2 Unity_SafeNormalize(half2 inVec) {
 	return inVec * rsqrt(dp3);
 }
 
+
+inline float1 Clamp11(float1 value) {
+	return clamp(value, -1, 1);
+}
+inline float2 Clamp11(float2 value) {
+	return clamp(value, -1, 1);
+}
+inline float3 Clamp11(float3 value) {
+	return clamp(value, -1, 1);
+}
+inline float4 Clamp11(float4 value) {
+	return clamp(value, -1, 1);
+}
+#if !defined(UNITY_COMPILER_HLSL2GLSL)
+	inline half1 Clamp11(half1 value) {
+		return clamp(value, -1, 1);
+	}
+	inline half2 Clamp11(half2 value) {
+		return clamp(value, -1, 1);
+	}
+	inline half3 Clamp11(half3 value) {
+		return clamp(value, -1, 1);
+	}
+	inline half4 Clamp11(half4 value) {
+		return clamp(value, -1, 1);
+	}
+#endif
+
+
+inline float1 Lerp3(float1 a, float1 b, float1 c, float1 value) {
+	return lerp(lerp(b, a, max(0, -value)), c, max(0, +value));
+}
+inline float2 Lerp3(float2 a, float2 b, float2 c, float2 value) {
+	return lerp(lerp(b, a, max(0, -value)), c, max(0, +value));
+}
+inline float3 Lerp3(float3 a, float3 b, float3 c, float3 value) {
+	return lerp(lerp(b, a, max(0, -value)), c, max(0, +value));
+}
+inline float4 Lerp3(float4 a, float4 b, float4 c, float4 value) {
+	return lerp(lerp(b, a, max(0, -value)), c, max(0, +value));
+}
+#if !defined(UNITY_COMPILER_HLSL2GLSL)
+	inline half1 Lerp3(half1 a, half1 b, half1 c, half1 value) {
+		return lerp(lerp(b, a, max(0, -value)), c, max(0, +value));
+	}
+	inline half2 Lerp3(half2 a, half2 b, half2 c, half2 value) {
+		return lerp(lerp(b, a, max(0, -value)), c, max(0, +value));
+	inline half3 Lerp3(half3 a, half3 b, half3 c, half3 value) {
+		return lerp(lerp(b, a, max(0, -value)), c, max(0, +value));
+	}
+	inline half4 Lerp3(half4 a, half4 b, half4 c, half4 value) {
+		return lerp(lerp(b, a, max(0, -value)), c, max(0, +value));
+	}
+#endif
+
+
 inline float1 InvLerp(float1 a, float1 b, float1 value) {
 	return (a-value)/(a-b);
 }

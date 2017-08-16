@@ -6,7 +6,6 @@ using Cat.PostProcessing;
 using Cat.CommonEditor;
 
 namespace Cat.PostProcessingEditor {
-	using Settings = CatBloom.Settings;
 
 	[CustomEditor(typeof(CatBloom))]
 	//[CanEditMultipleObjects]
@@ -134,6 +133,7 @@ namespace Cat.PostProcessingEditor {
 			//	PointInRect(0, m_RangeY) + Vector3.right,
 			//	"Brightness Response (linear)", EditorStyles.miniLabel
 			//);
+
 			// Threshold line
 			graph.DrawLine(new Vector2(minLuminance, graph.m_Range.yMin), new Vector2(minLuminance, graph.m_Range.yMax), 0.85f);
 			// Graph
