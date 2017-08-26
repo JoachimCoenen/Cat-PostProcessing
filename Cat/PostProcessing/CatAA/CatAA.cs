@@ -1,10 +1,9 @@
 ﻿using System;
 using UnityEngine;
-using UnityEngine.Rendering;
 using Cat.Common;
 
 namespace Cat.PostProcessing {
-	[RequireComponent(typeof (Camera))]
+	[RequireComponent(typeof(Camera))]
 	[ExecuteInEditMode]
 	[ImageEffectAllowedInSceneView]
 	[AddComponentMenu("Cat/PostProcessing/Tempral Anti-Alialising")]
@@ -93,9 +92,10 @@ namespace Cat.PostProcessing {
 			internal static readonly int Directionality_v				= Shader.PropertyToID("_Directionality");
 		}
 
-		override protected void UpdateRenderTextures(VectorInt2 cameraSize) {
+		override protected void UpdateRenderTextures(Camera camera, VectorInt2 cameraSize) {
 			CreateCopyRT(lastFrame1, cameraSize, RenderTextureFormat.DefaultHDR, FilterMode.Bilinear);
 			material.SetTexture(PropertyIDs.History1_t, lastFrame1);
+			setMaterialDirty();
 
 			//	CreateRT(ref lastFrame2, cameraSize, RenderTextureFormat.DefaultHDR, FilterMode.Bilinear);
 			//	material.SetTexture(PropertyIDs.History2_t, lastFrame2);
@@ -105,9 +105,10 @@ namespace Cat.PostProcessing {
 
 		int TMSAACounter = 0;
 
-		override protected void UpdateCameraMatricesPerFrame(Camera camera) {
+		override protected void UpdateCameraMatricesPerFrame(Camera camera, VectorInt2 cameraSize) {
 			var settings = this.settings;
-			if (postProcessingManager.isSceneView && disableTAAInSceneView) {
+			var isSceneView = postProcessingManager.isSceneView;
+			if (isSceneView && disableTAAInSceneView) {
 				return;
 			}
 			
@@ -139,24 +140,25 @@ namespace Cat.PostProcessing {
 			var newP = jitterVectors[TMSAACounter] * Settings.jitterStrength;
 
 
-			newP.x /= (float)postProcessingManager.cameraSize.x;
-			newP.y /= (float)postProcessingManager.cameraSize.y;
+			newP.x /= (float)cameraSize.x;
+			newP.y /= (float)cameraSize.y;
 			if (camera.orthographic) {
-				camera.projectionMatrix = GetOrthographicProjectionMatrix(newP);
+				camera.projectionMatrix = GetOrthographicProjectionMatrix(newP, camera);
 			} else {
-				camera.projectionMatrix = GetPerspectiveProjectionMatrix(newP);
+				camera.projectionMatrix = GetPerspectiveProjectionMatrix(newP, camera);
 			}
-			Shader.SetGlobalVector(PropertyIDs.TAAJitterVelocity_v, postProcessingManager.isSceneView ? Vector2.zero : newP);
+			Shader.SetGlobalVector(PropertyIDs.TAAJitterVelocity_v, isSceneView ? Vector2.zero : newP);
 
 		}
 
-		override protected void UpdateMaterialPerFrame(Material material) {
+		override protected void UpdateMaterialPerFrame(Material material, Camera camera, VectorInt2 cameraSize) {
 			material.SetVector(PropertyIDs.Directionality_v, new Vector2(TMSAACounter % 2 == 0 ? 1 : -1, 1));
 			setMaterialDirty();
 		}
 
-		override protected void UpdateMaterial(Material material) {
-			var allowVelocityPrediction = Settings.enableVelocityPrediction && !postProcessingManager.isSceneView;
+		override protected void UpdateMaterial(Material material, Camera camera, VectorInt2 cameraSize) {
+			var isSceneView = postProcessingManager.isSceneView;
+			var allowVelocityPrediction = Settings.enableVelocityPrediction && !isSceneView;
 			material.SetFloat(PropertyIDs.Sharpness_f, settings.sharpness);
 			material.SetInt(PropertyIDs.IsVelocityPredictionEnabled_b, allowVelocityPrediction ? 1 : 0);
 			material.SetFloat(PropertyIDs.VelocityWeightScale_f, settings.velocityWeightScale);
@@ -165,33 +167,20 @@ namespace Cat.PostProcessing {
 			material.SetTexture(PropertyIDs.History1_t, lastFrame1);
 		}
 
-		override protected void OnPostRender() {
+		private void OnPostRender() {
 			postProcessingManager.camera.ResetProjectionMatrix();
-			base.OnPostRender();
 		}
 
 		//[ImageEffectTransformsToLDR]
-		void OnRenderImage(RenderTexture source, RenderTexture destination) {
-			if (postProcessingManager.isSceneView && disableTAAInSceneView) {
+		internal override void RenderImage(RenderTexture source, RenderTexture destination) {
+			var isSceneView = postProcessingManager.isSceneView;
+			if (isSceneView && disableTAAInSceneView) {
 				Blit(source, destination);
 				return;
 			}
 
-			if (isFirstFrame) {
-		//		Blit(source, lastFrame1, material, 1);
-			}
-
-			var tempTex = RenderTexture.GetTemporary(source.width, source.height, 0, source.format);
-			Blit(source, tempTex, material, 0);
-			//	Debug.LogFormat("{0}", destination != null);
-			Blit(tempTex, lastFrame1);
-			Blit(tempTex, destination);
-
-			//Graphics.Blit(source, tempTex, material, 3);
-			//Graphics.Blit(tempTex, lastFrame1, material, 4);
-			//Graphics.Blit(tempTex, destination, material, 4);
-
-			RenderTexture.ReleaseTemporary(tempTex);
+			Blit(source, destination, material, 0);
+			Blit(destination, lastFrame1);
 		}
 
 
@@ -208,12 +197,12 @@ namespace Cat.PostProcessing {
 
 		// Adapted heavily from Unitys TAA code
 		// https://github.com/Unity-Technologies/PostProcessing/blob/v1/PostProcessing/Runtime/Components/TaaComponent.cs
-		Matrix4x4 GetPerspectiveProjectionMatrix(Vector2 offset){
-			float vertical = Mathf.Tan(0.5f * Mathf.Deg2Rad * postProcessingManager.camera.fieldOfView);
-			float horizontal = vertical * postProcessingManager.camera.aspect;
+		Matrix4x4 GetPerspectiveProjectionMatrix(Vector2 offset, Camera camera){
+			float vertical = Mathf.Tan(0.5f * Mathf.Deg2Rad * camera.fieldOfView);
+			float horizontal = vertical * camera.aspect;
 
-			float n = postProcessingManager.camera.nearClipPlane;
-			float f = postProcessingManager.camera.farClipPlane;
+			float n = camera.nearClipPlane;
+			float f = camera.farClipPlane;
 
 			var matrix = Matrix4x4.zero;
 
@@ -242,12 +231,12 @@ namespace Cat.PostProcessing {
 
 		// Adapted heavily from Unitys TAA code
 		// https://github.com/Unity-Technologies/PostProcessing/blob/v1/PostProcessing/Runtime/Components/TaaComponent.cs
-		Matrix4x4 GetOrthographicProjectionMatrix(Vector2 offset) {
-			float vertical = postProcessingManager.camera.orthographicSize;
-			float horizontal = vertical * postProcessingManager.camera.aspect;
+		Matrix4x4 GetOrthographicProjectionMatrix(Vector2 offset, Camera camera) {
+			float vertical = camera.orthographicSize;
+			float horizontal = vertical * camera.aspect;
 
-			float n = postProcessingManager.camera.nearClipPlane;
-			float f = postProcessingManager.camera.farClipPlane;
+			float n = camera.nearClipPlane;
+			float f = camera.farClipPlane;
 
 			var matrix = Matrix4x4.zero;
 

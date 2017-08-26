@@ -1,13 +1,12 @@
 ﻿using System;
 using UnityEngine;
-using UnityEngine.Rendering;
 using Cat.Common;
 
 // Inspired By: Kino/Bloom v2 - Bloom filter for Unity:
 // https://github.com/keijiro/KinoBloom
 
 namespace Cat.PostProcessing {
-	[RequireComponent(typeof (Camera))]
+	[RequireComponent(typeof(Camera))]
 	[ExecuteInEditMode]
 	[ImageEffectAllowedInSceneView]
 	[AddComponentMenu("Cat/PostProcessing/DepthOfField")]
@@ -18,7 +17,7 @@ namespace Cat.PostProcessing {
 			[CustomLabelRange(0.1f, 22, "f-Stop f/n")]
 			public float			fStop;
 
-			[Range(0, 50)]
+			[Range(0.185f, 100f)]
 			public float			focusDistance;
 
 			[Range(1, 7)]
@@ -96,15 +95,15 @@ namespace Cat.PostProcessing {
 			};
 		}
 
-		override protected void UpdateRenderTextures(VectorInt2 cameraSize) {
+		override protected void UpdateRenderTextures(Camera camera, VectorInt2 cameraSize) {
 			CreateRT(blurTex, cameraSize, 0, true, RenderTextureFormat.DefaultHDR, FilterMode.Bilinear, RenderTextureReadWrite.Default, TextureWrapMode.Clamp, "blurTex");
 		}
 
-		override protected void UpdateMaterialPerFrame(Material material) {
+		override protected void UpdateMaterialPerFrame(Material material, Camera camera, VectorInt2 cameraSize) {
 			setMaterialDirty();
 		}
 
-		override protected void UpdateMaterial(Material material) {
+		override protected void UpdateMaterial(Material material, Camera camera, VectorInt2 cameraSize) {
 			var settings = this.settings;
 			material.SetFloat(PropertyIDs.fStop_f, settings.fStop);
 			material.SetFloat(PropertyIDs.FocusDistance_f, settings.focusDistance);
@@ -121,9 +120,8 @@ namespace Cat.PostProcessing {
 			Blit,
 		}
 
-		void OnRenderImage(RenderTexture source, RenderTexture destination) {
+		internal override void RenderImage(RenderTexture source, RenderTexture destination) {
 			const int maxMipLvl = 7;
-			var camSize = postProcessingManager.cameraSize;
 
 			//var mipLevelFloat = Mathf.Clamp(Mathf.Log(Mathf.Max(source.width, source.height) / 32.0f + 1, 2), maxUpsample, maxMipLvl);
 			material.SetFloat(PropertyIDs.MipLevel_f, 0);

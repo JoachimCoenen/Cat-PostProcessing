@@ -8,7 +8,7 @@ using Cat.Common;
 //using UnityEditorInternal;
 
 namespace Cat.PostProcessing {
-	[RequireComponent(typeof (Camera))]
+	[RequireComponent(typeof(Camera))]
 	[ExecuteInEditMode]
 	[ImageEffectAllowedInSceneView]
 	[AddComponentMenu("Cat/PostProcessing/Ambient Occlusion")]
@@ -83,15 +83,15 @@ namespace Cat.PostProcessing {
 			internal static readonly int BlurDir_v				= Shader.PropertyToID("_BlurDir");
 		}
 
-		override protected void UpdateRenderTextures(VectorInt2 cameraSize) {
+		override protected void UpdateRenderTextures(Camera camera, VectorInt2 cameraSize) {
 			setBufferDirty();
 		}
 
-		override protected void UpdateMaterialPerFrame(Material material) {
+		override protected void UpdateMaterialPerFrame(Material material, Camera camera, VectorInt2 cameraSize) {
 			setMaterialDirty();
 		}
 
-		override protected void UpdateMaterial(Material material) {
+		override protected void UpdateMaterial(Material material, Camera camera, VectorInt2 cameraSize) {
 			var settings = this.settings;
 			material.SetFloat(PropertyIDs.Intensity_f, settings.intensity);
 			material.SetInt(PropertyIDs.SampleCount_i, settings.sampleCount);
@@ -107,9 +107,9 @@ namespace Cat.PostProcessing {
 			MultiplyAlpha		,
 		}
 
-		override protected void PopulateCommandBuffer(CommandBuffer buffer, Material material, bool isFirstFrame) {
-			GetTemporaryRT(buffer, PropertyIDs.OcclusionNormals1_t, postProcessingManager.cameraSize, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
-			GetTemporaryRT(buffer, PropertyIDs.OcclusionNormals2_t, postProcessingManager.cameraSize, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
+		override protected void PopulateCommandBuffer(CommandBuffer buffer, Material material, VectorInt2 cameraSize) {
+			GetTemporaryRT(buffer, PropertyIDs.OcclusionNormals1_t, cameraSize, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
+			GetTemporaryRT(buffer, PropertyIDs.OcclusionNormals2_t, cameraSize, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
 		//	GetTemporaryRT(buffer, PropertyIDs.OcclusionNormals3_t, cameraSize, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
 
 			Blit(buffer, PropertyIDs.OcclusionNormals1_t, material, (int)SSRPass.SampleProximity);

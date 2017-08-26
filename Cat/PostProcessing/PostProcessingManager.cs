@@ -10,6 +10,8 @@ namespace Cat.PostProcessing {
 
 	[RequireComponent(typeof(Camera))]
 	[ExecuteInEditMode]
+	[ImageEffectAllowedInSceneView]
+	[DisallowMultipleComponent]
 	public class PostProcessingManager : MonoBehaviour {
 		private Camera m_camera = null;
 		internal new Camera camera {
@@ -32,18 +34,20 @@ namespace Cat.PostProcessing {
 				if (m_cameraSize != value) {
 					m_cameraSize = value;
 					// set all RenderTextures dirty:
-					UpdateDepthTexture();
-					Dictionary<Type, PostProcessingBase> effectsList;
-					if (m_CameraPostProcessingEffects.TryGetValue(camera, out effectsList)) {
-						foreach (var effect in effectsList.Values) {
-							if (effect.enabled) {
-								effect.setRenderTextureDirty();
-							}
-						}
-					}
+					//UpdateDepthTexture();
+					//var effects = GetEffects(camera);
+					//if (effects != null) {
+					//	foreach (var effect in effects.Values) {
+					//		if (effect.enabled) {
+					//			effect.setRenderTextureDirty();
+					//		}
+					//	}
+					//}
 				}
 			}
 		}
+
+		private VectorInt2 m_lastCameraSize = new VectorInt2(1, 1); 
 
 		internal bool isSceneView { 
 			get {
@@ -55,14 +59,6 @@ namespace Cat.PostProcessing {
 			}
 		}
 
-		protected void OnPostRender() {
-			// This is here inorder to overcome a bug, where Camera.pixelWidth & Camera.pixelHeight 
-			// return a slightly wrong value in the editor scene view.
-			cameraSize = new VectorInt2(camera.activeTexture.width, camera.activeTexture.height);
-			//Debug.LogFormat("aspect: {0}, size: {1}", camera.aspect, cameraSize);
-
-		}
-
 		protected void OnDestroy() {
 			if (m_DepthTexture != null) {
 				m_DepthTexture.Release();
@@ -72,8 +68,8 @@ namespace Cat.PostProcessing {
 
 
 		internal void RegisterCommandBuffer(PostProcessingBase effect, CameraEvent cameraEvent, CommandBuffer cb) {
-			Dictionary<Tuple<Type, CameraEvent>, CommandBuffer> cbs;
-			if (!m_CameraCommandBuffers.TryGetValue(camera, out cbs)) {
+			var cbs = GetCommandBuffers(camera);
+			if (cbs == null) {
 				cbs = new Dictionary<Tuple<Type, CameraEvent>, CommandBuffer>();
 				m_CameraCommandBuffers.Add(camera, cbs);
 			}
@@ -84,13 +80,13 @@ namespace Cat.PostProcessing {
 				RemoveCommandBuffer(effect, cameraEvent, cb);
 			}
 			cbs[key] = cb;
-			camera.AddCommandBuffer(cameraEvent, cb);
+			UpdateCameraCommandBuffers();
 		}
 
 		internal void RemoveCommandBuffer(PostProcessingBase effect, CameraEvent cameraEvent, CommandBuffer cb) {
 			camera.RemoveCommandBuffer(cameraEvent, cb);
-			Dictionary<Tuple<Type, CameraEvent>, CommandBuffer> cbs;
-			if (!m_CameraCommandBuffers.TryGetValue(camera, out cbs)) {
+			var cbs = GetCommandBuffers(camera);
+			if (cbs == null) {
 				Debug.LogWarningFormat("Camera '{0}' was not registered while trying to remove CommandBuffer for ({1}, {2})", camera, effect.GetType().Name, cameraEvent);
 				return;
 			}
@@ -107,8 +103,8 @@ namespace Cat.PostProcessing {
 		}
 
 		internal void RemoveAllCommandBuffers(PostProcessingBase effect) {
-			Dictionary<Tuple<Type, CameraEvent>, CommandBuffer> cbs;
-			if (!m_CameraCommandBuffers.TryGetValue(camera, out cbs)) {
+			var cbs = GetCommandBuffers(camera);
+			if (cbs == null) {
 				#if UNITY_DEBUG && DEBUG_OUTPUT_VERBIOUS
 				Debug.LogFormat("Camera '{0}' was not registered while trying to remove all CommandBuffers for {1}", camera, effect.GetType().Name);
 				#endif
@@ -124,23 +120,100 @@ namespace Cat.PostProcessing {
 				m_CameraCommandBuffers.Remove(camera);
 			}
 		}
-		
+
+
+		internal void OnEffectsChanged() {
+			UpdateCameraDepthTextureMode();
+			UpdateEffectsSetup();
+		}
+
+
+
+		delegate RenderFunc MakeRenderDelegate(PostProcessingBaseImageEffect e);
+		delegate SupportFunc MakeSupportDelegate(PostProcessingBase e);
+
+		delegate void RenderFunc(RenderTexture source, RenderTexture destination);
+		delegate void SupportFunc(Camera camera, VectorInt2 cameraSize); // JCO@@@ TODO: find better name
+		// delegate void PreCullFunc();
+		// delegate void PreRenderFunc();
+		// delegate void PostRenderFunc();
+
+
+		private IEnumerable<RenderFunc> m_imageEffectsRenderChain = new List<RenderFunc>();
+		private IEnumerable<SupportFunc> m_preCullChain = new List<SupportFunc>();
+		private IEnumerable<SupportFunc> m_preRenderChain = new List<SupportFunc>();
+//		private IEnumerable<SupportFunc> m_postRenderChain = new List<SupportFunc>();
+
+		internal void UpdateEffectsSetup() {
+			var effects = new List<PostProcessingBase>();
+			GetComponents<PostProcessingBase>(effects);
+			var activeEffects = from effect in effects
+				where effect.enabled && effect.isActive
+				select effect;
+
+			MakeRenderDelegate makeRenderDelegate = e => ((s, d) => e.RenderImage(s, d));
+			m_imageEffectsRenderChain = from effect in activeEffects
+				where effect is PostProcessingBaseImageEffect
+				let imgEffect = effect as PostProcessingBaseImageEffect
+				select makeRenderDelegate(imgEffect);
+
+			MakeSupportDelegate makePreCullDelegate = e => ((cam, size) => e.PreCull(cam, size));
+			m_preCullChain = from effect in activeEffects
+				select makePreCullDelegate(effect);
+			
+			MakeSupportDelegate makePreRenderDelegate = e => ((cam, size) => e.PreRender(cam, size));
+			m_preRenderChain = from effect in activeEffects
+				select makePreRenderDelegate(effect);
+			
+			//MakeSupportDelegate makePostRenderDelegate = e => ((cam, size) => e.PostRender());
+			//m_postRenderChain = from effect in activeEffects
+			//	select makePostRenderDelegate(effect);
+		}
+
 		internal void UpdateCameraDepthTextureMode() {
 			var depthTextureMode = DepthTextureMode.None;
-			Dictionary<Type, PostProcessingBase> effectsList = null;
-			if (m_CameraPostProcessingEffects.TryGetValue(camera, out effectsList)) {
-				foreach (var effect in effectsList) {
-					depthTextureMode |= effect.Value.requiredDepthTextureMode;
-				}
+			var effects = GetEffects(camera);
+			if (effects != null && enabled) {
+				//depthTextureMode = (from pair in effects where pair.Value.enabled select pair.Value.requiredDepthTextureMode).Aggregate((l, r) => l | r);
+				depthTextureMode = effects
+					.Where(pair => pair.Value.enabled)
+					.Select(pair => pair.Value.requiredDepthTextureMode)
+					.Aggregate(depthTextureMode, (l, r) => l | r);
+
 			}
 
 			camera.depthTextureMode = depthTextureMode;
 			camera.RemoveCommandBuffer(CameraEvent.BeforeLighting, depthCommandBuffer);
 			if ((depthTextureMode & DepthTextureMode.Depth) == DepthTextureMode.Depth) {
 				camera.AddCommandBuffer(CameraEvent.BeforeLighting, depthCommandBuffer);
-				
 			}
 
+		}
+
+		internal void UpdateCameraCommandBuffers() {
+			var effects = new List<PostProcessingBase>();
+			GetComponents<PostProcessingBase>(effects);
+			var activeEffects = from effect in effects
+					where effect.enabled && effect.isActive
+				select effect;
+			
+			var commandBuffers = GetCommandBuffers(camera);
+			if (commandBuffers != null) {
+				
+				var buffers = from effect in activeEffects
+					join pair in commandBuffers on effect.GetType() equals pair.Key.item1
+					select new { cameraEvent = pair.Key.item2, buffer = pair.Value }; //produces flat sequence (hopefully)
+
+				foreach (var cb in buffers) {
+					camera.RemoveCommandBuffer(cb.cameraEvent, cb.buffer);
+				}
+				if (this.enabled) {
+					foreach (var cb in buffers) {
+						camera.AddCommandBuffer(cb.cameraEvent, cb.buffer);
+					}
+				}
+
+			}
 		}
 
 
@@ -148,30 +221,30 @@ namespace Cat.PostProcessing {
 			// Get Effects of camera
 			// if camera doesn't have this effectType: add it. else throw exception?
 			//
-			Dictionary<Type, PostProcessingBase> effectsList;
-			if (!m_CameraPostProcessingEffects.TryGetValue(camera, out effectsList)) {
-				effectsList = new Dictionary<Type, PostProcessingBase>();
-				m_CameraPostProcessingEffects.Add(camera, effectsList);
+			var effects = GetEffects(camera);
+			if (effects == null) {
+				effects = new Dictionary<Type, PostProcessingBase>();
+				m_CameraPostProcessingEffects.Add(camera, effects);
 			}
-			if (!effectsList.ContainsKey(effect.GetType())) {
-				effectsList.Add(effect.GetType(), effect);
-				UpdateCameraDepthTextureMode();
+			if (!effects.ContainsKey(effect.GetType())) {
+				effects.Add(effect.GetType(), effect);
+				OnEffectsChanged();
 			}
 			effect.InitializeEffect();
 		}
 
 		internal bool TryRemoveEffect(PostProcessingBase effect) {
-				RemoveAllCommandBuffers(effect);
-				Dictionary<Type, PostProcessingBase> effectsList;
-				if (m_CameraPostProcessingEffects.TryGetValue(camera, out effectsList)) {
-					if (effectsList.ContainsKey(effect.GetType())) {
-						var wasSuccessfull = effectsList.Remove(effect.GetType());
-						UpdateCameraDepthTextureMode();
-					}
-					if (effectsList.Count == 0) {
-						m_CameraPostProcessingEffects.Remove(camera);
-					}
+			RemoveAllCommandBuffers(effect);
+			var effects = GetEffects(camera);
+			if (effects != null) {
+				if (effects.ContainsKey(effect.GetType())) {
+					var wasSuccessfull = effects.Remove(effect.GetType());
+					OnEffectsChanged();
 				}
+				if (effects.Count == 0) {
+					m_CameraPostProcessingEffects.Remove(camera);
+				}
+			}
 			return true; // JCO@@@ TODO: TryRemoveEffectFromCamera return value!!! TUT
 		}
 
@@ -179,6 +252,72 @@ namespace Cat.PostProcessing {
 			if (!TryRemoveEffect(effect)) {
 				Debug.LogErrorFormat("PostProcessingBase.TryRemoveEffectFromCamera({0}, {1}) failed", camera.name, effect.effectName);
 			}
+		}
+
+		//[ImageEffectTransformsToLDR]
+		void OnRenderImage(RenderTexture source, RenderTexture destination) {
+			if (!enabled) {
+				Debug.LogFormat("WTF Unity? {0}.OnRenderImage() on {1} called, even though {0} is NOT enabled.", GetType().Name, name);
+				Graphics.Blit(source, destination);
+			}
+			var last = source;
+			foreach (RenderFunc renderFunc in m_imageEffectsRenderChain) {
+				var current = RenderTexture.GetTemporary(last.width, last.height, 0, last.format);
+				renderFunc(last, current);
+				if (last != source) { RenderTexture.ReleaseTemporary(last); }
+				last = current;
+			}
+
+			Graphics.Blit(last, destination);
+
+			if (last != source) {
+				RenderTexture.ReleaseTemporary(last);
+			}
+		}
+
+		private void OnPreCull(){
+			var cam = this.camera;
+			var size = this.cameraSize;
+
+			if (m_lastCameraSize != cameraSize) {
+				UpdateDepthTexture();
+				m_lastCameraSize = cameraSize;
+			}
+
+			foreach (var preCullFunc in m_preCullChain) {
+				preCullFunc(cam, size);
+			}
+		}
+
+		private void OnPreRender(){
+			var cam = this.camera;
+			var size = this.cameraSize;
+			foreach (var preRenderFunc in m_preRenderChain) {
+				preRenderFunc(cam, size);
+			}
+		}
+
+		private void OnPostRender(){
+			// This is here inorder to overcome a bug, where Camera.pixelWidth & Camera.pixelHeight 
+			// return a slightly wrong value in the editor scene view.
+			cameraSize = new VectorInt2(camera.activeTexture.width, camera.activeTexture.height);
+			//Debug.LogFormat("aspect: {0}, size: {1}", camera.aspect, cameraSize);
+
+			//var cam = this.camera;
+			//var size = this.cameraSize;
+			//foreach (var postRenderFunc in m_postRenderChain) {
+			//	postRenderFunc(cam, size);
+			//}
+		}
+
+		private void OnEnable(){
+			UpdateCameraCommandBuffers();
+			UpdateCameraDepthTextureMode();
+		}
+
+		private void OnDisable(){
+			UpdateCameraCommandBuffers();
+			UpdateCameraDepthTextureMode();
 		}
 
 
@@ -240,15 +379,12 @@ namespace Cat.PostProcessing {
 			cb.SetGlobalTexture(PropertyIDs.Depth_t, depthTexture);
 		}
 
-
-
 		static class PropertyIDs {
 			internal static readonly int normalsPacked_t				= Shader.PropertyToID("_NormalsPacked");
 			internal static readonly int Depth_t						= Shader.PropertyToID("_DepthTexture");
 			internal static readonly int blueNoise_t					= Shader.PropertyToID("_BlueNoise");
 		}
-
-
+			
 		/*
 		 static PostProcessingManager _instance;
 
@@ -284,10 +420,31 @@ namespace Cat.PostProcessing {
 		static readonly Dictionary<Camera, Dictionary<Tuple<Type, CameraEvent>, CommandBuffer>> m_CameraCommandBuffers = 
 			new Dictionary<Camera, Dictionary<Tuple<Type, CameraEvent>, CommandBuffer>>();
 
+		static Dictionary<Type, PostProcessingBase> GetEffects(Camera aCamera) {
+			// Get Effects of camera
+			// if camera doesn't have this effectType: return null;
+			//
+			Dictionary<Type, PostProcessingBase> effects = null;
+			m_CameraPostProcessingEffects.TryGetValue(aCamera, out effects);
+			return effects;
+		}
+
+		static Dictionary<Tuple<Type, CameraEvent>, CommandBuffer> GetCommandBuffers(Camera aCamera) {
+			Dictionary<Tuple<Type, CameraEvent>, CommandBuffer> cbs = null;
+			m_CameraCommandBuffers.TryGetValue(aCamera, out cbs);
+			return cbs;
+		}
+
+
+
+
+
 		//static readonly Dictionary<Light, Dictionary<Type, PostProcessingBase>> m_LightPostProcessingEffects = 
 		//	new Dictionary<Light, Dictionary<Type, PostProcessingBase>>();
 		//static readonly Dictionary<Light, Dictionary<Tuple<Type, LightEvent>, CommandBuffer>> m_LightCommandBuffers = 
 		//	new Dictionary<Light, Dictionary<Tuple<Type, LightEvent>, CommandBuffer>>();
 
-	}
+}
+
+
 }

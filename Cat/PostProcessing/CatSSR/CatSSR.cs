@@ -8,7 +8,7 @@ using Cat.Common;
 //using UnityEditorInternal;
 
 namespace Cat.PostProcessing {
-	[RequireComponent(typeof (Camera))]
+	[RequireComponent(typeof(Camera))]
 	[ExecuteInEditMode]
 	[ImageEffectAllowedInSceneView]
 	[AddComponentMenu("Cat/PostProcessing/Screen Space Reflections")]
@@ -193,7 +193,7 @@ namespace Cat.PostProcessing {
 			}
 		}
 		private Settings lastSettings;
-		
+
 		private readonly RenderTextureContainer lastFrame = new RenderTextureContainer();
 		private readonly RenderTextureContainer history = new RenderTextureContainer();
 
@@ -204,7 +204,7 @@ namespace Cat.PostProcessing {
 	//	[SerializeField]
 		private VectorInt2 reflRTSize = VectorInt2.zero;
 
-		private bool isSecondFrame = false;
+		private bool isFirstFrame = true;
 
 		override protected CameraEvent cameraEvent { 
 			get { return CameraEvent.BeforeImageEffectsOpaque; }
@@ -283,7 +283,7 @@ namespace Cat.PostProcessing {
 			};
 		}
 
-		override protected void UpdateRenderTextures(VectorInt2 cameraSize) {
+		override protected void UpdateRenderTextures(Camera camera, VectorInt2 cameraSize) {
 			// Get RenderTexture sizes:
 			rayTraceRTSize = cameraSize * settings.rayTraceResol;
 			reflRTSize = cameraSize * settings.reflectionResolution;
@@ -293,13 +293,15 @@ namespace Cat.PostProcessing {
 			CreateRT(    history,   reflRTSize, 0, settings.useReflectionMipMap, RenderTextureFormat.DefaultHDR, FilterMode.Bilinear, RenderTextureReadWrite.Default, TextureWrapMode.Clamp, "history");
 		//	material.SetTexture(PropertyIDs.History_t, history);
 			material.SetTexture(PropertyIDs.Refl_t, history);
+			isFirstFrame = true;
 			setBufferDirty();
 		}
 
 		Vector2 frameCounter = new Vector2(0, 0);
 		Vector2 frameCounterHelper = new Vector2(0.618256431f, +1-Mathf.Sqrt(2));//0.618256431f);
-		override protected void UpdateMaterialPerFrame(Material material) {
-			if (!postProcessingManager.isSceneView) {
+		override protected void UpdateMaterialPerFrame(Material material, Camera camera, VectorInt2 cameraSize) {
+			var isSceneView = postProcessingManager.isSceneView;
+			if (!isSceneView) {
 				//frameCounter = (frameCounter + 0.618256431f) % 172.5f;
 				frameCounter = frameCounter + frameCounterHelper;
 				frameCounter.Set(frameCounter.y % 172.5f, frameCounter.x % 172.5f);
@@ -307,18 +309,15 @@ namespace Cat.PostProcessing {
 			}
 			material.SetVector(PropertyIDs.FrameCounter_f, frameCounter);
 
-			float pixelsPerMeterAtOneMeter = reflRTSize.x / (-2.0f * (float)(Mathf.Tan(postProcessingManager.camera.fieldOfView / 180.0f * Mathf.PI * 0.5f)));
+			float pixelsPerMeterAtOneMeter = reflRTSize.x / (-2.0f * (float)(Mathf.Tan(camera.fieldOfView / 180.0f * Mathf.PI * 0.5f)));
 			material.SetFloat(PropertyIDs.PixelsPerMeterAtOneMeter_f, pixelsPerMeterAtOneMeter);
 
-			if (isSecondFrame) {
-				setBufferDirty();
-				isSecondFrame = false;
-			}
 			setMaterialDirty();
 		}
 
-		override protected void UpdateMaterial(Material material) {
+		override protected void UpdateMaterial(Material material, Camera camera, VectorInt2 cameraSize) {
 			var settings = this.settings;
+			var isSceneView = postProcessingManager.isSceneView;
 		//	Shader.EnableKeyword("CAT_SSR_ON"); 
 			if (settings.useTemporalSampling) {
 				material.EnableKeyword("CAT_TEMPORAL_SSR_ON"); 
@@ -366,7 +365,7 @@ namespace Cat.PostProcessing {
 
 			material.SetTexture(PropertyIDs.blueNoise_t, PostProcessingManager.blueNoiseTexture);
 
-			var allowVelocityPrediction = true && !postProcessingManager.isSceneView;
+			var allowVelocityPrediction = true && !isSceneView;
 			material.SetInt(PropertyIDs.IsVelocityPredictionEnabled_b, allowVelocityPrediction ? 1 : 0);
 
 		}
@@ -391,7 +390,8 @@ namespace Cat.PostProcessing {
 			*/
 		}
 
-		override protected void PopulateCommandBuffer(CommandBuffer buffer, Material material, bool isFirstFrame) {
+		override protected void PopulateCommandBuffer(CommandBuffer buffer, Material material, VectorInt2 cameraSize) {
+			var isSceneView = postProcessingManager.isSceneView;
 
 			var mipRTSizes = new VectorInt2[8] {
 				reflRTSize / 1,
@@ -427,8 +427,12 @@ namespace Cat.PostProcessing {
 			#endregion
 
 			#region RetroReflection
-			if ((isFirstFrame && true) || !settings.useRetroReflections) {
+			if (isFirstFrame || !settings.useRetroReflections) {
 				Blit(buffer, BuiltinRenderTextureType.CameraTarget, lastFrame);
+				if (isFirstFrame) {
+					isFirstFrame = false;
+					setBufferDirty();
+				}
 			}
 			#endregion
 	
@@ -452,7 +456,7 @@ namespace Cat.PostProcessing {
 			#endregion
 	
 			#region Resolve / CombineTemporal
-			var useCombineTemporal = settings.useTemporalSampling && !postProcessingManager.isSceneView;
+			var useCombineTemporal = settings.useTemporalSampling && !isSceneView;
 		//	GetT|emporaryRT(buffer, PropertyIDs.Refl_t, mipRTSizes[0], RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
 	
 			if (useCombineTemporal) {
@@ -509,8 +513,6 @@ namespace Cat.PostProcessing {
 			ReleaseTemporaryRT(buffer, PropertyIDs.Hit_t);
 			//	ReleaseTemporaryRT(buffer, PropertyIDs.Depth_t);
 
-			isSecondFrame = isFirstFrame; // for the next Frame
-
 			#if USE_ADVANCED_MATERIAL_SHADING
 			buffer.GetT|emporaryRT(PropertyIDs.normalsPacked_t, cameraSize.x, cameraSize.y, 0, FilterMode.Point, RenderTextureFormat.ARGB2101010, RenderTextureReadWrite.Linear, 1);
 			#endif
@@ -520,11 +522,7 @@ namespace Cat.PostProcessing {
 			#endif
 
 		}
-
-		void Awake() {
-		//	getShaderPropertyIDs();
-		}
-	
+			
 		public void OnValidate () {
 			setMaterialDirty();
 			if (m_Settings.rayTraceResol != lastSettings.rayTraceResol

@@ -3,7 +3,7 @@ using UnityEngine;
 using Cat.Common;
 
 namespace Cat.PostProcessing {
-	[RequireComponent(typeof (Camera))]
+	[RequireComponent(typeof(Camera))]
 	[ExecuteInEditMode]
 	[ImageEffectAllowedInSceneView]
 	[AddComponentMenu("Cat/PostProcessing/Chromatic Aberration")]
@@ -44,15 +44,15 @@ namespace Cat.PostProcessing {
 			internal static readonly int MainTex_t	= Shader.PropertyToID("_MainTex");
 		}
 
-		override protected void UpdateMaterialPerFrame(Material material) {
+		override protected void UpdateMaterialPerFrame(Material material, Camera camera, VectorInt2 cameraSize) {
 			setMaterialDirty();
 		}
 
-		override protected void UpdateMaterial(Material material) {
+		override protected void UpdateMaterial(Material material, Camera camera, VectorInt2 cameraSize) {
 			material.SetFloat(PropertyIDs.Strength_f, settings.strength);
 		}
 
-		void OnRenderImage(RenderTexture source, RenderTexture destination) {
+		internal override void RenderImage(RenderTexture source, RenderTexture destination) {
 			Blit(source, destination, material, 0);
 		}
 

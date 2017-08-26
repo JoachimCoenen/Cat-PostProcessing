@@ -5,6 +5,12 @@
 #include "../../Includes/LightingInterface.cginc"
 #include "../../Includes/CatCommon.cginc"
 
+// Consts:
+
+static const half EPSILON = 1e-4;
+
+
+
 	//	sampler2D		_BlueNoise;						float4 _BlueNoise_TexelSize;
 		sampler2D		_MainTex;						float4	_MainTex_TexelSize;
 

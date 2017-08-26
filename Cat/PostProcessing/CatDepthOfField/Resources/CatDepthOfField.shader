@@ -40,7 +40,6 @@ Shader "Hidden/Cat DepthOfField" {
 		float	_fStop;
 		float	_FocusDistance;
 		float	_Radius;
-		float	_KneeStrength;
 		
 		float4	_BlurDir;
 		float	_MipLevel;
@@ -132,7 +131,7 @@ Shader "Hidden/Cat DepthOfField" {
 		float getMipLevel(float blurRadius) {
 			//    totalRadius = 2^(mip) * (1 + _Radius) - _Radius
 			// => mip = log2((_Radius + totalRadius) / (_Radius + 1))
-			return log2((_Radius + max(1, blurRadius * _MainTex_TexelSize.w)) / (_Radius + 1) + 0);
+			return log2((_Radius + max(1, blurRadius * _MainTex_TexelSize.w)) / (_Radius + 1));
 		}
 		
 		float getMipLevel(float2 uv) {
@@ -254,7 +253,7 @@ static const float2 kDiskKernel[kSampleCount] = {
 		
 		float4 fragBlur(VertexOutput i) : SV_Target {
 			//float radiusFull = Tex2Dlod(_MainTex, i.uv, _MipLevel-1).a * _MainTex_TexelSize.w;
-			float radiusFull = Tex2Dlod(_MainTex, i.uv, min(2, _MipLevel-1)).a;
+			float radiusFull = Tex2Dlod(_MainTex, i.uv, min(0, _MipLevel-1)).a;
 			float mip = getMipLevel(radiusFull);//log2(max(0,radiusFull-0)+1);
 			
 			float midMip = max(0, mip - _MipLevel);
@@ -289,25 +288,32 @@ static const float2 kDiskKernel[kSampleCount] = {
 				float2 uvTap    = i.uv + kDiskKernel[k] * _MainTex_TexelSize.xy * radius * exp2(_MipLevel)*1;
 				
 				float4 color = Tex2Dlod(_MainTex, uvTap, _MipLevel-1);
+				float weight = color.a * 100;
 	
-				sumColor += color;
-				sumWeights += 1;
+				sumColor += color * weight;
+				sumWeights += weight;
 			}
 			
 			//return radius / MinC(_MainTex_TexelSize.xy);
-			return sumColor / sumWeights;
+			return sumColor / max(EPSILON, sumWeights);
 		}
 
 		//----------------------------------------------------------------------------------------------------------------------
 		//----------------------------------------------------------------------------------------------------------------------
 		
 		float4 fragApply(VertexOutput i) : SV_Target {
-			float radiusFull = Tex2Dlod(_MainTex, i.uv, 1).a;
-			float mip = getMipLevel(radiusFull);//log2(max(0,radiusFull-0)+1);
+			float radiusFull = Tex2Dlod(_MainTex, i.uv, 0).a;
+			//radiusFull = min(radiusFull, Tex2Dlod(_MainTex, i.uv, 1).a);
+			float mip = getMipLevel(i.uv);//log2(max(0,radiusFull-0)+1);
 			float mipMin = clamp(floor(mip), 0, _MipLevel);
 			float mipMax = clamp(ceil(mip), 0, _MipLevel);
+			
+			float4 color1 = Tex2Dlod(_MainTex, i.uv, mipMin);
+			float4 color2 = Tex2Dlod(_MainTex, i.uv, mipMax);
 				
 			float4 color = Tex2Dlod(_MainTex, i.uv, mipMin);
+			float selector = InvLerpSat(0.75, 1, mip - mipMin);
+			color = lerp(color1, color2, selector);
 			
 			return float4(color.rgb, color.a);
 			return mipMin / 7.0;//lerp(color1, color2, 1+0*saturate(mip-mipMin));
@@ -321,10 +327,12 @@ static const float2 kDiskKernel[kSampleCount] = {
 			return a + b + c - min(min(a, b), c) - max(max(a, b), c);
 		}
 		
-		#define ANTI_FLICKER 0
+		#define ANTI_FLICKER 1
 		float4 fragPreFilter(VertexOutput i) : SV_Target {
+			float blurRadius = getBlurRadius(i.uv+_TAAJitterVelocity);
+			float mip = getMipLevel(blurRadius);
 		#if ANTI_FLICKER
-			float4 d = _MainTex_TexelSize.xyxy * float4(+0.5, -1.5, +1.5, +0.5);
+			float4 d = _MainTex_TexelSize.xyxy * float4(+0.5, -1.5, +1.5, +0.5) * InvLerpSat(0, 3, blurRadius * _MainTex_TexelSize.w);
 			half4 color = Tex2Dlod(_MainTex, i.uv, 0);
 			half3 color1 = Tex2Dlod(_MainTex, i.uv + d.xy, 0).rgb;
 			half3 color2 = Tex2Dlod(_MainTex, i.uv - d.xy, 0).rgb;
@@ -335,8 +343,8 @@ static const float2 kDiskKernel[kSampleCount] = {
 		#else
 			float4 color = Tex2Dlod(_MainTex, i.uv, 0);
 		#endif
+			color.a = blurRadius;
 		
-			color.a = getBlurRadius(i.uv);
 			return color;
 		}
 		
@@ -372,7 +380,7 @@ static const float2 kDiskKernel[kSampleCount] = {
 		//	return half4(pow(saturate(getBlurRadius(i.uv).xxx*100), 2.2), 1);
 		//	return half4(Tex2Dlod(_MainTex, i.uv, _MipLevel).rgb, 1);
 			VertexOutput vo = {i.pos, i.uv};
-			float4 bkg = Tex2Dlod(_MainTex, i.uv, 0);
+			float4 bkg = Tex2Dlod(_MainTex, i.uv, 0)*0.875+0.125;
 			bkg.rgb = DisneyLuminance(bkg.rgb)*1.00;
 		//	bkg.rgb = dot(bkg.rgb, half3(0.2126, 0.7152, 0.0722));
 			bkg.rgb = CompressBy(bkg.rgb, bkg.rgb*Compress(bkg.rgb*Compress(bkg.rgb)));

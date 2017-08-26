@@ -199,7 +199,13 @@ Shader "Hidden/CatAA" {
 		#endif
 		
 		if (0) {
-			return float4(pow(abs(float3(abs(velocity.xy)>0.001, 0)), 2.2), 1);
+			float3 result = 0;
+			
+			velocity = !_IsVelocityPredictionEnabled ? 0 : Tex2Dlod(_CameraMotionVectorsTexture, uv, 0).xy;
+			result.xy = abs(velocity.xy) * 1.0*pow(10, 2.2);
+			
+			result = pow(saturate(result), 2.2);
+			return float4(result, 1);
 		}
 		
 		
@@ -253,6 +259,8 @@ Shader "Hidden/CatAA" {
 		result.a = lerp(mainTex.a, history.a, 0.5);
 		
 		result.rgb /= 1 - DisneyLuminance(result.rgb);
+		
+		
 		return result;
 	}
 	

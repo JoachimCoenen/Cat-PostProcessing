@@ -1,13 +1,12 @@
 ﻿using System;
 using UnityEngine;
-using UnityEngine.Rendering;
 using Cat.Common;
 
 // Inspired By: Kino/Bloom v2 - Bloom filter for Unity:
 // https://github.com/keijiro/KinoBloom
 
 namespace Cat.PostProcessing {
-	[RequireComponent(typeof (Camera))]
+	[RequireComponent(typeof(Camera))]
 	[ExecuteInEditMode]
 	[ImageEffectAllowedInSceneView]
 	[AddComponentMenu("Cat/PostProcessing/Bloom")]
@@ -106,11 +105,11 @@ namespace Cat.PostProcessing {
 			};
 		}
 			
-		override protected void UpdateMaterialPerFrame(Material material) {
+		override protected void UpdateMaterialPerFrame(Material material, Camera camera, VectorInt2 cameraSize) {
 			setMaterialDirty();
 		}
 
-		override protected void UpdateMaterial(Material material) {
+		override protected void UpdateMaterial(Material material, Camera camera, VectorInt2 cameraSize) {
 			var settings = this.settings;
 			material.SetFloat(PropertyIDs.MinLuminance_f, settings.minLuminance);
 			material.SetFloat(PropertyIDs.KneeStrength_f, settings.kneeStrength);
@@ -129,9 +128,8 @@ namespace Cat.PostProcessing {
 			//BloomBlur,
 		}
 
-		void OnRenderImage(RenderTexture source, RenderTexture destination) {
+		internal override void RenderImage(RenderTexture source, RenderTexture destination) {
 			const int maxMipLvl = 7;
-			var camSize = postProcessingManager.cameraSize;
 
 			const int maxUpsample = 1;
 			var mipLevelFloat = Mathf.Clamp(Mathf.Log(Mathf.Max(source.width, source.height) / 32.0f + 1, 2), maxUpsample, maxMipLvl);

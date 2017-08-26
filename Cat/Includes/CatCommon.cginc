@@ -317,6 +317,25 @@ inline half3 HsvToRgb(half3 hsv) {
 	return c;
 }
 
+inline half3 RgbToHsv(half3 rgb) {
+	const half EPSILON = 1e-3;
+	
+	float v = MaxC(rgb);
+	
+	float3 rgbMax = rgb / max(v, EPSILON);
+	
+	float s = 1 - MinC(rgbMax);
+	
+	float3 rgbSat = (rgbMax-1) / max(s, EPSILON) + 1;
+	
+	half r = rgbSat.x, g = rgbSat.y, b = rgbSat.z;
+	//float h = -g*(1*r - 2) - b*(3*g - 4) - r*(5*b - 6);
+	float h = (g-EPSILON > 0 ? 0 : (6 - 6*b) * r) - b * (g * (2 * r + 3) - r - 4) - g * (r - 2);
+	h = frac(h / 6.0);
+	
+	return float3(h, s, v);
+}
+		
 
 inline float1 CompressBy(float1 value, float1 amplitude) {
 	float1 invDenom = 1 / (1 + amplitude);

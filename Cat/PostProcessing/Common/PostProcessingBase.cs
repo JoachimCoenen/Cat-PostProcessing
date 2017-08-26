@@ -45,20 +45,20 @@ namespace Cat.PostProcessing {
 	}
 
 
-	[RequireComponent(typeof(Camera), typeof(PostProcessingManager))]
+	[RequireComponent(typeof(Camera)), RequireComponent(typeof(PostProcessingManager))]
 	[ExecuteInEditMode]
-	[ImageEffectAllowedInSceneView]
+	//[ImageEffectAllowedInSceneView]
 	public abstract class PostProcessingBase : MonoBehaviour {
 		abstract protected string shaderName { get; }
 		abstract public string effectName { get; }
 		abstract internal DepthTextureMode requiredDepthTextureMode { get; }
 		abstract public bool isActive { get; }
 
-		abstract protected void UpdateMaterial(Material material);
 		virtual internal void InitializeEffect() {}
-		virtual protected void UpdateRenderTextures(VectorInt2 cameraSize) {}
-		virtual protected void UpdateCameraMatricesPerFrame(Camera camera) {}
-		virtual protected void UpdateMaterialPerFrame(Material material) {}
+		abstract protected void UpdateMaterial(Material material, Camera camera, VectorInt2 cameraSize);
+		virtual protected void UpdateRenderTextures(Camera camera, VectorInt2 cameraSize) {}
+		virtual protected void UpdateCameraMatricesPerFrame(Camera camera, VectorInt2 cameraSize) {}
+		virtual protected void UpdateMaterialPerFrame(Material material, Camera camera, VectorInt2 cameraSize) {}
 
 		private bool isMaterialDirty = false;
 		internal void setMaterialDirty() {
@@ -66,11 +66,18 @@ namespace Cat.PostProcessing {
 		}
 		protected int isRenderTextureDirty = 2;
 		internal void setRenderTextureDirty() {
+			// circumvents a bug in unity with the _CameraMotionVectorsTexture. complicated explanation:
+			// When the viewport size changes, the _CameraMotionVectorsTexture gets messed up; unless two frames after a new RenderTexture (wtf, unity???) gets created.
+			// +-------------------------------+-------------------------------+-------------------------------+
+			// |  frame 0 ; OnPostRender       |  frame 1      ; OnPostRender  |  frame 2      ; OnPostRender  |
+			// |          ; detect Size change |               ;               | create new RT ;               |	This DOES fix it.
+			// +-------------------------------+-------------------------------+-------------------------------+
 			isRenderTextureDirty = 2;
 		}
 
-		protected bool isFirstFrame { get; set; }
+		internal bool isFresh  { get; private set; }
 
+		private VectorInt2 m_lastCameraSize = new VectorInt2(1, 1); 
 		private Material m_Material = null;
 		protected Material material {
 			get {
@@ -103,17 +110,13 @@ namespace Cat.PostProcessing {
 	//		} 
 	//	}
 
-		private PostProcessingManager m_postProcessingManager = null;
+		//private PostProcessingManager m_postProcessingManager = null;
 		protected PostProcessingManager postProcessingManager {
 			get {
-				if (m_postProcessingManager == null) {
-					m_postProcessingManager = GetComponent<PostProcessingManager>();
-					if (m_postProcessingManager == null) {
-						this.enabled = false;
-						throw new ArgumentException(String.Format("{0} requires a PostProcessingManager component attached", effectName));
-					}
-				}
-				return m_postProcessingManager;
+				var ppm = GetComponent<PostProcessingManager>();
+				Debug.AssertFormat(ppm != null, "{0} requires a PostProcessingManager component attached", effectName);
+				enabled = enabled && ppm != null;
+				return ppm;
 			} 
 		}
 
@@ -129,7 +132,7 @@ namespace Cat.PostProcessing {
 				|| rtUseMipMap  != rt.useMipMap
 				|| rtFormat     != rt.format
 				|| rtFilterMode != rt.filterMode
-				|| rtReadWrite  != (rt.sRGB ? RenderTextureReadWrite.sRGB : RenderTextureReadWrite.Linear)
+			//	|| rtReadWrite  != (rt.sRGB ? RenderTextureReadWrite.sRGB : RenderTextureReadWrite.Linear)
 				|| rtWrapMode   != rt.wrapMode
 				|| rtName       != rt.name
 				|| false
@@ -138,9 +141,6 @@ namespace Cat.PostProcessing {
 			//	if (rt != null && rt.IsCreated()) {
 			//		rt.Release();
 			//	}
-
-
-
 				rtc.setRT(new RenderTexture(Math.Max(1, rtSize.x), Math.Max(1, rtSize.y), rtDepth, rtFormat, rtReadWrite) {
 					filterMode = rtFilterMode,
 					wrapMode = rtWrapMode,
@@ -152,11 +152,6 @@ namespace Cat.PostProcessing {
 			}
 			m_OldRenderTextures.Remove(rtc);
 			m_RenderTextures.Add(rtc);
-
-
-
-		//	m_OldRenderTextures.Remove(rt); // remove rt from OLD rts list, so it doesn't get released accidentally.
-			//rt.Create();
 		}
 
 		protected void CreateRT(RenderTextureContainer rtc, VectorInt2 rtSize, int rtDepth, RenderTextureFormat rtFormat, FilterMode rtFilterMode = FilterMode.Point, RenderTextureReadWrite rtReadWrite = RenderTextureReadWrite.Default, TextureWrapMode rtWrapMode = TextureWrapMode.Clamp, string rtName = "RenderTexture") {
@@ -171,19 +166,17 @@ namespace Cat.PostProcessing {
 			RenderTexture tempRT = null;
 			try {
 				RenderTexture rt = rtc;
-				if (rt != null && rt.IsCreated()) {
+				var hasPreviousRT = rt != null && rt.IsCreated();
+				if (hasPreviousRT) {
 					var tempRTReadWrite = rt.sRGB ? RenderTextureReadWrite.sRGB : RenderTextureReadWrite.Linear;
 					tempRT = RenderTexture.GetTemporary(rt.width, rt.height, rt.depth, rt.format, tempRTReadWrite, rt.antiAliasing);
 					tempRT.filterMode = rt.filterMode;
 					Graphics.Blit(rtc, tempRT);
-					isFirstFrame = false;
-				} else {
-					isFirstFrame = true;
 				}
 
 				CreateRT(rtc, rtSize, rtDepth, rtUseMipMap, rtFormat, rtFilterMode, rtReadWrite, rtWrapMode, rtName);
 
-				if (!isFirstFrame) {
+				if (hasPreviousRT) {
 					Graphics.Blit(tempRT, rtc);
 				}
 			} finally {
@@ -221,10 +214,10 @@ namespace Cat.PostProcessing {
 			ReleaseAllOldRTs(); // ... ,too.
 		}
 
-		private void RenewAllRenderTextures() { // find better name...
+		private void RenewAllRenderTextures(Camera camera, VectorInt2 cameraSize) { // find better name...
 			m_OldRenderTextures.UnionWith(m_RenderTextures);
 			//m_RenderTextures.Clear();
-			UpdateRenderTextures(postProcessingManager.cameraSize);
+			UpdateRenderTextures(camera, cameraSize);
 
 			ReleaseAllOldRTs();
 
@@ -234,46 +227,46 @@ namespace Cat.PostProcessing {
 			#endif
 		}
 
-		virtual protected void OnPreCull() {
-			UpdateCameraMatricesPerFrame(postProcessingManager.camera);
+		virtual internal void PreCull(Camera camera, VectorInt2 cameraSize) {
+			if (m_lastCameraSize != cameraSize) {
+				m_lastCameraSize = cameraSize;
+				setRenderTextureDirty();
+			}
+			UpdateCameraMatricesPerFrame(camera, cameraSize);
+		}
+
+		virtual internal void PreRender(Camera camera, VectorInt2 cameraSize) {
 			if (isRenderTextureDirty > 0) {
-				isRenderTextureDirty--;
-				if (isRenderTextureDirty >= 0) {
-					RenewAllRenderTextures();
+				if (isRenderTextureDirty == 1 || (isRenderTextureDirty == 2 && isFresh)) {
+					// circumvents a bug in unity with the _CameraMotionVectorsTexture. complicated explanation:
+					// When the viewport size changes, the _CameraMotionVectorsTexture gets messed up; unless two frames after a new RenderTexture (wtf, unity???) gets created.
+					// +-------------------------------+-------------------------------+-------------------------------+
+					// |  frame 0 ; OnPostRender       |  frame 1      ; OnPostRender  |  frame 2      ; OnPostRender  |
+					// |          ; detect Size change |               ;               | create new RT ;               |	This DOES fix it.
+					// +-------------------------------+-------------------------------+-------------------------------+
+					RenewAllRenderTextures(camera, cameraSize);
 				}
+				isRenderTextureDirty = Math.Max(0, isRenderTextureDirty - 1);
 			}
+
+			UpdateMaterialPerFrame(material, camera, cameraSize);
 			if (isMaterialDirty) {
-				UpdateMaterial(material);
 				isMaterialDirty = false;
+				UpdateMaterial(material, camera, cameraSize);
 			}
-		}
-
-		virtual protected void OnPreRender() {
-			UpdateMaterialPerFrame(material);
-		}
-
-		virtual protected void OnPostRender() {
-			#if UNITY_DEBUG
-			//Debug.LogFormat("RenderTextureContainer: No. of RenderTextures (created RTs / RTs not null / all RTs) = {0} / {1} / {2};\n{3};", 
-			//	RenderTextureContainer.allRTs.Count(rt => (rt != null && rt.IsCreated())), 
-			//	RenderTextureContainer.allRTs.Count(rt => rt != null), 
-			//	RenderTextureContainer.allRTs.Count(), 
-			//	String.Join(" | ", (from rtc in RenderTextureContainer.allRTs let rt = (RenderTexture)rtc where (rt != null && rt.IsCreated()) select rt.name).ToArray())
-			//);
-			#endif
-			isFirstFrame = false;
-
+			isFresh = false;
 		}
 
 		virtual protected void OnEnable() {
-			isFirstFrame = true;
 			postProcessingManager.AddEffect(this);
+			isFresh = true;
 			setMaterialDirty();
 			setRenderTextureDirty();
 		}
 
 		virtual protected void OnDisable() {
 			postProcessingManager.RemoveEffect(this);
+			isFresh = false; // just to be shure...
 			ReleaseAllRTs();
 			#if UNITY_DEBUG && DEBUG_OUTPUT_VERBIOUS
 			Debug.LogFormat("{0}.{1}.OnDisable(): No. of RenderTextures (created RTs / all RTs) = {2} / {3};", 
@@ -328,13 +321,13 @@ namespace Cat.PostProcessing {
 	}
 
 
-	[RequireComponent(typeof (Camera))]
+	[RequireComponent(typeof(Camera))]
 	[ExecuteInEditMode]
-	[ImageEffectAllowedInSceneView]
+	//[ImageEffectAllowedInSceneView]
 	public abstract class PostProcessingBaseCommandBuffer : PostProcessingBase {
 
 		abstract protected CameraEvent cameraEvent { get; }
-		abstract protected void PopulateCommandBuffer(CommandBuffer buffer, Material material, bool isFirstFrame);
+		abstract protected void PopulateCommandBuffer(CommandBuffer buffer, Material material, VectorInt2 cameraSize);
 
 
 		override internal void InitializeEffect() {
@@ -360,12 +353,12 @@ namespace Cat.PostProcessing {
 			} 
 		}
 			
-		override protected void OnPreRender() {
-			base.OnPreRender();
+		override internal void PreRender(Camera camera, VectorInt2 cameraSize) {
+			base.PreRender(camera, cameraSize);
 			if (isBufferDirty) {
-				buffer.Clear();
-				PopulateCommandBuffer(buffer, material, isFirstFrame);
 				isBufferDirty = false;
+				buffer.Clear();
+				PopulateCommandBuffer(buffer, material, cameraSize);
 			}
 		}
 
@@ -426,13 +419,6 @@ namespace Cat.PostProcessing {
 			Blit(cb, BuiltinRenderTextureType.None, renderTarget, material, pass);
 		}
 
-		override protected void OnPostRender() {
-			if (isFirstFrame) {
-				setBufferDirty();
-			}
-			base.OnPostRender();
-		}
-
 		override protected void OnEnable() {
 			base.OnEnable();
 			setBufferDirty();
@@ -440,10 +426,13 @@ namespace Cat.PostProcessing {
 	}
 
 
-	[RequireComponent(typeof (Camera))]
+	[RequireComponent(typeof(Camera))]
 	[ExecuteInEditMode]
-	[ImageEffectAllowedInSceneView]
+	//[ImageEffectAllowedInSceneView]
 	public abstract class PostProcessingBaseImageEffect : PostProcessingBase {
+
+		internal abstract void RenderImage(RenderTexture source, RenderTexture destination);
+
 
 		protected RenderTexture GetTemporaryRT(int ID_t, VectorInt2 rtSize, int rtDepth, RenderTextureFormat rtFormat, FilterMode rtFilterMode = FilterMode.Point, RenderTextureReadWrite rtReadWrite = RenderTextureReadWrite.Default) {
 			var rt = RenderTexture.GetTemporary(rtSize.x, rtSize.y, rtDepth, rtFormat, rtReadWrite);
