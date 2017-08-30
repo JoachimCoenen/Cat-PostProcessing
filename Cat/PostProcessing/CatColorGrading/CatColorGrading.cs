@@ -45,6 +45,7 @@ namespace Cat.PostProcessing {
 			[Range(-1, 1)]
 			public float highlights;
 
+
 			//[Header("Tone Mapping")]
 			//[Range(0, 1)]
 			//public float strength;
@@ -112,6 +113,7 @@ namespace Cat.PostProcessing {
 
 			internal static readonly int Temperature_f	= Shader.PropertyToID("_Temperature");
 			internal static readonly int Tint_f			= Shader.PropertyToID("_Tint");
+			internal static readonly int ColorBalance_v	= Shader.PropertyToID("_ColorBalance");
 
 			internal static readonly int BlackPoint_f	= Shader.PropertyToID("_BlackPoint");
 			internal static readonly int WhitePoint_f	= Shader.PropertyToID("_WhitePoint");
@@ -127,16 +129,25 @@ namespace Cat.PostProcessing {
 		}
 
 		override protected void UpdateMaterial(Material material, Camera camera, VectorInt2 cameraSize) {
+			const float EPSILON = 1e-4f;
+			var exposure    = Mathf.Pow(2, settings.exposure);
+			var contrast    = Mathf.Max(EPSILON, settings.contrast + Mathf.Max(0, settings.contrast) * Mathf.Max(0, settings.contrast) + 1);
+			var saturation  = (settings.saturation + Mathf.Max(0, settings.saturation) * Mathf.Max(0, settings.saturation) + 1) / contrast;
+			var temperature = settings.temperature;
+			var tint        = settings.tint;
+			var blackPoint  = 0 + settings.blackPoint * 0.25f;
+			var whitePoint  = 1 +settings. whitePoint * 0.25f;
 
-			material.SetFloat(PropertyIDs.Exposure_f,		settings.exposure);
-			material.SetFloat(PropertyIDs.Contrast_f,		settings.contrast);
-			material.SetFloat(PropertyIDs.Saturation_f,		settings.saturation);
+			material.SetFloat(PropertyIDs.Exposure_f,		exposure);
+			material.SetFloat(PropertyIDs.Contrast_f,		contrast);
+			material.SetFloat(PropertyIDs.Saturation_f,		saturation);
 			
-			material.SetFloat(PropertyIDs.Temperature_f,	settings.temperature);
-			material.SetFloat(PropertyIDs.Tint_f,			settings.tint);
-			material.SetFloat(PropertyIDs.BlackPoint_f,		settings.blackPoint);
-			material.SetFloat(PropertyIDs.WhitePoint_f,		settings.whitePoint);
-			
+			//material.SetFloat(PropertyIDs.Temperature_f,	settings.temperature);
+			//material.SetFloat(PropertyIDs.Tint_f,			settings.tint);
+			material.SetVector(PropertyIDs.ColorBalance_v, CalculateColorBalance(settings.temperature, settings.tint));
+			material.SetFloat(PropertyIDs.BlackPoint_f,		blackPoint);
+			material.SetFloat(PropertyIDs.WhitePoint_f,		whitePoint);
+
 			material.SetVector(PropertyIDs.CurveParams_v,	settings.GetCurveParams());
 			
 			//material.SetFloat(PropertyIDs.Strength_f,		settings.strength);
@@ -150,6 +161,54 @@ namespace Cat.PostProcessing {
 		public void OnValidate () {
 			setMaterialDirty();
 		}
+	
+		// An analytical model of chromaticity of the standard illuminant, by Judd et al.
+		// http://en.wikipedia.org/wiki/Standard_illuminant#Illuminant_series_D
+		// Slightly modifed to adjust it with the D65 white point (x=0.31271, y=0.32902).
+		float StandardIlluminantY(float x) {
+			return 2.87f * x - 3 * x * x - 00.27509507f;
+		}
+
+		readonly Matrix4x4 M_CAT02_XYZ_TO_LMS = new Matrix4x4() {
+			m00 =  0.7328f, m01 = 0.4296f, m02 = -0.1624f, m03 = 0,
+			m10 = -0.7036f, m11 = 1.6975f, m12 =  0.0061f, m13 = 0,
+			m20 =  0.0030f, m21 = 0.0136f, m22 =  0.9834f, m23 = 0,
+			m30 =  0      , m31 = 0      , m32 =  0      , m33 = 0
+			// 0.7328  ,  0.4296  , -0.1624  ,
+			// -0.7036  ,  1.6975  ,  0.0061  ,
+			// 0.0030  ,  0.0136  ,  0.9834
+		};
+
+		Vector3 XYZtoLMS(Vector3 xyz) {
+			return M_CAT02_XYZ_TO_LMS.MultiplyVector(xyz);
+		}
+		// CIE xy chromaticity to CAT02 LMS.
+		// http://en.wikipedia.org/wiki/LMS_color_space#CAT02
+		Vector3 XYtoLMS(float x, float y){
+			var xyz = new Vector3(x / y, 1, (1 - x - y) / y);
+			return XYZtoLMS(xyz);
+		}
+
+		Vector3 CalculateColorBalance(float temperature, float tint) {
+			// Range ~[-1.8;1.8] ; using higher ranges is unsafe
+			float t1 = temperature / 0.55f;
+			float t2 = tint / 0.55f;
+
+			// Get the CIE xy chromaticity of the reference white point.
+			// Note: 0.31271 = x value on the D65 white point
+			float x = 0.31271f - t1 * (t1 < 0 ? 0.1f : 0.05f);
+			float y = StandardIlluminantY(x) + t2 * 0.05f;
+
+			// Calculate the coefficients in the LMS space.
+			var w1 = new Vector3(0.949237f, 1.03542f, 1.08728f); // D65 white point
+			var w2 = XYtoLMS(x, y);
+			w2.Set(1/w2.x, 1/w2.y, 1/w2.z);
+			w2.Scale(w1);
+			return w2;
+		}
+
+
+	
 	}
 
 }

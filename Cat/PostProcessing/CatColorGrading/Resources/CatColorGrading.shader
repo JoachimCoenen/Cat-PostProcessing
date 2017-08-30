@@ -38,6 +38,8 @@ Shader "Hidden/Cat Color Grading" {
 		
 		float _Temperature;
 		float _Tint;
+		float3 _ColorBalance;
+		
 		float _BlackPoint;
 		float _WhitePoint;
 		
@@ -45,7 +47,7 @@ Shader "Hidden/Cat Color Grading" {
 		
 		float _Strength;
 		
-		static const bool _IsDebugOn = false;
+		float3 _HSV;
 		
 		
 static const half3x3 LIN_2_LMS_MAT = {
@@ -111,6 +113,18 @@ static const half3x3 LMS_2_LIN_MAT = {
 			return mul(LMS_2_LIN_MAT, lms);
 		}
 		
+		inline half3 ACEStoLMS(half3 aces) {
+			return mul(mul(LIN_2_LMS_MAT, AP0_2_AP1_MAT), aces);
+		}
+		inline half3 LMStoACES(half3 lms) {
+			return mul(mul(AP1_2_AP0_MAT, LMS_2_LIN_MAT), lms);
+		}
+		
+		inline half3 LMStoUnity(half3 lms) {
+			return mul(mul(AP0_2_sRGB, mul(AP1_2_AP0_MAT, LMS_2_LIN_MAT)), lms);
+		}
+
+		
 		inline half3 ACEScgToXYZ(half3 rgb) {
 			return mul(ACEScg_TO_XYZ, rgb);
 		}
@@ -126,7 +140,6 @@ static const half3x3 LMS_2_LIN_MAT = {
 			return mul(M_CAT02_LMS_TO_XYZ, lms);
 		}
 		
-		
 		 // https://en.wikipedia.org/wiki/Rec._709#Luma_coefficients
 		static const float3 ACES_LUMA_COEFFICIENTS = { 0.2126, 0.7152, 0.0722 };
 		float AcesLuma(float3 acescc) {
@@ -134,171 +147,77 @@ static const half3x3 LMS_2_LIN_MAT = {
 		}
 		
 		
-		// An analytical model of chromaticity of the standard illuminant, by Judd et al.
-		// http://en.wikipedia.org/wiki/Standard_illuminant#Illuminant_series_D
-		// Slightly modifed to adjust it with the D65 white point (x=0.31271, y=0.32902).
-		float StandardIlluminantY(float x) {
-			return 2.87 * x - 3 * x * x - 00.27509507;
-		}
-		
-		// CIE xy chromaticity to CAT02 LMS.
-		// http://en.wikipedia.org/wiki/LMS_color_space#CAT02
-		float3 XYtoLMS(float x, float y){
-			float3 xyz = float3(1 * x / y, 1, 1 * (1 - x - y) / y);
-		
-			return XYZtoLMS(xyz);
-		}
-		
-		float3 CalculateColorBalance(float temperature, float tint) {
-			// Range ~[-1.8;1.8] ; using higher ranges is unsafe
-			float t1 = temperature / 0.55;
-			float t2 = tint / 0.55;
-			
-			// Get the CIE xy chromaticity of the reference white point.
-			// Note: 0.31271 = x value on the D65 white point
-			float x = 0.31271 - t1 * (t1 < 0 ? 0.1 : 0.05);
-			float y = StandardIlluminantY(x) + t2 * 0.05;
-			
-			// Calculate the coefficients in the LMS space.
-			float3 w1 = float3(0.949237, 1.03542, 1.08728); // D65 white point
-			float3 w2 = XYtoLMS(x, y);
-			return float3(w1.x / w2.x, w1.y / w2.y, w1.z / w2.z);
-		}
-		
-		
-		
 		void Exposure(inout float3 rgb, float exposure) {
-			rgb = rgb * exp2(exposure);
+			rgb = rgb * (exposure);
 		}
 		
 		void ContrastSaturation(inout float3 acescc, float contrast, float saturation) { // contrastLog = ]-Infinity...+Infinity[, [-1... 1] recomended.
-		//	saturation = exp2((saturation-contrast) * 2);
-		//	contrast   = exp2(contrast              * 2);
-			contrast   = contrast + Pow2(max(0, contrast)) + 1;
-			contrast   = max(EPSILON, contrast);
-			
-		//	contrast   = max(EPSILON, (contrast+1)*2);
-			//saturation = (saturation + 1) / contrast;
-			saturation = (saturation + Pow2(max(0, saturation)) + 1) / contrast;
+		//	contrast   = contrast + Pow2(max(0, contrast)) + 1;
+		//	contrast   = max(EPSILON, contrast);
+		//	saturation = (saturation + Pow2(max(0, saturation)) + 1) / contrast;
 			
 			float luma = AcesLuma(acescc);
 			acescc = (acescc - luma          ) * saturation + luma;
 			acescc = (acescc - ACEScc_MIDGRAY) * contrast   + ACEScc_MIDGRAY;
 		}
 		
-		void ColorBalance(inout float3 lms, float temperature, float tint) {
-			lms *= CalculateColorBalance(temperature, tint);
+		void ColorBalance(inout float3 lms, float3 colorBalance) {
+			lms *= colorBalance;
 		}
 		
-		void BlackWhitePoint(inout float3 sRGB, float blackPoint, float whitePoint) {
-			whitePoint = 1 + whitePoint * 0.25;
-			blackPoint = 0 + blackPoint * 0.25;
-			sRGB = (sRGB - blackPoint) / (whitePoint - blackPoint);
-			sRGB = max(00, sRGB);
-		}
-		
-		void Curves(inout float3 sHSV, float4 curveParams) {
-			float x = sHSV.z;
-			x = (curveParams.w + (curveParams.z + (curveParams.y + curveParams.x * x) * x) * x) * x;
-			sHSV.z = x;
-			//sHSV.y = 0.0;//value * 0.5;
+		void Curves(inout float3 sRGB, float blackPoint, float whitePoint, float4 curveParams) {
+			//whitePoint = 1 + whitePoint * 0.25;
+			//blackPoint = 0 + blackPoint * 0.25;
 			
-		
+			sRGB = (sRGB - blackPoint) / (whitePoint - blackPoint);
+			
+			float value = MaxC(sRGB);
+			sRGB *= 1.0 / max(value, EPSILON);
+			
+			//value = (value - blackPoint) / (whitePoint - blackPoint);
+			value = saturate(value);
+			value =  (curveParams.w + (curveParams.z + (curveParams.y + curveParams.x * value) * value) * value) * value;
+			value = saturate(value);
+			
+			sRGB *= value;
 		}
-		
 		
 		half4 ToneMapping(VertexOutput i) : SV_Target {
 			float4 color = Tex2Dlod(_MainTex, i.uv, 0);
-			
 			float3 rgb = color.rgb;
 			
 			Exposure(/*inout*/rgb, _Exposure);
 			
 			float3 aces = unity_to_ACES(rgb);
-			float3 acescc = ACES_to_ACEScc(aces);
+			float3 acescc = ACES_to_ACEScc_optimized(aces);
 			
 			ContrastSaturation(/*inout*/acescc, _Contrast , _Saturation);
 			
-			aces = ACEScc_to_ACES(acescc);
-			float3 acescg = ACES_to_ACEScg(aces);
-			float3 lms = ACEScgToLMS(acescg);
+			aces = ACEScc_to_ACES_optimized(acescc);
+			float3 lms = ACEStoLMS(aces);
 			
-			ColorBalance(/*inout*/lms, _Temperature, _Tint);
+			ColorBalance(/*inout*/lms, _ColorBalance);
 			
-			acescg = LMStoACEScg(lms);
-			aces = ACEScg_to_ACES(acescg);
-			rgb = ACES_to_unity(aces);
+			rgb = LMStoUnity(lms);
 			
-			rgb *= 0.5;
-			rgb = CompressBy(rgb,     rgb * Compress(    rgb * Compress(    rgb)));
-			rgb *= 2;
+			//rgb *= 0.5;
+			//rgb = CompressBy(rgb,     rgb * Compress(    rgb * Compress(    rgb)));
+			//rgb *= 2;
 			
 			rgb = saturate(rgb);
 			float3 sRGB = LinearToGammaSpace(rgb);
 			
-			BlackWhitePoint(/*inout*/sRGB, _BlackPoint, _WhitePoint);
+			Curves(/*inout*/sRGB, _BlackPoint, _WhitePoint, _CurveParams);
 			
-			sRGB = saturate(sRGB);
-			
-			float3 sHSV = RgbToHsv(sRGB);
-			
-			Curves(/*inout*/sHSV, _CurveParams);
-			
-			sRGB = HsvToRgb(sHSV);
 			rgb = GammaToLinearSpace(sRGB);
+			
+			//rgb = HSVtoRGB(float3(i.uv.x, _HSV.y, i.uv.y));
 			
 			color.rgb = saturate(rgb);
 			return color;
 			
 		}
-		
-		half4 ToneMappingX(VertexOutput i) : SV_Target {
-			float3 color = Tex2Dlod(_MainTex, i.uv, 0);
-			float disneyLum = DisneyLuminance(color);
-			float AcesLum = dot(color, half3(0.2126, 0.7152, 0.0722));
-			
-			const float RESULT_COUNT = 5;
-			half3 results[RESULT_COUNT] = {
-				CompressBy(disneyLum.xxx, disneyLum * Compress(disneyLum * Compress(disneyLum))),
-				CompressBy(    color.rgb, disneyLum * Compress(disneyLum * Compress(disneyLum))),
-				CompressBy(    color.rgb,     color * Compress(    color * Compress(    color))),
-				CompressBy(    color.rgb,     color * Compress(    color)),
-				saturate(color.rgb),
-				
-			};
-			
-			int selector = min(RESULT_COUNT-1, floor(_Strength * RESULT_COUNT));
-			float3 rgb = results[selector];
-			
-			//rgb = HsvToRgb(float3(RgbToHsv(rgb).xy, 0.443*0.2));
-			//rgb = 0.443*0.2;
-			
-			float3 xyz = ACEScgToXYZ(rgb);
-			float3 xyzN = xyz / 3.0;
-			float3 lms = ACEScgToLMS(rgb);
-			float3 lmsN = lms / 3.0;
-			half3 aces = unity_to_ACES(rgb);
-			// ACEScc (log) space
-			half3 acescc = ACES_to_ACEScc(aces);
-			
-			float3 hsv = RgbToHsv(acescc);
-			
-			//hsv.y = _Saturation < 0 ? (hsv.y * (1+_Saturation)) : saturate(hsv.y / max(1-_Saturation, EPSILON));
-			hsv.y *= _Saturation+1;
-			
-			acescc = HsvToRgb(hsv);
-			
-			acescc = (acescc - ACEScc_MIDGRAY) * (_Contrast+1) + ACEScc_MIDGRAY;
-			
-			aces = ACEScc_to_ACES(acescc);
-			
-			rgb = ACES_to_unity(aces);//XYZtoACEScg(lms1);
-			
-			rgb *= (CalculateColorBalance(_Temperature, _Tint));
-			
-			return float4(saturate(rgb), 1);
-			
-		}
+	
 		
 		
 	ENDCG 
@@ -319,5 +238,6 @@ static const half3x3 LMS_2_LIN_MAT = {
 			ENDCG
 		}
 	}
-	Fallback "Diffuse"
+	Fallback Off
+	//"Diffuse"
 }

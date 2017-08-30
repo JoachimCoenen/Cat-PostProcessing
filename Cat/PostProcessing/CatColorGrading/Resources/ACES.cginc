@@ -250,6 +250,12 @@ half3 ACES_to_ACEScc(half3 x)
     */
 }
 
+half3 ACES_to_ACEScc_optimized(half3 x) {
+    x = clamp(x, 0.0, HALF_MAX);
+    // x is clamped to [0, HALF_MAX], skip the <= 0 check
+    return (log2(0.00001525878 + x) + 9.72) / 17.52;
+}
+
 //
 // ACES Color Space Conversion - ACEScc to ACES
 //
@@ -276,6 +282,12 @@ half3 ACEScc_to_ACES(half3 x)
         ACEScc_to_ACES(x.g),
         ACEScc_to_ACES(x.b)
     );
+}
+
+half3 ACEScc_to_ACES_optimized(half3 x) {
+    x = clamp(x, -0.3584475374911926, 1.4679963120638975);
+    // x is clamped so result is in [0, HALF_MAX], skip the <= and >= checks
+    return exp2(x*17.52 - 9.72) - 0.00001525878;
 }
 
 //

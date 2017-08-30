@@ -309,7 +309,8 @@ inline half1 EqualLuminance(half3 c) {
 	return (c.r + c.g + c.b) / 3.0;
 }
 
-inline half3 HsvToRgb(half3 hsv) {
+
+inline half3 HSVtoRGB(half3 hsv) {
 	const half h = hsv.x, s = hsv.y, v = hsv.z;
 	half3 c = saturate(abs(frac(h + half3(3, 2, 1) / 3.0) - 0.5) * 6 - 1);
 	c = c * s - s;
@@ -317,7 +318,7 @@ inline half3 HsvToRgb(half3 hsv) {
 	return c;
 }
 
-inline half3 RgbToHsv(half3 rgb) {
+inline half3 RGBtoHSV(half3 rgb) {
 	const half EPSILON = 1e-3;
 	
 	float v = MaxC(rgb);
@@ -335,7 +336,75 @@ inline half3 RgbToHsv(half3 rgb) {
 	
 	return float3(h, s, v);
 }
-		
+
+
+inline half3 HSLtoRGB(half3 hsl) {
+	const half h = hsl.x, s = hsl.y, l = hsl.z;
+	half sat = s * (l < 0.5 ? l : 1-l);
+	half3 c = saturate(abs(frac(h + half3(3, 2, 1) / 3.0) - 0.5) * 6 - 1);
+	c = c * 2 - 1;
+	c = c * sat + l;
+	return c;
+	//c = (2 * c - 1) * sat + l;
+	
+	//half3 hsv = { h, 2 * sat / (l + sat), l + sat }
+	//return HSVtoRGB(hsv);
+	
+	//half C   = s - s * abs(2 * l - 1);
+	//half H_d = 6 * h;
+	//half X_d = 1 - abs(H_d % 2 - 1);
+	//half X   = C * X_d;
+}
+
+inline half3 RGBtoHSL(half3 rgb) {
+	const half3 hsv = RGBtoHSV(rgb);
+	const half h = hsv.x, sat = hsv.y, v = hsv.z;
+	
+	half s = sat * v;
+	half x = 2 * v - s;
+	     s = s / (x < 1 ? x : 2 - x);
+	half l = x / 2;
+	
+	return float3(h, s, l);
+}
+
+
+inline half3 HCVtoRGB(half3 hcv) {
+	const half EPSILON = 1e-3;
+	
+	const half h = hcv.x, c = hcv.y, v = hcv.z;
+	
+	half3 C = saturate(abs(frac(h + half3(3, 2, 1) / 3.0) - 0.5) * 6 - 1);
+	half s = saturate(c / max((v), EPSILON));
+	C = C * s - s;
+	C = C * v + v;
+	//C = C * c - c + v;
+	return C;
+}
+
+inline half3 RGBtoHCV(half3 rgb) {
+	const half EPSILON = 1e-3;
+	
+	float v = MaxC(rgb);
+	
+	//float3 rgbMax = rgb / max(v, EPSILON);
+	
+	//float s = 1 - MinC(rgbMax);
+	//float c = s * v;
+	float c = (v - MinC(rgb));
+	
+	//float3 rgbSat = (rgbMax-1) / max(s, EPSILON) + 1;
+	//float3 rgbSat = (rgbMax-1) / max(c, EPSILON) * v + 1;
+	float3 rgbSat = saturate((rgb - v) / max(c, EPSILON) + 1);
+	
+	half r = rgbSat.x, g = rgbSat.y, b = rgbSat.z;
+	//float h = -g*(1*r - 2) - b*(3*g - 4) - r*(5*b - 6);
+	float h = (g-EPSILON > 0 ? 0 : (6 - 6*b) * r) - b * (g * (2 * r + 3) - r - 4) - g * (r - 2);
+	h = frac(h / 6.0);
+	
+	return float3(h, c, v);
+}
+	
 
 inline float1 CompressBy(float1 value, float1 amplitude) {
 	float1 invDenom = 1 / (1 + amplitude);
