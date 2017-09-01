@@ -130,13 +130,11 @@ Curves
 - **BlackPoint:** Moves the black point of the image.
 - **MidPoint:** Moves the mid grays of the image.
 - **WhitePoint:** Moves the white point of the image.
-
 - **Shadows:** Strengthens / weakens the shadows.
 - **Highlights:** Strengthens / weakens the highlights.
 
-
-
 ![Main Img 2][DragonFly_IMG]
+
 
 
 [coloredBalls_IMG]:              Media/coloredBalls.png               "Most Effects in action 1"
