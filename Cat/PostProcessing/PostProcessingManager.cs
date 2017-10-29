@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 using Cat.Common;
@@ -63,7 +62,7 @@ namespace Cat.PostProcessing {
 			if (m_DepthTexture != null) {
 				m_DepthTexture.Release();
 			}
-			camera.RemoveCommandBuffer(CameraEvent.AfterDepthTexture, depthCommandBuffer);
+			camera.RemoveCommandBuffer(m_DepthCommandBufferCameraEvent, depthCommandBuffer);
 		}
 
 
@@ -170,6 +169,7 @@ namespace Cat.PostProcessing {
 			//	select makePostRenderDelegate(effect);
 		}
 
+		private bool m_requiresDepthTexture = false;
 		internal void UpdateCameraDepthTextureMode() {
 			var depthTextureMode = DepthTextureMode.None;
 			var effects = GetEffects(camera);
@@ -183,11 +183,8 @@ namespace Cat.PostProcessing {
 			}
 
 			camera.depthTextureMode = depthTextureMode;
-			camera.RemoveCommandBuffer(CameraEvent.BeforeLighting, depthCommandBuffer);
-			if ((depthTextureMode & DepthTextureMode.Depth) == DepthTextureMode.Depth) {
-				camera.AddCommandBuffer(CameraEvent.BeforeLighting, depthCommandBuffer);
-			}
 
+			m_requiresDepthTexture = (depthTextureMode & DepthTextureMode.Depth) == DepthTextureMode.Depth;
 		}
 
 		internal void UpdateCameraCommandBuffers() {
@@ -283,6 +280,7 @@ namespace Cat.PostProcessing {
 				UpdateDepthTexture();
 				m_lastCameraSize = cameraSize;
 			}
+			UpdateCameraDepthBufferCameraEvent(cam.actualRenderingPath);
 
 			foreach (var preCullFunc in m_preCullChain) {
 				preCullFunc(cam, size);
@@ -342,6 +340,40 @@ namespace Cat.PostProcessing {
 			} 
 		} 
 
+		private Material m_DepthMaterial = null;
+		protected Material depthMaterial {
+			get {
+				const string shaderName = "Hidden/Cat Depth Shader";
+				if (m_DepthMaterial == null) {
+					var shader = Shader.Find(shaderName);
+					if (shader == null) {
+						this.enabled = false;
+						throw new ArgumentException(String.Format("Shader not found: '{0}'", shaderName));
+					}
+					m_DepthMaterial = new Material(shader);
+					m_DepthMaterial.hideFlags = HideFlags.DontSave;
+				}
+				return m_DepthMaterial;
+			} 
+		}
+
+		private CameraEvent GetAppropriateDepthBufferCameraEvent(RenderingPath renderingPath) {
+			return renderingPath != RenderingPath.DeferredShading
+			 	? CameraEvent.AfterForwardOpaque 
+			 	: CameraEvent.BeforeLighting;
+		}
+
+		internal void UpdateCameraDepthBufferCameraEvent(RenderingPath renderingPath) {
+			camera.RemoveCommandBuffer(m_DepthCommandBufferCameraEvent, depthCommandBuffer);
+
+			if (m_requiresDepthTexture ) {
+				m_DepthCommandBufferCameraEvent = GetAppropriateDepthBufferCameraEvent(renderingPath);
+				camera.AddCommandBuffer(m_DepthCommandBufferCameraEvent, depthCommandBuffer);
+			}
+		}
+
+
+		private CameraEvent m_DepthCommandBufferCameraEvent;
 		private CommandBuffer m_DepthCommandBuffer;
 		private CommandBuffer depthCommandBuffer {
 			get {
@@ -375,7 +407,8 @@ namespace Cat.PostProcessing {
 			var cb = depthCommandBuffer;
 			cb.Clear();
 
-			cb.Blit(BuiltinRenderTextureType.ResolvedDepth, depthTexture);
+			//cb.Blit(BuiltinRenderTextureType.Depth, depthTexture);
+			cb.Blit(BuiltinRenderTextureType.None, depthTexture, depthMaterial, 0);
 			cb.SetGlobalTexture(PropertyIDs.Depth_t, depthTexture);
 		}
 

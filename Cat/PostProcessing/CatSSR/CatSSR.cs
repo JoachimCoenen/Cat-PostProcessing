@@ -414,8 +414,6 @@ namespace Cat.PostProcessing {
 				new VectorInt2(reflRTSize.x / 64, reflRTSize.y / 128),
 			};
 
-			var reflectionSource_t = settings.useTemporalSampling ? new RenderTargetIdentifier(lastFrame) : BuiltinRenderTextureType.CameraTarget;
-
 		//	#region Depth
 		//	GetTemporaryRT(buffer, PropertyIDs.Depth_t, HitTextureSize, RenderTextureFormat.RHalf, FilterMode.Point, RenderTextureReadWrite.Linear);
 		//	Blit(buffer, PropertyIDs.Depth_t, material, (int)SSRPass.Depth);

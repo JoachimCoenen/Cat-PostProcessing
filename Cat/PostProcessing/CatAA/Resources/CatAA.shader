@@ -200,11 +200,31 @@ Shader "Hidden/CatAA" {
 		
 		if (0) {
 			float3 result = 0;
+			float2 pureVelocity = Tex2Dlod(_CameraMotionVectorsTexture, uv, 0).xy;
+			float2 jitterVelocity = _TAAJitterVelocity*2;
 			
-			velocity = !_IsVelocityPredictionEnabled ? 0 : Tex2Dlod(_CameraMotionVectorsTexture, uv, 0).xy;
-			result.xy = abs(velocity.xy) * 1.0*pow(10, 2.2);
+			float2 divisor = max(abs(pureVelocity), abs(pureVelocity));
+			result.rgb = float3(divisor == 0 ? 0 : abs(pureVelocity - jitterVelocity) / divisor, any(divisor == 00));
+			result.rg /= (1 + result.rg);
 			
+			//result.rg = abs(pureVelocity) * 100000;
+			return float4(result, 1);
+		}
+		
+		if (0) {
+			float3 result = 0;
+			//velocity = !_IsVelocityPredictionEnabled ? 0 : Tex2Dlod(_CameraMotionVectorsTexture, uv, 0).xy;
+			velocity = Tex2Dlod(_CameraMotionVectorsTexture, uv, 0).xy;
+			velocity -= _TAAJitterVelocity * 1.5;
+			//result.xy = abs(velocity.xy-0) * 100;//1.0*pow(10, 2.3);
+		
 			result = pow(saturate(result), 2.2);
+			
+			float2 uvPrev = uv - velocity.xy;
+			float4 history = tex2D(historyTex, uvPrev);
+			float confidence = any(history)*0.98750011;
+			float4 mainTex = tex2D(currentTex, uv);
+			result = lerp(mainTex, history, confidence).rgb;
 			return float4(result, 1);
 		}
 		

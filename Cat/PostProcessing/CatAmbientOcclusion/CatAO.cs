@@ -51,10 +51,12 @@ namespace Cat.PostProcessing {
 				OnValidate();
 			}
 		}
-		private Settings lastSettings;
 
-		private CameraEvent GetAppropriateCameraEvent(bool isDebugModeOn) {
-			return isDebugModeOn ? CameraEvent.BeforeImageEffectsOpaque : CameraEvent.BeforeReflections;
+		private RenderingPath m_currentRenderingPath;
+		private CameraEvent GetAppropriateCameraEvent(bool isDebugModeOn, RenderingPath renderingPath) {
+			return isDebugModeOn  || renderingPath != RenderingPath.DeferredShading
+				? CameraEvent.BeforeImageEffectsOpaque 
+				: CameraEvent.BeforeReflections;
 		}
 		private CameraEvent m_CameraEvent = CameraEvent.BeforeReflections;
 		override protected CameraEvent cameraEvent { 
@@ -88,6 +90,7 @@ namespace Cat.PostProcessing {
 		}
 
 		override protected void UpdateMaterialPerFrame(Material material, Camera camera, VectorInt2 cameraSize) {
+			m_currentRenderingPath = camera.actualRenderingPath;
 			setMaterialDirty();
 		}
 
@@ -125,9 +128,11 @@ namespace Cat.PostProcessing {
 		//	ReleaseTemporaryRT(buffer, PropertyIDs.OcclusionNormals3_t);
 			ReleaseTemporaryRT(buffer, PropertyIDs.OcclusionNormals2_t);
 			ReleaseTemporaryRT(buffer, PropertyIDs.OcclusionNormals1_t);
-			Blit(buffer, BuiltinRenderTextureType.CameraTarget, BuiltinRenderTextureType.GBuffer0, material, (int)SSRPass.MultiplyAlpha);
+			if (m_currentRenderingPath == RenderingPath.DeferredShading) {
+				Blit(buffer, BuiltinRenderTextureType.CameraTarget, BuiltinRenderTextureType.GBuffer0, material, (int)SSRPass.MultiplyAlpha);
+			}
 
-			var appropriateCameraEvent = GetAppropriateCameraEvent(settings.debugOn);
+			var appropriateCameraEvent = GetAppropriateCameraEvent(settings.debugOn, m_currentRenderingPath);
 			if (appropriateCameraEvent != m_CameraEvent) {
 				postProcessingManager.RemoveCommandBuffer(this, cameraEvent, buffer);
 				m_CameraEvent = appropriateCameraEvent;
@@ -137,7 +142,6 @@ namespace Cat.PostProcessing {
 	
 		public void OnValidate () {
 			setMaterialDirty();
-			lastSettings = m_Settings;
 		}
 	}
 

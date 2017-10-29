@@ -121,8 +121,6 @@ namespace Cat.PostProcessing {
 		}
 
 		internal override void RenderImage(RenderTexture source, RenderTexture destination) {
-			const int maxMipLvl = 7;
-
 			//var mipLevelFloat = Mathf.Clamp(Mathf.Log(Mathf.Max(source.width, source.height) / 32.0f + 1, 2), maxUpsample, maxMipLvl);
 			material.SetFloat(PropertyIDs.MipLevel_f, 0);
 

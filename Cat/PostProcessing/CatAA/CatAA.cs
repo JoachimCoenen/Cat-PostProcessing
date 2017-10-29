@@ -137,18 +137,26 @@ namespace Cat.PostProcessing {
 				TMSAACounter = (TMSAACounter + 1) % 4 ;
 			}
 
-			var newP = jitterVectors[TMSAACounter] * Settings.jitterStrength;
+			var newP = jitterVectors[TMSAACounter];
+
+			if (settings.jitterMatrix == JitterMatrixType.HaltonSequence) {
+				newP = newP - new Vector2(0.5f, 0.5f);
+			}
+
+			newP *= Settings.jitterStrength;
 
 
 			newP.x /= (float)cameraSize.x;
 			newP.y /= (float)cameraSize.y;
+			
+            camera.nonJitteredProjectionMatrix = camera.projectionMatrix;
 			if (camera.orthographic) {
 				camera.projectionMatrix = GetOrthographicProjectionMatrix(newP, camera);
 			} else {
 				camera.projectionMatrix = GetPerspectiveProjectionMatrix(newP, camera);
 			}
+			
 			Shader.SetGlobalVector(PropertyIDs.TAAJitterVelocity_v, isSceneView ? Vector2.zero : newP);
-
 		}
 
 		override protected void UpdateMaterialPerFrame(Material material, Camera camera, VectorInt2 cameraSize) {
@@ -174,7 +182,7 @@ namespace Cat.PostProcessing {
 		//[ImageEffectTransformsToLDR]
 		internal override void RenderImage(RenderTexture source, RenderTexture destination) {
 			var isSceneView = postProcessingManager.isSceneView;
-			if (isSceneView && disableTAAInSceneView) {
+			if (false || isSceneView && disableTAAInSceneView) {
 				Blit(source, destination);
 				return;
 			}

@@ -133,8 +133,6 @@ namespace Cat.PostProcessing {
 			var exposure    = Mathf.Pow(2, settings.exposure);
 			var contrast    = Mathf.Max(EPSILON, settings.contrast + Mathf.Max(0, settings.contrast) * Mathf.Max(0, settings.contrast) + 1);
 			var saturation  = (settings.saturation + Mathf.Max(0, settings.saturation) * Mathf.Max(0, settings.saturation) + 1) / contrast;
-			var temperature = settings.temperature;
-			var tint        = settings.tint;
 			var blackPoint  = 0 + settings.blackPoint * 0.25f;
 			var whitePoint  = 1 +settings. whitePoint * 0.25f;
 
@@ -142,8 +140,6 @@ namespace Cat.PostProcessing {
 			material.SetFloat(PropertyIDs.Contrast_f,		contrast);
 			material.SetFloat(PropertyIDs.Saturation_f,		saturation);
 			
-			//material.SetFloat(PropertyIDs.Temperature_f,	settings.temperature);
-			//material.SetFloat(PropertyIDs.Tint_f,			settings.tint);
 			material.SetVector(PropertyIDs.ColorBalance_v, CalculateColorBalance(settings.temperature, settings.tint));
 			material.SetFloat(PropertyIDs.BlackPoint_f,		blackPoint);
 			material.SetFloat(PropertyIDs.WhitePoint_f,		whitePoint);

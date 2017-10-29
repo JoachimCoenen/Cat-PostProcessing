@@ -25,8 +25,6 @@ namespace Cat.CommonEditor
 
 		// Transform a point into the graph rect
 		Vector2 PointToScreen(Vector2 p) {
-			var x01 = (p.x - m_Range.xMin) / m_Range.width;
-			var xvb = x01 * m_ViewPort.width + m_ViewPort.xMin;
 			return Vector2.Scale(p, m_ParamA) + m_ParamB;
 		}
 

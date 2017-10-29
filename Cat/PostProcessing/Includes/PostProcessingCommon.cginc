@@ -201,6 +201,6 @@ VertexOutput vert(VertexInput v) {
 	return o;
 }
 */
-float2	GetVelocity(float2 uv) { return !_IsVelocityPredictionEnabled ? 0 : Tex2Dlod(_CameraMotionVectorsTexture, uv, 0).xy - _TAAJitterVelocity; }
+float2	GetVelocity(float2 uv) { return !_IsVelocityPredictionEnabled ? 0 : Tex2Dlod(_CameraMotionVectorsTexture, uv, 0).xy; } // - _TAAJitterVelocity * 0; } // Does not seem to be neccessary in Unity2017.2f3
 
 #endif // POST_PROCESSING_COMMON_INCLUDED
