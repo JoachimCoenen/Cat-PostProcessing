@@ -1,5 +1,6 @@
-# Cat-Post Processing Effects for Unity 5.6
-High Quality Post-processing effects for Unity. Download [Cat-Post Processing Effects][SourceCode_Newest_LINK] or [other versions][Releases_LINK].
+# Cat-Post Processing Effects for Unity 2017.2
+High Quality Post-processing effects for Unity. Download [Cat-Post Processing Effects][Package_Newest_LINK] or [older versions][Releases_LINK]. It is compatible with Unity 5.5, Unity 5.6, Unity 2017.1
+ and Unity 2017.2
 
  <table style="width:100%;border-spacing:0px">
   <tr style="padding:0px">
@@ -16,7 +17,7 @@ High Quality Post-processing effects for Unity. Download [Cat-Post Processing Ef
   </tr>
 </table>
 
-The main goal is to create high quality post-processing effects with only a small performance impact. Tested with Unity 5.6.1f1.
+The main goal is to create high quality post-processing effects with only a small performance impact. Tested with Unity 2017.2.0f3.
 
 There are currently 7 different post-processing effects included:
 - Ambient Occlusion ([AO][AO_ANCHOR])
@@ -28,7 +29,7 @@ There are currently 7 different post-processing effects included:
 - Color Grading ([CG][ColorGrading_ANCHOR])
 
 ## Install Intructions
-Download the [newest version here][SourceCode_Newest_LINK], unpack the .zip and then put the "Cat" folder into your "Assets" folder. 
+Download the [newest version here][Package_Newest_LINK], and import the Package via the menu `Assets`&rarr;`Import Package`&rarr;`Custom Package...`.
 
 ## Usage
 > For maximum awesomeness we recommend that you work in **Linear + HDR**. Some effects will look wired in Gamma or without LDR. Using the **Deferred rendering path** is also recommended (and required for some effects like [Screen Space Reflections][SSR_ANCHOR] and [Ambient Occlusion][AO_ANCHOR]).
@@ -91,7 +92,7 @@ Debugging
 ![DepthOfFieldGUI_IMG][DepthOfFieldGUI_IMG]
 - **f-Stop f/n:** Also: f-number. Describes the size of the aperture. A smaller value means a larger aperture and you get a smaller depth of field. See [Wikipedia][fNumberWikipedia_LINK].
 - **Focus Distance:** The Distance of object in focus (*S<sub>1</sub>*). Not to be confused with the [focal length][FocalLengthWikipedia_LINK] *f*.
-- **Radius:** a value of `5` semms to work pretty good.
+- **Radius:** a value of `5` semms to work pretty well.
 - **Debug On:** Shows the Focus Distance in red .
 
 ## Chromatic Aberration
@@ -135,6 +136,8 @@ Curves
 
 ![Main Img 2][DragonFly_IMG]
 
+[Download][Package_Newest_LINK] Cat-Post Processing Effects for Unity
+
 
 
 [coloredBalls_IMG]:              Media/coloredBalls.png               "Most Effects in action 1"
@@ -160,7 +163,9 @@ Curves
 [ColorGrading_ANCHOR]:           #color-grading
 
 [Releases_LINK]:                 https://github.com/JoachimCoenen/Cat-PostProcessing/releases "Cat-PostProcessing/releases"
-[SourceCode_Newest_LINK]:        https://github.com/JoachimCoenen/Cat-PostProcessing/archive/v0.4.0-alpha.zip  "Cat-Post Processing v0.4.0-alpha - Source Code"
+[Package_Newest_LINK]:           https://github.com/JoachimCoenen/Cat-PostProcessing/releases/download/v0.4.1-alpha/Cat-Post.Processing.v0.4.1.unitypackage  "Cat-Post Processing v0.4.1-alpha - Source Code"
+
+
 
 [fNumberWikipedia_LINK]:         https://en.wikipedia.org/wiki/F-number                       "f-number - Wikipedia"
 [FocalLengthWikipedia_LINK]:     https://en.wikipedia.org/wiki/Focal_length                   "Focal length - Wikipedia"
