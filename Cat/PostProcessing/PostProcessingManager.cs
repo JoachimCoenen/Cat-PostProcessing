@@ -41,7 +41,7 @@ namespace Cat.PostProcessing {
 					//			effect.setRenderTextureDirty();
 					//		}
 					//	}
-					//}
+					// }
 				}
 			}
 		}
@@ -305,7 +305,7 @@ namespace Cat.PostProcessing {
 			//var size = this.cameraSize;
 			//foreach (var postRenderFunc in m_postRenderChain) {
 			//	postRenderFunc(cam, size);
-			//}
+			// }
 		}
 
 		private void OnEnable(){
