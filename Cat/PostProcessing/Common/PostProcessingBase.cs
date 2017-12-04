@@ -64,11 +64,18 @@ namespace Cat.PostProcessing {
 		internal void setMaterialDirty() {
 			isMaterialDirty = true;
 		}
-		protected bool isRenderTextureDirty = false;
+		protected int isRenderTextureDirty = 2;
 		internal void setRenderTextureDirty() {
-			isRenderTextureDirty = true;
+			// circumvents a bug in unity with the _CameraMotionVectorsTexture. complicated explanation:
+			// When the viewport size changes, the _CameraMotionVectorsTexture gets messed up; unless two frames after a new RenderTexture (wtf, unity???) gets created.
+			// +-------------------------------+-------------------------------+-------------------------------+
+			// |  frame 0 ; OnPostRender       |  frame 1      ; OnPostRender  |  frame 2      ; OnPostRender  |
+			// |          ; detect Size change |               ;               | create new RT ;               |	This DOES fix it.
+			// +-------------------------------+-------------------------------+-------------------------------+
+			isRenderTextureDirty = 2;
 		}
 
+		internal bool isFresh  { get; private set; }
 
 		private VectorInt2 m_lastCameraSize = new VectorInt2(1, 1); 
 		private Material m_Material = null;
@@ -229,9 +236,17 @@ namespace Cat.PostProcessing {
 		}
 
 		virtual internal void PreRender(Camera camera, VectorInt2 cameraSize) {
-			if (isRenderTextureDirty) {
-				RenewAllRenderTextures(camera, cameraSize);
-				isRenderTextureDirty = false;
+			if (isRenderTextureDirty > 0) {
+				if (isRenderTextureDirty == 1 || (isRenderTextureDirty == 2 && isFresh)) {
+					// circumvents a bug in unity with the _CameraMotionVectorsTexture. complicated explanation:
+					// When the viewport size changes, the _CameraMotionVectorsTexture gets messed up; unless two frames after a new RenderTexture (wtf, unity???) gets created.
+					// +-------------------------------+-------------------------------+-------------------------------+
+					// |  frame 0 ; OnPostRender       |  frame 1      ; OnPostRender  |  frame 2      ; OnPostRender  |
+					// |          ; detect Size change |               ;               | create new RT ;               |	This DOES fix it.
+					// +-------------------------------+-------------------------------+-------------------------------+
+					RenewAllRenderTextures(camera, cameraSize);
+				}
+				isRenderTextureDirty = Math.Max(0, isRenderTextureDirty - 1);
 			}
 
 			UpdateMaterialPerFrame(material, camera, cameraSize);
@@ -239,16 +254,19 @@ namespace Cat.PostProcessing {
 				isMaterialDirty = false;
 				UpdateMaterial(material, camera, cameraSize);
 			}
+			isFresh = false;
 		}
 
 		virtual protected void OnEnable() {
 			postProcessingManager.AddEffect(this);
+			isFresh = true;
 			setMaterialDirty();
 			setRenderTextureDirty();
 		}
 
 		virtual protected void OnDisable() {
 			postProcessingManager.RemoveEffect(this);
+			isFresh = false; // just to be shure...
 			ReleaseAllRTs();
 			#if UNITY_DEBUG && DEBUG_OUTPUT_VERBIOUS
 			Debug.LogFormat("{0}.{1}.OnDisable(): No. of RenderTextures (created RTs / all RTs) = {2} / {3};", 

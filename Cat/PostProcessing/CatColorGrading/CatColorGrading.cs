@@ -122,8 +122,6 @@ namespace Cat.PostProcessing {
 			internal static readonly int Strength_f		= Shader.PropertyToID("_Strength");
 
 			internal static readonly int MainTex_t		= Shader.PropertyToID("_MainTex");
-
-			internal static readonly int blueNoise_t	= Shader.PropertyToID("_BlueNoise");
 		}
 
 		override protected void UpdateMaterialPerFrame(Material material, Camera camera, VectorInt2 cameraSize) {
@@ -147,9 +145,7 @@ namespace Cat.PostProcessing {
 			material.SetFloat(PropertyIDs.WhitePoint_f,		whitePoint);
 
 			material.SetVector(PropertyIDs.CurveParams_v,	settings.GetCurveParams());
-
-			material.SetTexture(PropertyIDs.blueNoise_t, PostProcessingManager.blueNoiseTexture);
-
+			
 			//material.SetFloat(PropertyIDs.Strength_f,		settings.strength);
 		}
 

@@ -274,9 +274,6 @@ namespace Cat.PostProcessing {
 
 		private void OnPreCull(){
 			var cam = this.camera;
-
-			this.cameraSize = new VectorInt2(camera.pixelWidth, camera.pixelHeight);
-
 			var size = this.cameraSize;
 
 			if (m_lastCameraSize != cameraSize) {
@@ -296,6 +293,19 @@ namespace Cat.PostProcessing {
 			foreach (var preRenderFunc in m_preRenderChain) {
 				preRenderFunc(cam, size);
 			}
+		}
+
+		private void OnPostRender(){
+			// This is here inorder to overcome a bug, where Camera.pixelWidth & Camera.pixelHeight 
+			// return a slightly wrong value in the editor scene view.
+			cameraSize = new VectorInt2(camera.activeTexture.width, camera.activeTexture.height);
+			//Debug.LogFormat("aspect: {0}, size: {1}", camera.aspect, cameraSize);
+
+			//var cam = this.camera;
+			//var size = this.cameraSize;
+			//foreach (var postRenderFunc in m_postRenderChain) {
+			//	postRenderFunc(cam, size);
+			// }
 		}
 
 		private void OnEnable(){
