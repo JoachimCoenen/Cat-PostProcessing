@@ -1,5 +1,24 @@
+
+# exclude everything except directories Cat and Media
+# exclude everything
+/*
+# dont exclude folder Cat
+!/Cat
+# exclude everythng within flder Cat
+/Cat/*
+# dont exclude Cat/Includes, Cat/PostProcessing, Cat/Scripts
+!/Cat/Includes*
+!/Cat/PostProcessing*
+!/Cat/Scripts*
+
+# dont exclude folder Media
+!/Media
+
+
 **/[Hh]istory/
 [Hh]istory.meta
 stochasticSSR_RayTraceLib*
 Cat/Includes/NoiseLib.cginc
 Cat/Includes/NoiseLib.cginc.meta
+*CatDepthOfFieldEditor.cs*
+
