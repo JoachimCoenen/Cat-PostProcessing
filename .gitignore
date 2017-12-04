@@ -13,6 +13,7 @@
 
 # dont exclude folder Media
 !/Media
+/Media/*.meta
 
 
 **/[Hh]istory/

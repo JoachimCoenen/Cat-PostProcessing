@@ -40,49 +40,49 @@ Shader "Hidden/Cat SSR" {
 		
 		#include "CatRayTraceLib.cginc"
 		
-				int				_StepCount;
-				int				_MinPixelStride;
-				int				_MaxPixelStride;
-				float			_NoiseStrength;
-				bool			_CullBackFaces;
-				float			_MaxReflectionDistance;
-								// rayTraceResol
-								// upSampleHitTexture
+		int				_StepCount;
+		int				_MinPixelStride;
+		int				_MaxPixelStride;
+		float			_NoiseStrength;
+		bool			_CullBackFaces;
+		float			_MaxReflectionDistance;
+						// rayTraceResol
+						// upSampleHitTexture
 
-				float			_Intensity;
-				float			_ReflectionDistanceFade;
-				float			_RayLengthFade;
-				float			_EdgeFade;
-				int				_UseRetroReflections;
-				bool			_UseReflectionMipMap;
-								// reflectionResolution
+		float			_Intensity;
+		float			_ReflectionDistanceFade;
+		float			_RayLengthFade;
+		float			_EdgeFade;
+		int				_UseRetroReflections;
+		bool			_UseReflectionMipMap;
+						// reflectionResolution
 
-								// useImportanceSampling
-				int				_ResolveSampleCount;
-				float			_ImportanceSampleBias;
-				bool			_UseCameraMipMap;
-								// suppressFlickering	
+						// useImportanceSampling
+		int				_ResolveSampleCount;
+		float			_ImportanceSampleBias;
+		bool			_UseCameraMipMap;
+						// suppressFlickering	
 
-								// useTemporalSampling
-				float			_Response;
-				float			_ToleranceMargin;
+						// useTemporalSampling
+		float			_Response;
+		float			_ToleranceMargin;
 
-								// debugOn
-				int				_DebugMode;
-				int				_MipLevelForDebug;
+						// debugOn
+		int				_DebugMode;
+		int				_MipLevelForDebug;
 
 
-		//		bool			_IsVelocityPredictionEnabled;
-				float2			_FrameCounter;
-				float4			_BlurDir;
-				float			_MipLevel;
-				float			_PixelsPerMeterAtOneMeter;
+//		bool			_IsVelocityPredictionEnabled;
+		float2			_FrameCounter;
+		float4			_BlurDir;
+		float			_MipLevel;
+		float			_PixelsPerMeterAtOneMeter;
 
-				sampler2D		_HitTex;						float4	_HitTex_TexelSize;
-				sampler2D		_HistoryTex;
-				sampler2D		_ReflectionsTex;				float4	_ReflectionsTex_TexelSize;
-				
-				sampler2D		_BlueNoise;						float4 _BlueNoise_TexelSize;
+		sampler2D		_HitTex;						float4	_HitTex_TexelSize;
+		sampler2D		_HistoryTex;
+		sampler2D		_ReflectionsTex;				float4	_ReflectionsTex_TexelSize;
+		
+		sampler2D		_BlueNoise;						float4 _BlueNoise_TexelSize;
 
 			/*	sampler2D		_NormalsPacked;	// */ #define _NormalsPacked _CameraGBufferTexture2
 		float3 GetNormal(float2 uv) { return Tex2Dlod(_NormalsPacked, uv, 0).xyz * 2 - 1; }
