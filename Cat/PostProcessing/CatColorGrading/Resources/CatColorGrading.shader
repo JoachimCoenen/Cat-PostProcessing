@@ -49,19 +49,21 @@ Shader "Hidden/Cat Color Grading" {
 		
 		float3 _HSV;
 		
+		sampler2D _BlueNoise;	float4 _BlueNoise_TexelSize;
 		
-static const half3x3 LIN_2_LMS_MAT = {
-    3.90405e-1, 5.49941e-1, 8.92632e-3,
-    7.08416e-2, 9.63172e-1, 1.35775e-3,
-    2.31082e-2, 1.28021e-1, 9.36245e-1
-};
+		
+		static const half3x3 LIN_2_LMS_MAT = {
+			3.90405e-1, 5.49941e-1, 8.92632e-3,
+			7.08416e-2, 9.63172e-1, 1.35775e-3,
+			2.31082e-2, 1.28021e-1, 9.36245e-1
+		};
 
-static const half3x3 LMS_2_LIN_MAT = {
-     2.85847e+0, -1.62879e+0, -2.48910e-2,
-    -2.10182e-1,  1.15820e+0,  3.24281e-4,
-    -4.18120e-2, -1.18169e-1,  1.06867e+0
-};
-		
+		static const half3x3 LMS_2_LIN_MAT = {
+			 2.85847e+0, -1.62879e+0, -2.48910e-2,
+			-2.10182e-1,  1.15820e+0,  3.24281e-4,
+			-4.18120e-2, -1.18169e-1,  1.06867e+0
+		};
+				
 		/** {
 		 *              [  0.7328  0.4296  -0.1624 ]
 		 *    M_CAT02 = [ -0.7036  1.6975   0.0061 ]
@@ -182,6 +184,13 @@ static const half3x3 LMS_2_LIN_MAT = {
 			sRGB *= value;
 		}
 		
+		void Dithering(inout float3 rgb, float2 uv) {
+			float3 noise2D = Tex2Dlod(_BlueNoise, uv * _MainTex_TexelSize.zw * _BlueNoise_TexelSize.xy, 0).rrr * 2 - 1;
+			noise2D = sign(noise2D) * (1.0 - sqrt(1.0 - abs(noise2D))) * 0.5;
+			noise2D /= 255.0;
+			rgb += noise2D;
+		}
+		
 		half4 ToneMapping(VertexOutput i) : SV_Target {
 			float4 color = Tex2Dlod(_MainTex, i.uv, 0);
 			float3 rgb = color.rgb;
@@ -210,6 +219,8 @@ static const half3x3 LMS_2_LIN_MAT = {
 			Curves(/*inout*/sRGB, _BlackPoint, _WhitePoint, _CurveParams);
 			
 			rgb = GammaToLinearSpace(sRGB);
+			
+			Dithering(/*inout*/rgb, i.uv);
 			
 			//rgb = HSVtoRGB(float3(i.uv.x, _HSV.y, i.uv.y));
 			
