@@ -11,6 +11,22 @@ namespace Cat.PostProcessing {
 
 		[Serializable]
 		public struct Settings {
+			public enum Tonemapper {
+				Off,
+				Filmic,
+				Neutral
+			}
+
+			[Header("Tonemapping")]
+			public Tonemapper tonemapper;
+
+			[Range(-3, 3)]
+			public float response;
+
+			[Range(-3, 3)]
+			public float gain;
+
+
 			[Header("Color Grading")]
 			[Range(-3, 3)]
 			public float exposure;
@@ -55,6 +71,10 @@ namespace Cat.PostProcessing {
 			public static Settings defaultSettings { 
 				get {
 					return new Settings {
+						tonemapper = Tonemapper.Off,
+						response = 0f,
+						gain = 0f,
+
 						exposure = 0,
 						contrast = 0,
 						saturation = 0,
@@ -107,6 +127,9 @@ namespace Cat.PostProcessing {
 		override public bool isActive { get { return true; } }
 
 		static class PropertyIDs {
+			internal static readonly int Response_f		= Shader.PropertyToID("_Response");
+			internal static readonly int Gain_f			= Shader.PropertyToID("_Gain");
+
 			internal static readonly int Exposure_f		= Shader.PropertyToID("_Exposure");
 			internal static readonly int Contrast_f		= Shader.PropertyToID("_Contrast");
 			internal static readonly int Saturation_f	= Shader.PropertyToID("_Saturation");
@@ -132,11 +155,33 @@ namespace Cat.PostProcessing {
 
 		override protected void UpdateMaterial(Material material, Camera camera, VectorInt2 cameraSize) {
 			const float EPSILON = 1e-4f;
+			var response 	= Mathf.Pow(2, settings.response);
+			var gain 		= Mathf.Pow(2, settings.gain);
 			var exposure    = Mathf.Pow(2, settings.exposure);
 			var contrast    = Mathf.Max(EPSILON, settings.contrast + Mathf.Max(0, settings.contrast) * Mathf.Max(0, settings.contrast) + 1);
 			var saturation  = (settings.saturation + Mathf.Max(0, settings.saturation) * Mathf.Max(0, settings.saturation) + 1) / contrast;
 			var blackPoint  = 0 + settings.blackPoint * 0.25f;
 			var whitePoint  = 1 +settings. whitePoint * 0.25f;
+
+			switch (settings.tonemapper) {
+				case Settings.Tonemapper.Off: 
+					material.DisableKeyword("TONEMAPPING_FILMIC");
+					material.DisableKeyword("TONEMAPPING_NEUTRAL");
+					break;
+				case Settings.Tonemapper.Filmic:
+					material.EnableKeyword("TONEMAPPING_FILMIC");
+					material.DisableKeyword("TONEMAPPING_NEUTRAL");
+					break;
+				case Settings.Tonemapper.Neutral:
+					material.DisableKeyword("TONEMAPPING_FILMIC");
+					material.EnableKeyword("TONEMAPPING_NEUTRAL");
+					break;
+				default:
+					break;
+			}
+
+			material.SetFloat(PropertyIDs.Response_f,		response);
+			material.SetFloat(PropertyIDs.Gain_f,			gain);
 
 			material.SetFloat(PropertyIDs.Exposure_f,		exposure);
 			material.SetFloat(PropertyIDs.Contrast_f,		contrast);

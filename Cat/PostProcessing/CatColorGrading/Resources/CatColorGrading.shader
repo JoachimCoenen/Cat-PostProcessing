@@ -31,6 +31,10 @@ Shader "Hidden/Cat Color Grading" {
 		#include "../../Includes/PostProcessingCommon.cginc"
 		#include "ACES.cginc"
 		
+		#pragma multi_compile __ TONEMAPPING_NEUTRAL TONEMAPPING_FILMIC
+		
+		float _Response;
+		float _Gain;
 		
 		float _Exposure;
 		float _Contrast;
@@ -191,7 +195,83 @@ Shader "Hidden/Cat Color Grading" {
 			rgb += noise2D;
 		}
 		
-		half4 ToneMapping(VertexOutput i) : SV_Target {
+		
+		// ACES fitting shamefully copied from Unity
+		// https://github.com/Unity-Technologies/PostProcessing/blob/v1/PostProcessing/Resources/Shaders/Tonemapping.cginc
+		void FilmicToneMapping(inout float3 rgb) {
+			float3 aces = unity_to_ACES(rgb);
+			
+			// --- Glow module --- //
+			half saturation = rgb_2_saturation(aces);
+			half ycIn = rgb_2_yc(aces);
+			half s = sigmoid_shaper((saturation - 0.4) / 0.2);
+			half addedGlow = 1.0 + glow_fwd(ycIn, RRT_GLOW_GAIN * s, RRT_GLOW_MID);
+			aces *= addedGlow;
+
+			// --- Red modifier --- //
+			half hue = rgb_2_hue(aces);
+			half centeredHue = center_hue(hue, RRT_RED_HUE);
+			half hueWeight;
+			{
+				//hueWeight = cubic_basis_shaper(centeredHue, RRT_RED_WIDTH);
+				hueWeight = Pow2(smoothstep(0.0, 1.0, 1.0 - abs(2.0 * centeredHue / RRT_RED_WIDTH)));
+			}
+
+			aces.r += hueWeight * saturation * (RRT_RED_PIVOT - aces.r) * (1.0 - RRT_RED_SCALE);
+
+			// --- ACES to RGB rendering space --- //
+			half3 acescg = max(0.0, ACES_to_ACEScg(aces));
+
+			// --- Global desaturation --- //
+			//acescg = mul(RRT_SAT_MAT, acescg);
+			acescg = lerp(dot(acescg, AP1_RGB2Y).xxx, acescg, RRT_SAT_FACTOR.xxx);
+
+			// Luminance fitting of *RRT.a1.0.3 + ODT.Academy.RGBmonitor_100nits_dim.a1.0.3*.
+			// https://github.com/colour-science/colour-unity/blob/master/Assets/Colour/Notebooks/CIECAM02_Unity.ipynb
+			// RMSE: 0.0012846272106
+			const half a = 278.5085;
+			const half b = 10.7772;
+			const half c = 293.6045;
+			const half d = 88.7122;
+			const half e = 80.6889;
+			half3 x = acescg;
+			half3 rgbPost = (x * (a * x + b)) / (x * (c * x + d) + e);
+
+			// Scale luminance to linear code value
+			// half3 linearCV = Y_2_linCV(rgbPost, CINEMA_WHITE, CINEMA_BLACK);
+
+			// Apply gamma adjustment to compensate for dim surround
+			half3 linearCV = darkSurround_to_dimSurround(rgbPost);
+
+			// Apply desaturation to compensate for luminance difference
+			//linearCV = mul(ODT_SAT_MAT, color);
+			linearCV = lerp(dot(linearCV, AP1_RGB2Y).xxx, linearCV, ODT_SAT_FACTOR.xxx);
+
+			// Convert to display primary encoding
+			// Rendering space RGB to XYZ
+			half3 XYZ = mul(AP1_2_XYZ_MAT, linearCV);
+
+			// Apply CAT from ACES white point to assumed observer adapted white point
+			XYZ = mul(D60_2_D65_CAT, XYZ);
+
+			// CIE XYZ to display primaries
+			linearCV = mul(XYZ_2_REC709_MAT, XYZ);
+
+			rgb = linearCV;
+		}
+		
+		
+		void CustomToneMapping(inout float3 rgb) {
+			rgb = rgb*(rgb + 1) / (rgb*(rgb + 1.125) + 1);
+		}
+		
+		void NeutralToneMapping(inout float3 rgb, float response, float gain) {
+			// rgb = rgb * (1.235 * rgb + 0.1235) / (rgb * (rgb + 1.035) + 0.1235);
+			rgb = gain * 1.235 * rgb / ((1.235 - rgb / (0.1 + rgb) * 0.3) / response * gain + rgb);
+		}
+		
+		
+		half4 ColorGrading(VertexOutput i) : SV_Target {
 			float4 color = Tex2Dlod(_MainTex, i.uv, 0);
 			float3 rgb = color.rgb;
 			
@@ -209,9 +289,12 @@ Shader "Hidden/Cat Color Grading" {
 			
 			rgb = LMStoUnity(lms);
 			
-			//rgb *= 0.5;
-			//rgb = CompressBy(rgb,     rgb * Compress(    rgb * Compress(    rgb)));
-			//rgb *= 2;
+			#if TONEMAPPING_FILMIC 
+				FilmicToneMapping(/*inout*/ rgb);
+			#elif TONEMAPPING_NEUTRAL
+				NeutralToneMapping(/*inout*/ rgb, _Response, _Gain);
+			#endif
+			
 			
 			rgb = saturate(rgb);
 			float3 sRGB = LinearToGammaSpace(rgb);
@@ -245,7 +328,7 @@ Shader "Hidden/Cat Color Grading" {
 
 			#pragma fragmentoption ARB_precision_hint_fastest
 			#pragma vertex vert
-			#pragma fragment ToneMapping
+			#pragma fragment ColorGrading
 			ENDCG
 		}
 	}
