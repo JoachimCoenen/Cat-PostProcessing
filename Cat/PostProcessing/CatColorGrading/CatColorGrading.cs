@@ -235,9 +235,6 @@ namespace Cat.PostProcessing {
 			mat2.SetRow(2, mat2.GetRow(2) * colorBalance[2]);
 			var mat3 = mat1 * mat2;
 
-			//var mat4 = _ColorMixerMatrix* mat3;
-
-
 			var colorMixMatrix = Matrix4x4.identity;
 			switch (settings.colorMixer) {
 				case Settings.ColorMixer.Off:
@@ -303,8 +300,7 @@ namespace Cat.PostProcessing {
 			material.SetFloat(PropertyIDs.Saturation_f,			saturation);
 
 			material.SetMatrix(PropertyIDs.ColorMixerMatrix_m,	colorMixMatrix);
-			
-			material.SetVector(PropertyIDs.ColorBalance_v, 		CalculateColorBalance(settings.temperature, settings.tint));
+
 			material.SetFloat(PropertyIDs.BlackPoint_f,			blackPoint);
 			material.SetFloat(PropertyIDs.WhitePoint_f,			whitePoint);
 

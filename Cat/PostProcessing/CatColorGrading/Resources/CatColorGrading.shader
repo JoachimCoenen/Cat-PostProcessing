@@ -40,10 +40,6 @@ Shader "Hidden/Cat Color Grading" {
 		float _Contrast;
 		float _Saturation;
 		
-		float _Temperature;
-		float _Tint;
-		float3 _ColorBalance;
-		
 		float4x4 _ColorMixerMatrix;
 		
 		float _BlackPoint;
@@ -286,6 +282,13 @@ Shader "Hidden/Cat Color Grading" {
 			
 			Exposure(/*inout*/rgb, _Exposure);
 			
+			
+			#if TONEMAPPING_FILMIC 
+				FilmicToneMapping(/*inout*/ rgb);
+			#elif TONEMAPPING_NEUTRAL
+				NeutralToneMapping(/*inout*/ rgb, _Response, _Gain);
+			#endif
+			
 			float3 aces = unity_to_ACES(rgb);
 			float3 acescc = ACES_to_ACEScc_optimized(aces);
 			
@@ -294,12 +297,6 @@ Shader "Hidden/Cat Color Grading" {
 			aces = ACEScc_to_ACES_optimized(acescc);
 			
 			rgb = mul((float3x3)_ColorMixerMatrix, aces);
-			
-			#if TONEMAPPING_FILMIC 
-				FilmicToneMapping(/*inout*/ rgb);
-			#elif TONEMAPPING_NEUTRAL
-				NeutralToneMapping(/*inout*/ rgb, _Response, _Gain);
-			#endif
 			
 			rgb = saturate(rgb);
 			float3 sRGB = LinearToGammaSpace(rgb);
