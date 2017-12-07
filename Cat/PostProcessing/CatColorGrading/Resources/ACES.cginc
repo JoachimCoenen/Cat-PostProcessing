@@ -253,7 +253,8 @@ half3 ACES_to_ACEScc(half3 x)
 half3 ACES_to_ACEScc_optimized(half3 x) {
     x = clamp(x, 0.0, HALF_MAX);
     // x is clamped to [0, HALF_MAX], skip the <= 0 check
-    return (log2(0.00001525878 + x) + 9.72) / 17.52;
+    // return (log2(0.00001525878 + x) + 9.72) / 17.52;
+    return (log2(0.00001525878 + x) * 0.057077626 + 0.55479452);
 }
 
 //

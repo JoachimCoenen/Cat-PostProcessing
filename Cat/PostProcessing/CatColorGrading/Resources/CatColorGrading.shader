@@ -174,7 +174,7 @@ Shader "Hidden/Cat Color Grading" {
 		}
 		
 		void ColorMixer(inout float3 rgb, float3x3 mixingMatrix) {
-			rgb = mul(rgb, mixingMatrix);
+			rgb = mul(mixingMatrix, rgb);
 		}
 		 
 		
@@ -280,7 +280,6 @@ Shader "Hidden/Cat Color Grading" {
 			rgb = response*gain*rgb*(0.1235 + 1.235*rgb) / (gain*(0.1235 + 0.935*rgb) + response*rgb*(0.1 + rgb));
 		}
 		
-		
 		half4 ColorGrading(VertexOutput i) : SV_Target {
 			float4 color = Tex2Dlod(_MainTex, i.uv, 0);
 			float3 rgb = color.rgb;
@@ -293,20 +292,14 @@ Shader "Hidden/Cat Color Grading" {
 			ContrastSaturation(/*inout*/acescc, _Contrast , _Saturation);
 			
 			aces = ACEScc_to_ACES_optimized(acescc);
-			float3 lms = ACEStoLMS(aces);
 			
-			ColorBalance(/*inout*/lms, _ColorBalance);
-			
-			rgb = LMStoUnity(lms);
-			
-			ColorMixer(/*inout*/rgb, (float3x3)_ColorMixerMatrix);
+			rgb = mul((float3x3)_ColorMixerMatrix, aces);
 			
 			#if TONEMAPPING_FILMIC 
 				FilmicToneMapping(/*inout*/ rgb);
 			#elif TONEMAPPING_NEUTRAL
 				NeutralToneMapping(/*inout*/ rgb, _Response, _Gain);
 			#endif
-			
 			
 			rgb = saturate(rgb);
 			float3 sRGB = LinearToGammaSpace(rgb);

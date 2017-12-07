@@ -182,6 +182,38 @@ namespace Cat.PostProcessing {
 			setMaterialDirty();
 		}
 
+
+		readonly Matrix4x4 M_AP1_2_AP0 = new Matrix4x4() {
+			m00 =  0.6954522414f, m01 = 0.1406786965f, m02 =  0.1638690622f, m03 = 0,
+			m10 =  0.0447945634f, m11 = 0.8596711185f, m12 =  0.0955343182f, m13 = 0,
+			m20 = -0.0055258826f, m21 = 0.0040252103f, m22 =  1.0015006723f, m23 = 0,
+			m30 =  0      , m31 = 0      , m32 =  0      , m33 = 0
+		};
+		readonly Matrix4x4 M_LMS_2_LIN = new Matrix4x4() {
+			m00 =  2.85847e+0f, m01 = -1.62879e+0f, m02 = -2.48910e-2f, m03 = 0,
+			m10 = -2.10182e-1f, m11 =  1.15820e+0f, m12 =  3.24281e-4f, m13 = 0,
+			m20 = -4.18120e-2f, m21 = -1.18169e-1f, m22 =  1.06867e+0f, m23 = 0,
+			m30 =  0      , m31 = 0      , m32 =  0      , m33 = 0
+		};
+		readonly Matrix4x4 M_AP0_2_sRGB = new Matrix4x4() {
+			m00 =  2.52169f, m01 = -1.13413f, m02 = -0.38756f, m03 = 0,
+			m10 = -0.27648f, m11 =  1.37272f, m12 = -0.09624f, m13 = 0,
+			m20 = -0.01538f, m21 = -0.15298f, m22 =  1.16835f, m23 = 0,
+			m30 =  0      , m31 = 0      , m32 =  0      , m33 = 0
+		};
+		readonly Matrix4x4 M_LIN_2_LMS = new Matrix4x4() {
+			m00 = 3.90405e-1f, m01 = 5.49941e-1f, m02 = 8.92632e-3f, m03 = 0,
+			m10 = 7.08416e-2f, m11 = 9.63172e-1f, m12 = 1.35775e-3f, m13 = 0,
+			m20 = 2.31082e-2f, m21 = 1.28021e-1f, m22 = 9.36245e-1f, m23 = 0,
+			m30 =  0      , m31 = 0      , m32 =  0      , m33 = 0
+		};
+		readonly Matrix4x4 M_AP0_2_AP1 = new Matrix4x4() {
+			m00 =  1.4514393161f, m01 = -0.2365107469f, m02 = -0.2149285693f, m03 = 0,
+			m10 = -0.0765537734f, m11 =  1.1762296998f, m12 = -0.0996759264f, m13 = 0,
+			m20 =  0.0083161484f, m21 = -0.0060324498f, m22 =  0.9977163014f, m23 = 0,
+			m30 =  0      , m31 = 0      , m32 =  0      , m33 = 0
+		};
+
 		override protected void UpdateMaterial(Material material, Camera camera, VectorInt2 cameraSize) {
 			const float EPSILON = 1e-4f;
 			var response 	= Mathf.Pow(2, settings.response);
@@ -191,6 +223,19 @@ namespace Cat.PostProcessing {
 			var saturation  = (settings.saturation + Mathf.Max(0, settings.saturation) * Mathf.Max(0, settings.saturation) + 1) / contrast;
 			var blackPoint  = 0 + settings.blackPoint * 0.25f;
 			var whitePoint  = 1 +settings. whitePoint * 0.25f;
+
+
+
+
+			var mat1 = M_AP0_2_sRGB * (M_AP1_2_AP0 * M_LMS_2_LIN);
+			var mat2 = M_LIN_2_LMS * M_AP0_2_AP1;
+			var colorBalance = CalculateColorBalance(settings.temperature, settings.tint);
+			mat2.SetRow(0, mat2.GetRow(0) * colorBalance[0]);
+			mat2.SetRow(1, mat2.GetRow(1) * colorBalance[1]);
+			mat2.SetRow(2, mat2.GetRow(2) * colorBalance[2]);
+			var mat3 = mat1 * mat2;
+
+			//var mat4 = _ColorMixerMatrix* mat3;
 
 
 			var colorMixMatrix = Matrix4x4.identity;
@@ -225,11 +270,12 @@ namespace Cat.PostProcessing {
 				default:
 					break;
 			}
-
+			colorMixMatrix = colorMixMatrix.transpose;
 
 			colorMixMatrix.SetRow(3, Vector4.zero);
+			colorMixMatrix.SetColumn(3, Vector4.zero);
 
-
+			colorMixMatrix = colorMixMatrix * mat3;
 
 
 			switch (settings.tonemapper) {
