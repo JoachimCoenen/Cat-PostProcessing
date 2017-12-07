@@ -44,6 +44,8 @@ Shader "Hidden/Cat Color Grading" {
 		float _Tint;
 		float3 _ColorBalance;
 		
+		float4x4 _ColorMixerMatrix;
+		
 		float _BlackPoint;
 		float _WhitePoint;
 		
@@ -171,6 +173,11 @@ Shader "Hidden/Cat Color Grading" {
 			lms *= colorBalance;
 		}
 		
+		void ColorMixer(inout float3 rgb, float3x3 mixingMatrix) {
+			rgb = mul(rgb, mixingMatrix);
+		}
+		 
+		
 		void Curves(inout float3 sRGB, float blackPoint, float whitePoint, float4 curveParams) {
 			//whitePoint = 1 + whitePoint * 0.25;
 			//blackPoint = 0 + blackPoint * 0.25;
@@ -267,7 +274,10 @@ Shader "Hidden/Cat Color Grading" {
 		
 		void NeutralToneMapping(inout float3 rgb, float response, float gain) {
 			// rgb = rgb * (1.235 * rgb + 0.1235) / (rgb * (rgb + 1.035) + 0.1235);
-			rgb = gain * 1.235 * rgb / ((1.235 - rgb / (0.1 + rgb) * 0.3) / response * gain + rgb);
+			
+			rgb = max(0, rgb);
+			// rgb = gain * 1.235 * rgb / ((1.235 - rgb / (0.1 + rgb) * 0.3) / response * gain + rgb);
+			rgb = response*gain*rgb*(0.1235 + 1.235*rgb) / (gain*(0.1235 + 0.935*rgb) + response*rgb*(0.1 + rgb));
 		}
 		
 		
@@ -288,6 +298,8 @@ Shader "Hidden/Cat Color Grading" {
 			ColorBalance(/*inout*/lms, _ColorBalance);
 			
 			rgb = LMStoUnity(lms);
+			
+			ColorMixer(/*inout*/rgb, (float3x3)_ColorMixerMatrix);
 			
 			#if TONEMAPPING_FILMIC 
 				FilmicToneMapping(/*inout*/ rgb);

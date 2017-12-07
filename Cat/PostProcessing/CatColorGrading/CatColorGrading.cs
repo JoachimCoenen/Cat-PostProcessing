@@ -12,9 +12,17 @@ namespace Cat.PostProcessing {
 		[Serializable]
 		public struct Settings {
 			public enum Tonemapper {
-				Off,
+				Off = 0,
 				Filmic,
 				Neutral
+			}
+
+			public enum ColorMixer {
+				Off = 0,
+				Sepia,
+				Mono,
+				Noir,
+				Custom
 			}
 
 			[Header("Tonemapping")]
@@ -37,12 +45,23 @@ namespace Cat.PostProcessing {
 			[Range(-1, 1)]
 			public float saturation;
 
+
 			[Header("Color Correction")]
 			[Range(-1, 1)]
 			public float temperature;
 
 			[Range(-1, 1)]
 			public float tint;
+
+
+			[Header("Color Mixer")]
+			public ColorMixer colorMixer;
+			public Color red;
+			public Color green;
+			public Color blue;
+			[CustomLabel("Normalized")]
+			public bool isColorMatrixNormalized;
+
 
 			[Header("Curves")]
 			[Range(-1, 1)]
@@ -81,6 +100,13 @@ namespace Cat.PostProcessing {
 
 						temperature = 0,
 						tint = 0,
+
+						colorMixer = ColorMixer.Off,
+						red = Color.red,
+						green = Color.green,
+						blue = Color.blue,
+						isColorMatrixNormalized = false,
+
 						blackPoint = 0,
 						midPoint = 0,
 						whitePoint = 0,
@@ -138,6 +164,9 @@ namespace Cat.PostProcessing {
 			internal static readonly int Tint_f			= Shader.PropertyToID("_Tint");
 			internal static readonly int ColorBalance_v	= Shader.PropertyToID("_ColorBalance");
 
+			internal static readonly int ColorMixerMatrix_m	= Shader.PropertyToID("_ColorMixerMatrix");
+
+
 			internal static readonly int BlackPoint_f	= Shader.PropertyToID("_BlackPoint");
 			internal static readonly int WhitePoint_f	= Shader.PropertyToID("_WhitePoint");
 			internal static readonly int CurveParams_v	= Shader.PropertyToID("_CurveParams");
@@ -163,6 +192,46 @@ namespace Cat.PostProcessing {
 			var blackPoint  = 0 + settings.blackPoint * 0.25f;
 			var whitePoint  = 1 +settings. whitePoint * 0.25f;
 
+
+			var colorMixMatrix = Matrix4x4.identity;
+			switch (settings.colorMixer) {
+				case Settings.ColorMixer.Off:
+					break;
+				case Settings.ColorMixer.Sepia: {
+						var column0 = Vector3.one * 0.4392157f;
+						var column1 = Vector3.one * 0.2588235f;
+						var column2 = Vector3.one * 0.0784314f;
+						colorMixMatrix = new Matrix4x4(column0, column1, column2, Vector4.zero);
+					//	colorMixMatrix = NormalizeColorMatrix(colorMixMatrix);
+					}
+					break;
+				case Settings.ColorMixer.Mono: {
+						var column = new Vector4(0.3333333f, 0.3333333f, 0.3333333f, 0f);
+						colorMixMatrix = new Matrix4x4(column, column, column, Vector4.zero);
+					} 
+					break;
+				case Settings.ColorMixer.Noir: {
+						var column = new Vector4(0.2126729f, 0.7151522f, 0.0721750f, 0f);
+						colorMixMatrix = new Matrix4x4(column, column, column, Vector4.zero);
+					} 
+					break;
+				case Settings.ColorMixer.Custom: {
+						colorMixMatrix = new Matrix4x4(settings.red, settings.green, settings.blue, Vector4.zero);
+						if (settings.isColorMatrixNormalized) {
+							colorMixMatrix = NormalizeColorMatrix(colorMixMatrix);
+						}
+					} 
+					break;
+				default:
+					break;
+			}
+
+
+			colorMixMatrix.SetRow(3, Vector4.zero);
+
+
+
+
 			switch (settings.tonemapper) {
 				case Settings.Tonemapper.Off: 
 					material.DisableKeyword("TONEMAPPING_FILMIC");
@@ -180,22 +249,40 @@ namespace Cat.PostProcessing {
 					break;
 			}
 
-			material.SetFloat(PropertyIDs.Response_f,		response);
-			material.SetFloat(PropertyIDs.Gain_f,			gain);
+			material.SetFloat(PropertyIDs.Response_f,			response);
+			material.SetFloat(PropertyIDs.Gain_f,				gain);
 
-			material.SetFloat(PropertyIDs.Exposure_f,		exposure);
-			material.SetFloat(PropertyIDs.Contrast_f,		contrast);
-			material.SetFloat(PropertyIDs.Saturation_f,		saturation);
+			material.SetFloat(PropertyIDs.Exposure_f,			exposure);
+			material.SetFloat(PropertyIDs.Contrast_f,			contrast);
+			material.SetFloat(PropertyIDs.Saturation_f,			saturation);
+
+			material.SetMatrix(PropertyIDs.ColorMixerMatrix_m,	colorMixMatrix);
 			
-			material.SetVector(PropertyIDs.ColorBalance_v, CalculateColorBalance(settings.temperature, settings.tint));
-			material.SetFloat(PropertyIDs.BlackPoint_f,		blackPoint);
-			material.SetFloat(PropertyIDs.WhitePoint_f,		whitePoint);
+			material.SetVector(PropertyIDs.ColorBalance_v, 		CalculateColorBalance(settings.temperature, settings.tint));
+			material.SetFloat(PropertyIDs.BlackPoint_f,			blackPoint);
+			material.SetFloat(PropertyIDs.WhitePoint_f,			whitePoint);
 
-			material.SetVector(PropertyIDs.CurveParams_v,	settings.GetCurveParams());
+			material.SetVector(PropertyIDs.CurveParams_v,		settings.GetCurveParams());
 
-			material.SetTexture(PropertyIDs.blueNoise_t, PostProcessingManager.blueNoiseTexture);
+			material.SetTexture(PropertyIDs.blueNoise_t, 		PostProcessingManager.blueNoiseTexture);
 
 			//material.SetFloat(PropertyIDs.Strength_f,		settings.strength);
+		}
+
+		Matrix4x4 NormalizeColorMatrix(Matrix4x4 colorMatrix) {
+			var row0 = colorMatrix.GetRow(0);
+			var row1 = colorMatrix.GetRow(1);
+			var row2 = colorMatrix.GetRow(2);
+			var maxMagnitude = Mathf.Max(row0.x + row0.y + row0.z, row1.x + row1.y + row1.z, row2.x + row2.y + row2.z);
+			if (maxMagnitude > Mathf.Epsilon) {
+				maxMagnitude = 1 / maxMagnitude;
+				colorMatrix.SetRow(0, row0 * maxMagnitude);
+				colorMatrix.SetRow(1, row1 * maxMagnitude);
+				colorMatrix.SetRow(2, row2 * maxMagnitude);
+			} else {
+				colorMatrix = Matrix4x4.identity;
+			}
+			return colorMatrix;
 		}
 
 

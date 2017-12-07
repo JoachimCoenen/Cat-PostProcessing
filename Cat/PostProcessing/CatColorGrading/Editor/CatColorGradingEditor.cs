@@ -17,46 +17,99 @@ namespace Cat.PostProcessingEditor {
 		}
 
 		public override void OnInspectorGUI() {
-
-			SerializedProperty iterator = serializedObject.FindProperty("m_Settings");
+			SerializedProperty propertyIterator = serializedObject.FindProperty("m_Settings");
 			var isFirst = true;
 			var count = 1;
 
 			serializedObject.Update();
-
-			iterator.Next(isFirst);
-			isFirst = false;
-			EditorGUILayout.PropertyField(iterator);
-
+			//
+			// Tonemapping:
+			//
+			DrawPropertyField(propertyIterator, ref isFirst);
 			var tonemapper = settings.FindPropertyRelative("tonemapper").enumValueIndex;
 			if (tonemapper == 2) {
-				iterator.Next(isFirst);
-				EditorGUILayout.PropertyField(iterator);
-				iterator.Next(isFirst);
-				EditorGUILayout.PropertyField(iterator);
-
+				DrawPropertyField(propertyIterator, ref isFirst);
+				DrawPropertyField(propertyIterator, ref isFirst);
 				EditorGUILayout.Space();
 				DrawToneMappingFunction(128, 96);
 				EditorGUILayout.Space();
 			} else {
-				iterator.Next(isFirst);
-				iterator.Next(isFirst);
+				SkipPropertyField(propertyIterator, ref isFirst);
+				SkipPropertyField(propertyIterator, ref isFirst);
 				
 			}
 
-			while (iterator.Next(isFirst)) {
-				EditorGUILayout.PropertyField(iterator);
-				isFirst = false;
+			//
+			// Color Grading:
+			//
+			DrawPropertyField(propertyIterator, ref isFirst);
+			DrawPropertyField(propertyIterator, ref isFirst);
+			DrawPropertyField(propertyIterator, ref isFirst);
+
+			//
+			// Color Correction:
+			//
+			DrawPropertyField(propertyIterator, ref isFirst);
+			DrawPropertyField(propertyIterator, ref isFirst);
+
+			//
+			// Color Mixer:
+			//
+			DrawPropertyField(propertyIterator, ref isFirst);
+			var colorMapper = settings.FindPropertyRelative("colorMixer").enumValueIndex;
+			if (colorMapper == 4) {
+				DrawPropertyField(propertyIterator, ref isFirst);
+				DrawPropertyField(propertyIterator, ref isFirst);
+				DrawPropertyField(propertyIterator, ref isFirst);
+				DrawPropertyField(propertyIterator, ref isFirst);
+			} else {
+				SkipPropertyField(propertyIterator, ref isFirst);
+				SkipPropertyField(propertyIterator, ref isFirst);
+				SkipPropertyField(propertyIterator, ref isFirst);
+				SkipPropertyField(propertyIterator, ref isFirst);
+
 			}
+
+			//
+			// Curves:
+			//
+			DrawPropertyField(propertyIterator, ref isFirst);
+			DrawPropertyField(propertyIterator, ref isFirst);
+			DrawPropertyField(propertyIterator, ref isFirst);
+
+			DrawPropertyField(propertyIterator, ref isFirst);
+			DrawPropertyField(propertyIterator, ref isFirst);
+
+
+			//while (DrawPropertyField(propertyIterator, ref isFirst)) { /* NOP; */ }
 			serializedObject.ApplyModifiedProperties();
 
 			// serializedObject.Update();
 			// EditorGUILayout.PropertyField(settings);
 			// serializedObject.ApplyModifiedProperties();
 
+
+			//
+			// Tonemapping:
+			//
 			EditorGUILayout.Space();
 			DrawResponseFunction(128, 96);
 			EditorGUILayout.Space();
+		}
+
+		bool DrawPropertyField(SerializedProperty prop, ref bool isFirst) {
+			var hasNext = prop.Next(isFirst);
+			isFirst = false;
+			if (hasNext) {
+				EditorGUILayout.PropertyField(prop);
+			}
+			return hasNext;
+		}
+
+		bool SkipPropertyField(SerializedProperty prop, ref bool isFirst) {
+			var hasNext = prop.Next(isFirst);
+			isFirst = false;
+			return hasNext;
 		}
 
 		void DrawToneMappingFunction(float width, float height) {
