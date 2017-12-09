@@ -30,13 +30,15 @@ namespace Cat.PostProcessingEditor {
 			if (tonemapper == 2) {
 				DrawPropertyField(propertyIterator, ref isFirst);
 				DrawPropertyField(propertyIterator, ref isFirst);
-				EditorGUILayout.Space();
-				DrawToneMappingFunction(128, 96);
-				EditorGUILayout.Space();
 			} else {
 				SkipPropertyField(propertyIterator, ref isFirst);
 				SkipPropertyField(propertyIterator, ref isFirst);
-				
+
+			}
+			if (tonemapper >= 2) {
+				EditorGUILayout.Space();
+				DrawToneMappingFunction(128, 96, tonemapper-2);
+				EditorGUILayout.Space();
 			}
 
 			//
@@ -112,7 +114,7 @@ namespace Cat.PostProcessingEditor {
 			return hasNext;
 		}
 
-		void DrawToneMappingFunction(float width, float height) {
+		void DrawToneMappingFunction(float width, float height, int tonemappingFuncionIndex) {
 			var blackPoint = settings.FindPropertyRelative("blackPoint").floatValue;
 			var grayPoint  = settings.FindPropertyRelative("midPoint").floatValue;
 			var whitePoint = settings.FindPropertyRelative("whitePoint").floatValue;
@@ -181,19 +183,47 @@ namespace Cat.PostProcessingEditor {
 			var curveParams = (serializedObject.targetObject as CatColorGrading).settings.GetCurveParams();
 			graph.DrawFunction(
 				//x => NeutralTonemap(x, a, b, c, d, e, f, whiteLevel, whiteClip)
-				x => NeutralTonemap(x, 1, 1)
-				, 0.90f
+				x => NeutralTonemap(x, 1, 1), 
+				0.90f
 			);
-			graph.DrawFunction(
-				x => NeutralTonemap(x, response, gain)
-				, Color.red * 0.75f
-			);
+			if (tonemappingFuncionIndex == 0) {
+				graph.DrawFunction(
+					x => NeutralTonemap(x, response, gain), 
+					Color.red * 0.75f
+				);
+			} else if (tonemappingFuncionIndex == 1) {
+				graph.DrawFunction(
+					x => Uncharted2Tonemap(x, response, gain), 
+					Color.blue * 0.75f
+				);
+			}
+
 		}
 
 		float NeutralTonemap(float x, float response, float gain) {
 			const float k = 1.235f;
 			var amplitude = x;
 			var y = gain * k * x / ((k - x / (0.1f + x) * 0.3f) / response * gain + amplitude);
+			return y;
+		}
+
+		float Uncharted2Tonemap(float x, float response, float gain) {
+			const float k = 1.235f;
+			const float a = 0.15f;
+			const float b = 0.50f;
+			const float c = 0.10f;
+			const float d = 0.20f;
+			const float e = 0.02f;
+			const float f = 0.30f;
+			const float W = 11.21f;
+			const float exposureBias = 2.00f;
+
+			// Tonemap
+			float whiteScale = 1f / NeutralCurve(W, a, b, c, d, e, f);
+			var y = NeutralCurve(x * exposureBias, a, b, c, d, e, f);
+			y *= whiteScale;
+
+			//var y = ((x * (a * x + c * b) + d * e) / (x * (a * x + b) + d * f)) - e / f;
 			return y;
 		}
 

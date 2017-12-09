@@ -14,7 +14,8 @@ namespace Cat.PostProcessing {
 			public enum Tonemapper {
 				Off = 0,
 				Filmic,
-				Neutral
+				Neutral,
+				Uncharted2
 			}
 
 			public enum ColorMixer {
@@ -279,14 +280,22 @@ namespace Cat.PostProcessing {
 				case Settings.Tonemapper.Off: 
 					material.DisableKeyword("TONEMAPPING_FILMIC");
 					material.DisableKeyword("TONEMAPPING_NEUTRAL");
+					material.DisableKeyword("TONEMAPPING_UNCHARTED_2");
 					break;
 				case Settings.Tonemapper.Filmic:
 					material.EnableKeyword("TONEMAPPING_FILMIC");
 					material.DisableKeyword("TONEMAPPING_NEUTRAL");
+					material.DisableKeyword("TONEMAPPING_UNCHARTED_2");
 					break;
 				case Settings.Tonemapper.Neutral:
 					material.DisableKeyword("TONEMAPPING_FILMIC");
 					material.EnableKeyword("TONEMAPPING_NEUTRAL");
+					material.DisableKeyword("TONEMAPPING_UNCHARTED_2");
+					break;
+				case Settings.Tonemapper.Uncharted2: 
+					material.DisableKeyword("TONEMAPPING_FILMIC");
+					material.DisableKeyword("TONEMAPPING_NEUTRAL");
+					material.EnableKeyword("TONEMAPPING_UNCHARTED_2");
 					break;
 				default:
 					break;

@@ -31,7 +31,7 @@ Shader "Hidden/Cat Color Grading" {
 		#include "../../Includes/PostProcessingCommon.cginc"
 		#include "ACES.cginc"
 		
-		#pragma multi_compile __ TONEMAPPING_NEUTRAL TONEMAPPING_FILMIC
+		#pragma multi_compile __ TONEMAPPING_NEUTRAL TONEMAPPING_FILMIC TONEMAPPING_UNCHARTED_2
 		
 		float _Response;
 		float _Gain;
@@ -178,7 +178,7 @@ Shader "Hidden/Cat Color Grading" {
 			//whitePoint = 1 + whitePoint * 0.25;
 			//blackPoint = 0 + blackPoint * 0.25;
 			
-			sRGB = (sRGB - blackPoint) / (whitePoint - blackPoint);
+			sRGB = max(0, (sRGB - blackPoint) / (whitePoint - blackPoint));
 			
 			float value = MaxC(sRGB);
 			sRGB *= 1.0 / max(value, EPSILON);
@@ -276,6 +276,28 @@ Shader "Hidden/Cat Color Grading" {
 			rgb = response*gain*rgb*(0.1235 + 1.235*rgb) / (gain*(0.1235 + 0.935*rgb) + response*rgb*(0.1 + rgb));
 		}
 		
+		
+		float3 NeutralCurve(float3 rgb, float a, float b, float c, float d, float e, float f)
+		{
+			return ((rgb * (a * rgb + c * b) + d * e) / (rgb * (a * rgb + b) + d * f)) - e / f;
+		}
+		
+		void Uncharted2ToneMapping(inout float3 rgb) {
+			const float a = 0.15;
+			const float b = 0.50;
+			const float c = 0.10;
+			const float d = 0.20;
+			const float e = 0.02;
+			const float f = 0.30;
+			const float W = 11.21;
+			const float exposureBias = 2.00;
+
+			// Tonemap
+			float whiteScale = 1 / NeutralCurve(W, a, b, c, d, e, f).x;
+			rgb = NeutralCurve(rgb * exposureBias, a, b, c, d, e, f);
+			rgb *= whiteScale;
+		}
+		
 		half4 ColorGrading(VertexOutput i) : SV_Target {
 			float4 color = Tex2Dlod(_MainTex, i.uv, 0);
 			float3 rgb = color.rgb;
@@ -287,7 +309,11 @@ Shader "Hidden/Cat Color Grading" {
 				FilmicToneMapping(/*inout*/ rgb);
 			#elif TONEMAPPING_NEUTRAL
 				NeutralToneMapping(/*inout*/ rgb, _Response, _Gain);
+			#elif TONEMAPPING_UNCHARTED_2
+				Uncharted2ToneMapping(/*inout*/ rgb);
 			#endif
+			
+			
 			
 			float3 aces = unity_to_ACES(rgb);
 			float3 acescc = ACES_to_ACEScc_optimized(aces);
@@ -304,6 +330,7 @@ Shader "Hidden/Cat Color Grading" {
 			Curves(/*inout*/sRGB, _BlackPoint, _WhitePoint, _CurveParams);
 			
 			rgb = GammaToLinearSpace(sRGB);
+			rgb = saturate(rgb);
 			
 			Dithering(/*inout*/rgb, i.uv);
 			
