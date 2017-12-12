@@ -55,7 +55,7 @@ namespace Cat.PostProcessing {
 		abstract public bool isActive { get; }
 
 		virtual internal void InitializeEffect() {}
-		abstract protected void UpdateMaterial(Material material, Camera camera, VectorInt2 cameraSize);
+		virtual protected void UpdateMaterial(Material material, Camera camera, VectorInt2 cameraSize) {}
 		virtual protected void UpdateRenderTextures(Camera camera, VectorInt2 cameraSize) {}
 		virtual protected void UpdateCameraMatricesPerFrame(Camera camera, VectorInt2 cameraSize) {}
 		virtual protected void UpdateMaterialPerFrame(Material material, Camera camera, VectorInt2 cameraSize) {}
