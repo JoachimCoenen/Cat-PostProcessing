@@ -23,7 +23,7 @@ namespace Cat.PostProcessing {
 			get { return DepthTextureMode.Depth; } 
 		}
 		override public bool isActive { 
-			get { return true; } 
+			get { return RenderSettings.fog; } 
 		}
 
 		static class PropertyIDs {
