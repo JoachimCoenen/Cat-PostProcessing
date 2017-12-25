@@ -11,6 +11,7 @@ namespace Cat.PostProcessingEditor {
 	//[CanEditMultipleObjects]
 	public class CatColorGradingEditor : Editor {
 		public SerializedProperty settings;
+		private ColorMapperChannel colorMapperChannel;
 
 		public void OnEnable() {
 			settings = serializedObject.FindProperty("m_Settings");
@@ -25,6 +26,7 @@ namespace Cat.PostProcessingEditor {
 			//
 			// Tonemapping:
 			//
+
 			DrawPropertyField(propertyIterator, ref isFirst);
 			var tonemapper = settings.FindPropertyRelative("tonemapper").enumValueIndex;
 			if (tonemapper == 2) {
@@ -60,9 +62,30 @@ namespace Cat.PostProcessingEditor {
 			DrawPropertyField(propertyIterator, ref isFirst);
 			var colorMapper = settings.FindPropertyRelative("colorMixer").enumValueIndex;
 			if (colorMapper == 4) {
-				DrawPropertyField(propertyIterator, ref isFirst);
-				DrawPropertyField(propertyIterator, ref isFirst);
-				DrawPropertyField(propertyIterator, ref isFirst);
+				EditorGUI.BeginChangeCheck(); {
+					EditorGUILayout.BeginHorizontal(); {
+						//GUILayout.Label("Channel", EditorStyles.label);
+						EditorGUILayout.PrefixLabel("Channel");
+						colorMapperChannel = GUILayout.Toggle(colorMapperChannel == ColorMapperChannel.Red, "Red", EditorStyles.miniButtonLeft) ? ColorMapperChannel.Red : colorMapperChannel;
+						colorMapperChannel = GUILayout.Toggle(colorMapperChannel == ColorMapperChannel.Green, "Green", EditorStyles.miniButtonMid) ? ColorMapperChannel.Green : colorMapperChannel;
+						colorMapperChannel = GUILayout.Toggle(colorMapperChannel == ColorMapperChannel.Blue, "Blue", EditorStyles.miniButtonRight) ? ColorMapperChannel.Blue : colorMapperChannel;
+					} EditorGUILayout.EndHorizontal();
+				} if (EditorGUI.EndChangeCheck()) {
+					GUI.FocusControl(null);
+				}
+
+				for (int i = 0; i <= (int)colorMapperChannel; i++) {
+					SkipPropertyField(propertyIterator, ref isFirst);
+				}
+				var c = propertyIterator.colorValue;
+				c.r = EditorGUILayout.Slider("Red", c.r, -1, 1);
+				c.g = EditorGUILayout.Slider("Green", c.g, -1, 1);
+				c.b = EditorGUILayout.Slider("Blue", c.b, -1, 1);
+				propertyIterator.colorValue = c;
+				for (int i = (int)colorMapperChannel+1; i <= 2; i++) {
+					SkipPropertyField(propertyIterator, ref isFirst);
+				}
+
 				DrawPropertyField(propertyIterator, ref isFirst);
 			} else {
 				SkipPropertyField(propertyIterator, ref isFirst);
@@ -247,7 +270,6 @@ namespace Cat.PostProcessingEditor {
 			return x;
 		}
 
-
 		void DrawResponseFunction(float width, float height) {
 			var blackPoint = settings.FindPropertyRelative("blackPoint").floatValue;
 			var grayPoint  = settings.FindPropertyRelative("midPoint").floatValue;
@@ -299,6 +321,10 @@ namespace Cat.PostProcessingEditor {
 				}
 				, 0.90f
 			);
+		}
+
+		enum ColorMapperChannel {
+			Red = 0, Green = 1, Blue = 2
 		}
 
 	}
