@@ -9,25 +9,15 @@ Shader "Hidden/Cat Deferred Fog" {
 		
         #pragma multi_compile FOG_LINEAR FOG_EXP FOG_EXP_SQR
 		
-		float	_Intensity;
-		float3	_Color;
-		float	_StartDistance;
-		float	_EndDistance;
+		float3	_FogColor;
+		float3	_FogParams;
 		
 		float4 fragFog(VertexOutput i) : SV_Target {
 			float depth = sampleEyeDepth(_DepthTexture, i.uv);
-			
-			#if FOG_LINEAR
-				half density = InvLerpSat(_StartDistance, _EndDistance, depth);
-			#elif FOG_EXP
-				half density = 1 - exp2(-_Intensity * depth);
-			#elif FOG_EXP_SQR
-				half density = 1 - exp2(-Pow2(_Intensity * depth));
-			#endif
-			density = depth*1.0125 < _ProjectionParams.z ? density : 0; // if not isSkybox, apply fog
+			half density = getFogDensity(depth, _FogParams);
 			
 			float4 color = Tex2Dlod(_MainTex, i.uv, 0);
-			color.rgb = lerp(color.rgb, _Color.rgb, density);
+			color.rgb = lerp(color.rgb, _FogColor.rgb, density);
 			return color;
 		}
 	ENDCG 

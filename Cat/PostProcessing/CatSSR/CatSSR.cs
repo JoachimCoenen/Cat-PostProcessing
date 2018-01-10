@@ -13,16 +13,14 @@ namespace Cat.PostProcessing {
 	[ImageEffectAllowedInSceneView]
 	[AddComponentMenu("Cat/PostProcessing/Screen Space Reflections")]
 	public class CatSSR : PostProcessingBaseCommandBuffer {
-			public enum DebugMode {
-				AppliedReflections = 0,
-				AppliedReflectionsAndCubeMap = 1,
-				ComposedReflectionsRGB = 2,
-				ComposedReflectionsA = 3,
-				ReflectionsRGB = 4,
-				RayTraceConfidence = 5,
-				PDF = 6,
-				MipsRGB = 7,
-				MipLevel = 8,
+		public enum DebugMode {
+			AppliedReflectionsAndCubeMap = 0,
+			AppliedReflections = 1,
+			ReflectionsRGB = 2,
+			RayTraceConfidence = 3,
+			PDF = 4,
+			MipsRGB = 5,
+			MipLevel = 6,
 		}
 
 		[Serializable]
@@ -255,7 +253,9 @@ namespace Cat.PostProcessing {
 			internal static readonly int MipLevelForDebug_i				= Shader.PropertyToID("_MipLevelForDebug");
 
 
-			internal static readonly int IsVelocityPredictionEnabled_b	= Shader.PropertyToID("_IsVelocityPredictionEnabled");
+			internal static readonly int FogColor_c						= Shader.PropertyToID("_FogColor");
+			internal static readonly int FogParams_v					= Shader.PropertyToID("_FogParams");
+
 			internal static readonly int FrameCounter_f					= Shader.PropertyToID("_FrameCounter");
 			internal static readonly int BlurDir_v						= Shader.PropertyToID("_BlurDir");
 			internal static readonly int MipLevel_f						= Shader.PropertyToID("_MipLevel");
@@ -362,12 +362,29 @@ namespace Cat.PostProcessing {
 			material.SetInt(PropertyIDs.DebugMode_i, (int)settings.debugMode);
 			material.SetInt(PropertyIDs.MipLevelForDebug_i, settings.mipLevelForDebug);
 
+			var isGammaColorSpace = QualitySettings.activeColorSpace == ColorSpace.Gamma;
+			var fogColor = RenderSettings.fogColor;
+			material.SetVector(PropertyIDs.FogColor_c, isGammaColorSpace ? fogColor : fogColor.linear);
+			material.SetVector(PropertyIDs.FogParams_v, new Vector3(RenderSettings.fogDensity, RenderSettings.fogStartDistance, RenderSettings.fogEndDistance));
+
+			material.DisableKeyword("FOG_LINEAR");
+			material.DisableKeyword("FOG_EXP");
+			material.DisableKeyword("FOG_EXP_SQR");
+			if (RenderSettings.fog) {
+				switch (RenderSettings.fogMode) {
+					case FogMode.Linear:
+						material.EnableKeyword("FOG_LINEAR");
+						break;
+					case FogMode.Exponential:
+						material.EnableKeyword("FOG_EXP");
+						break;
+					case FogMode.ExponentialSquared:
+						material.EnableKeyword("FOG_EXP_SQR");
+						break;
+				}
+			}
 
 			material.SetTexture(PropertyIDs.blueNoise_t, PostProcessingManager.blueNoiseTexture);
-
-			var allowVelocityPrediction = true && !isSceneView;
-			material.SetInt(PropertyIDs.IsVelocityPredictionEnabled_b, allowVelocityPrediction ? 1 : 0);
-
 		}
 
 		private enum SSRPass {
@@ -377,17 +394,6 @@ namespace Cat.PostProcessing {
 			MipMapBlur,
 			ComposeAndApplyReflections,
 			Debug,
-			Depth,
-			ReflectionBlur,
-			ComposeAndApplyReflections2,
-			/*
-			ResolveHitPoints    ,
-			SimpleBlur          ,
-		//	ComposeReflections  ,
-		//	ApplyReflections    ,
-			UpsampleRayHits     ,
-			PackNormals         ,
-			*/
 		}
 
 		override protected void PopulateCommandBuffer(CommandBuffer buffer, Material material, VectorInt2 cameraSize) {
@@ -413,11 +419,6 @@ namespace Cat.PostProcessing {
 				new VectorInt2(reflRTSize.x / 32, reflRTSize.y / 64),
 				new VectorInt2(reflRTSize.x / 64, reflRTSize.y / 128),
 			};
-
-		//	#region Depth
-		//	GetTemporaryRT(buffer, PropertyIDs.Depth_t, HitTextureSize, RenderTextureFormat.RHalf, FilterMode.Point, RenderTextureReadWrite.Linear);
-		//	Blit(buffer, PropertyIDs.Depth_t, material, (int)SSRPass.Depth);
-		//	#endregion
 
 			#region RayTrace
 			GetTemporaryRT(buffer, PropertyIDs.Hit_t, HitTextureSize, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
@@ -472,24 +473,6 @@ namespace Cat.PostProcessing {
 			}
 			#endregion
 	
-		//	#region ReflectionMipLevels
-		//	var maxReflectionMipLvl = settings.useReflectionMipMap ? 5 : 1;
-		//	for (int i = 1; i < maxReflectionMipLvl; ++i) {
-		//		GetT|emporaryRT(buffer, PropertyIDs.tempBuffers_t[i], mipTempSizes[i], RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
-		//		var pass = SSRPass.ReflectionBlur;//settings.suppressFlickering && i == 1 ? SSRPass.MipMapBlurComressor : SSRPass.MipMapBlurVanilla;
-		//		buffer.SetGlobalFloat(PropertyIDs.MipLevel_f, i-1);
-		//
-		//		buffer.SetGlobalVector(PropertyIDs.BlurDir_v, new Vector4(0, 2.25f/mipRTSizes[i-1].y, 0, -2.25f/mipRTSizes[i-1].y));
-		//		Blit(buffer, history, PropertyIDs.tempBuffers_t[i], material, (int)pass);
-		//
-		//		buffer.SetGlobalVector(PropertyIDs.BlurDir_v, new Vector4(2.25f/mipRTSizes[i-1].x, 0, -2.25f/mipRTSizes[i-1].x, 0));
-		//		buffer.SetGlobalTexture("_MainTex", PropertyIDs.tempBuffers_t[i]);
-		//		buffer.SetRenderTarget(history, i);
-		//		Blit(buffer, material, (int)pass);
-		//
-		//		ReleaseT|emporaryRT(buffer, PropertyIDs.tempBuffers_t[i]);	// release temporary RT
-		//	}
-		//	#endregion
 	
 			#region ComposeAndApplyReflections
 			Blit(buffer, BuiltinRenderTextureType.CameraTarget, material, (int)SSRPass.ComposeAndApplyReflections);
