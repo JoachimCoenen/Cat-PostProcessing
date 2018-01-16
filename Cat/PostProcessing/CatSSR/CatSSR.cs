@@ -21,6 +21,7 @@ namespace Cat.PostProcessing {
 			PDF = 4,
 			MipsRGB = 5,
 			MipLevel = 6,
+			DoesRaytrace = 7,
 		}
 
 		[Serializable]

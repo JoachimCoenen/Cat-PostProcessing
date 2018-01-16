@@ -82,21 +82,21 @@ float3 GetNormal(float2 uv) { return Tex2Dlod(_NormalsPacked, uv, 0).xyz * 2 - 1
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 
-float GGXnoPi(float nh, float m2) {
-	float d = (nh * m2 - nh) * nh + 1;
-	return m2 / max(1e-9, Pow2(d));
+half GGXnoPi(half nh, half a2) {
+	half d = (nh * a2 - nh) * nh + 1;
+	return a2 / (Pow2(d) + 1e-7f);
 }
 
 // Brian Karis, Epic Games "Real Shading in Unreal Engine 4" 
 // http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_slides.pdf
-float3 ImportanceSample(float2 Xi, float roughness, out float pdf) {
-	float m2 = max(1e-5, Pow4(roughness));
-	float Phi = 2 * UNITY_PI * Xi.x;
+half3 ImportanceSample(half2 Xi, half roughness, out float pdf) {
+	half m2 = max(1e-5, Pow4(roughness));
+	half Phi = 2 * UNITY_PI * Xi.x;
 				 
-	float CosTheta = sqrt((1.0 - Xi.y) / (1.0 + (m2 - 1.0) * Xi.y));
-	float SinTheta = sqrt(max(1e-5, 1.0 - CosTheta * CosTheta));
+	half CosTheta = sqrt((1.0 - Xi.y) / (1.0 + (m2 - 1.0) * Xi.y));
+	half SinTheta = sqrt(max(1e-5, 1.0 - CosTheta * CosTheta));
 				 
-	float3 H;
+	half3 H;
 	H.x = SinTheta * cos(Phi);
 	H.y = SinTheta * sin(Phi);
 	H.z = CosTheta;
@@ -115,47 +115,65 @@ float3 rotateVector(float3 v, float3 r) {
 }
 
 
-bool AreReflectionsAllowed(float3 viewDir, float3 normal, float reflectionDistance, float smoothness) {
+bool AreReflectionsAllowed(half3 viewDir, half3 normal, float reflectionDistance, half smoothness) {
 	return (true
 			&& (reflectionDistance <= (_MaxReflectionDistance)) 
 			&& (!_CullBackFaces || dot(viewDir, normal) <= cos(45/180.0*UNITY_PI)) 
 		//	&& (!_CullBackFaces || dot(viewDir, reflect(viewDir, normal)) >= 0) 
-			&& (!(MIN_SMOOTHNESS > 0) || smoothness >= MIN_SMOOTHNESS) 
+			&& (MIN_SMOOTHNESS <= 0 || smoothness >= MIN_SMOOTHNESS) 
 	);
 }
 
 
-bool AreReflectionsAllowedScreenSpace(float3 viewDir, float3 normal, float depth, float smoothness) {
+bool AreReflectionsAllowedScreenSpace(half3 viewDir, half3 normal, float depth, half smoothness) {
 	return (true
 			&& (
 			//	1 / (_ZBufferParams.z * depth + _ZBufferParams.w) <= _MaxReflectionDistance
 				_MaxReflectionDistance * (_ZBufferParams.z * depth + _ZBufferParams.w) >= 1
 			) 
 			&& (!_CullBackFaces || dot(viewDir, normal) <= cos(45/180.0*UNITY_PI)) 
-			&& (!(MIN_SMOOTHNESS > 0) || smoothness >= MIN_SMOOTHNESS) 
+			&& (MIN_SMOOTHNESS <= 0 || smoothness >= MIN_SMOOTHNESS) 
 	);
 }
 
-float CullBackHits(float3 hitNormal, float3 rayDir) { // JCO@@@TODO: find a better name for this!
+half CullBackHits(half3 hitNormal, half3 rayDir) { // JCO@@@TODO: find a better name for this!
 	return (!CULL_RAY_HITS_ON_BACK_SIDE || dot(rayDir, hitNormal) <= 0);
 }
 
-float RayAttenLength(float actualStepCount) {
+half RayAttenLength(half actualStepCount) {
 	return 1 - Pow2(InvLerpSat(_RayLengthFade * _StepCount, 0, _StepCount - actualStepCount));
 }
 
-float RayAttenReflectionDistance(float reflectionDistance) {
+half BackgroundFade(float rayHitZ) {
+	//float act01Depth = Linear01Depth(actualDepth);
+	//float ray01Depth = Linear01Depth(rayDepth);
+	
+	//half n = (actualDepth - rayDepth) / zStep;
+	 
+	#if UNITY_REVERSED_Z
+		//half confidence = (0 || rayHit.z <= 0.000875);
+		return sqrt(InvLerpSat((0.001875-0.000), (0+0.0000), (max(0,rayHitZ))));
+	#else
+		return InvLerpSat(1-0.00125, 1, rayHitZ);
+	#endif
+	
+	
+	 
+	//return 1 - Pow2(InvLerpSat(_RayLengthFade * _StepCount, 0, _StepCount - actualStepCount));
+}
+
+half RayAttenReflectionDistance(float reflectionDistance) {
 	return 1 - Pow2(InvLerpSat(_ReflectionDistanceFade * _MaxReflectionDistance, 0, _MaxReflectionDistance - reflectionDistance));
 }
 
-float RayAttenReflectionDistanceScreenSpace(float depth) {
-	float dzwm = (depth * _ZBufferParams.z + _ZBufferParams.w) * _MaxReflectionDistance;
+half RayAttenReflectionDistanceScreenSpace(float depth) {
+	half dzwm = (depth * _ZBufferParams.z + _ZBufferParams.w) * _MaxReflectionDistance;
 	return 1 - Pow2( 1 - InvLerpSat(0, _ReflectionDistanceFade * dzwm, dzwm - 1));
 }
 
-float RayAttenBorder(float2 uvHit, float2 dir, float value) {
+half RayAttenBorder(half2 uvHit, half2 dir, half value) {
 	half2 rborder = (dir > 0) ? 1 : 0;
-	float dist = MinC(sign(dir)*(rborder - uvHit));
+	half dist = MinC(sign(dir)*(rborder - uvHit));
 	return 1 - Pow5(InvLerpSat(value, 0, dist));
 	
 //	float2 pos2 = abs(uvHit * 2 - 1);
@@ -173,7 +191,7 @@ float4 fragRayTrace(VertexOutputVS i) : SV_Target {
 	float depth = sampleDepthLod(_DepthTexture, uv, 0);
 	float3 ssStartPos = GetScreenPos(uv, depth);
 	float3 vsStartPos = (i.vsRay.xyz * LinearEyeDepth(depth));
-	float3 vsViewDir = -normalize(vsStartPos);
+	half3 vsViewDir = -normalize(vsStartPos);
 	
 	float invReflectionDistance = rsqrt(dot(vsStartPos, vsStartPos));
 	float reflectionDistance = 1 / invReflectionDistance;
@@ -183,9 +201,9 @@ float4 fragRayTrace(VertexOutputVS i) : SV_Target {
 	
 	
 	float2 pos = uv * _HitTex_TexelSize.zw;
-	float2 noise1D = -round(noiseSimple(0 + (_FrameCounter)) * _HitTex_TexelSize.wz);
+	half2 noise1D = -round(noiseSimple(0 + (_FrameCounter)) * _HitTex_TexelSize.wz);
 	//noise1D = 4.00 * (m - m * m);
-	float3 noise2D = Tex2Dlod(_BlueNoise, (pos + noise1D) *_BlueNoise_TexelSize.xy, 0).rgb;
+	half3 noise2D = Tex2Dlod(_BlueNoise, (pos + noise1D) *_BlueNoise_TexelSize.xy, 0).rgb;
 	noise2D.y *= _ImportanceSampleBias;
 	
 	float pdf = 1;
@@ -194,15 +212,15 @@ float4 fragRayTrace(VertexOutputVS i) : SV_Target {
 	vsStartPos = vsStartPos + s.normal * max(0.005*LinearEyeDepth(depth), 0.001);
 	ssStartPos = ViewToScreenPos(vsStartPos);
 	
-	float3 vsRayDir = getReflectionVector(s, vsViewDir);
+	half3 vsRayDir = getReflectionVector(s, vsViewDir);
 //	float3 vsRayDir = WorldToViewDir(wsRayDir);
 //	float3 ssRayDir = normalize(ViewToScreenPos(vsRayDir + vsStartPos) - ssStartPos);
 	
-	float3 ssRayDir = 0;
+	half3 ssRayDir = 0;
 	ssRayDir.z = -sign(ViewToScreenPos(-vsRayDir + vsStartPos).z);
 	ssRayDir = ssRayDir.z * (ViewToScreenPos(ssRayDir.z*vsRayDir + vsStartPos).xyz - ssStartPos);
 	ssRayDir = normalize(ssRayDir);
-	float jitter = 0;//_NoiseStrength * (noise2D.z*1-0.5);//noiseSimple(uv + depth);
+	half jitter = 0;//_NoiseStrength * (noise2D.z*1-0.5);//noiseSimple(uv + depth);
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	float4 rayHit = RayTrace(
 			_StepCount, 0.5, 
@@ -212,25 +230,43 @@ float4 fragRayTrace(VertexOutputVS i) : SV_Target {
 			_ZBufferParams, CAT_PASS_DEPTHT_EXTURE(_DepthTexture), 
 			_GBuffer_TexelSize, jitter
 	);
+	
+	float actualDepth = sampleDepthLod(_DepthTexture, rayHit.xy, 0);
+	#if UNITY_REVERSED_Z
+		bool isBackground = actualDepth <= 0.000 && rayHit.z <= 0.0008750;
+		//bool isBackground = (0 || rayHit.z <= 0.0001);
+	#else
+		bool isBackground = actualDepth >= 1 && (rayHit.z >= 0.995); // not tested yet...
+		//bool isBackground = (0 || rayHit.z >= 0.9);
+	#endif
+	#if REFLECT_SKYBOX
+		half confidence = rayHit.w < _StepCount || isBackground;
+		bool ignoreRayAttenLength = isBackground;
+	#else
+		half confidence = rayHit.w < _StepCount;// && !isBackground;
+		bool ignoreRayAttenLength = false;
+	#endif
+	/*
+	float invStepCount = 1 / float(_StepCount);
+	float3 fullRayStep  = ssRayDir * invStepCount * 1;
+	fullRayStep.xy *= 0.5;
+	half n = (actualDepth - rayHit.z) / fullRayStep.z;
+	rayHit.xyz = isBackground ? rayHit.xyz + n * fullRayStep : rayHit.xyz;
+	*/
 	float2 uvHit = rayHit.xy;
-	
-	float confidence = 0;
-	if (rayHit.w < _StepCount) {
-		confidence = 1;
-		float3 hitNormal = GetNormal(rayHit.xy);
+	confidence *= all(abs(rayHit.xy-0.5)<0.5);
+	if (confidence) {
+		half3 hitNormal = GetNormal(rayHit.xy);
 		hitNormal = WorldToViewDir(hitNormal);
-		confidence *= CullBackHits(hitNormal, vsRayDir);
 		
+		confidence *= isBackground ? 1 : CullBackHits(hitNormal, vsRayDir);
 		confidence *= RayAttenReflectionDistance(reflectionDistance);
-
-		confidence *= RayAttenLength(rayHit.w);
-		
+		confidence *= ignoreRayAttenLength ? 1 : RayAttenLength(rayHit.w);
 		confidence *= RayAttenBorder(uvHit, ssRayDir.xy, _EdgeFade);
-	//	confidence = ssRayDir.z > 0;
-	//confidence = 1;
+		
 	}
-	//confidence = pow(rayHit.w / (float)_StepCount, 2.2);
 	
+	//return float4(uvHit, rayHit.w/_StepCount, pdf);
 	return float4(uvHit, confidence, pdf);
 }
 
@@ -247,12 +283,13 @@ float getMipLevelResolve(float coneTangent, float2 hitUV, float2 uv, float maxMi
 	return clamp(log2(intersectionCircleRadius * MaxC(_MainTex_TexelSize.zw)), 0, maxMipLevel);
 }
 
-float getMipLevelResolve(float3 vsHitPos, float rayLength, float smoothness, float maxMipLevel) {
-	float roughness = pow(1 - smoothness, 4.0/3.0);
+half getMipLevelResolve(float3 vsHitPos, float rayLength, half smoothness, half maxMipLevel) {
+	half roughness = pow(1 - smoothness, 5.0/3.0);
 	float hitDistance = 0 + length(vsHitPos);
-	float area = abs(roughness * (rayLength + Pow2(roughness)) * _PixelsPerMeterAtOneMeter / hitDistance * 1) * (_ImportanceSampleBias);
+	half area = abs(roughness * (rayLength + Pow2(roughness)) * _PixelsPerMeterAtOneMeter / hitDistance * 1) * (_ImportanceSampleBias);
 	
-	float mip = log2(area/16.0 + 15.0/16.0);
+	half mip = log2(area/16.0 + 15.0/16.0);
+	//return (rayLength*0.01) * maxCameraMipLevel;
 	return clamp(mip, 0, maxMipLevel);
 }
 
@@ -675,13 +712,17 @@ half4 fragDebug(VertexOutputFull i ) : SV_Target {
 	float3 vsHitPos = ScreenToViewPos(GetScreenPos(hitUV, hitZ));
 	float rayLength = length(vsHitPos - vsPos);
 	
+	float3 vsNormal = normalize(WorldToViewDir(s.normal));
+	float invReflectionDistance =  rsqrt(dot(vsPos, vsPos));
+	float3 vsViewDir = -vsPos * invReflectionDistance;
+	
 	float4 pureRefl = Tex2Dlod(_ReflectionsTex, i.uv, clamp(_MipLevelForDebug, 0, maxReflectionMipLevel));
 	pureRefl *= pureRefl.a;
 	
 	float4 reflections = fragComposeAndApplyReflections(i);
 	float3 reflProbes = tex2D(_CameraReflectionsTexture, i.uv).rgb;
 	half dummyConfidence;
-	half3 values[7] = {
+	half3 values[8] = {
 /*7*/	half3(reflections.rgb)*reflections.a + reflProbes,
 /*6*/	half3(reflections.rgb + reflProbes)*reflections.a,
 /*1*/	half3(pureRefl.rgb),
@@ -689,6 +730,7 @@ half4 fragDebug(VertexOutputFull i ) : SV_Target {
 /*3*/	half3(Pow5(Compress(tex2D(_HitTex, i.uv).w)).xxx),
 /*2*/	half3(Tex2Dlod(_MainTex, i.uv, _UseCameraMipMap ? _MipLevelForDebug : 0).rgb),
 /*4*/	half3(getMipLevelResolve(vsHitPos, rayLength, s.smoothness, maxCameraMipLevel).xxx / maxCameraMipLevel),
+/*7*/	half3(AreReflectionsAllowed(vsViewDir, vsNormal, 1/invReflectionDistance, s.smoothness).xxx),
 	};
 	
 	float3 result = values[(int)_DebugMode];

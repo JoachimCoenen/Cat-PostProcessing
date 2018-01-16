@@ -26,11 +26,10 @@ Shader "Hidden/Cat SSR" {
 	}
 	
 	CGINCLUDE
-		#define MIN_SMOOTHNESS 0.0 					// default = 0
-		#define IMPORTANCE_SAMPLE_BIAS 1 			// 0.45
-		#define MAX_RESOLVE_SAMPLES 4				// range = [1...7], default = 4, type = integer
-		#define CULL_RAY_HITS_ON_BACK_SIDE false	// default = false
-		#define USE_BINARY_RAYTRACER 00
+		#define MIN_SMOOTHNESS 0.0 					// [0...1]       default = 0
+		#define CULL_RAY_HITS_ON_BACK_SIDE false	// [false, true] default = false
+		#define USE_BINARY_RAYTRACER 00				// [0, 1]        default = 0
+		#define REFLECT_SKYBOX 00					// [0, 1]        default = 0
 		
 		#include "UnityCG.cginc"
 		#include "UnityStandardUtils.cginc"
@@ -69,6 +68,13 @@ Shader "Hidden/Cat SSR" {
 		//Pass 1 resolveAdvanced
 		Pass {
 			Blend One Zero, One Zero
+			Stencil {
+				ref [_StencilNonBackground]
+				readmask [_StencilNonBackground]
+				// Normally just comp would be sufficient, but there's a bug and only front face stencil state is set (case 583207)
+				compback equal
+				compfront equal
+			}
 			
 			CGPROGRAM
 			#pragma target 3.0
