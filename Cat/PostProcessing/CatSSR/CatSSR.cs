@@ -13,16 +13,15 @@ namespace Cat.PostProcessing {
 	[ImageEffectAllowedInSceneView]
 	[AddComponentMenu("Cat/PostProcessing/Screen Space Reflections")]
 	public class CatSSR : PostProcessingBaseCommandBuffer {
-			public enum DebugMode {
-				AppliedReflections = 0,
-				AppliedReflectionsAndCubeMap = 1,
-				ComposedReflectionsRGB = 2,
-				ComposedReflectionsA = 3,
-				ReflectionsRGB = 4,
-				RayTraceConfidence = 5,
-				PDF = 6,
-				MipsRGB = 7,
-				MipLevel = 8,
+		public enum DebugMode {
+			AppliedReflectionsAndCubeMap = 0,
+			AppliedReflections = 1,
+			ReflectionsRGB = 2,
+			RayTraceConfidence = 3,
+			PDF = 4,
+			MipsRGB = 5,
+			MipLevel = 6,
+			DoesRaytrace = 7,
 		}
 
 		[Serializable]
@@ -112,74 +111,189 @@ namespace Cat.PostProcessing {
 			public int					mipLevelForDebug;
 
 
-			public static Settings defaultSettings { 
+			public static Settings defaultSettings {
 				get {
 					return new Settings {
-						rayTraceResol			= TextureResolution.FullResolution,
-						stepCount				= 96,
-					//	isExactPixelStride		= false,
-						minPixelStride			= 3,
-						maxPixelStride			= 12,
+						rayTraceResol = TextureResolution.FullResolution,
+						stepCount = 96,
+						//	isExactPixelStride		= false,
+						minPixelStride = 3,
+						maxPixelStride = 12,
 						//noiseStrength			= 0.5f,
-						cullBackFaces			= true,
+						cullBackFaces = true,
 						maxReflectionDistance	= 100,
-					//	upSampleHitTexture		= false,
-						
+						//	upSampleHitTexture		= false,
+
 
 						reflectionResolution	= TextureResolution.FullResolution,
-						intensity				= 1,
+						intensity = 1,
 						reflectionDistanceFade	= 0.5f,
-						rayLengthFade			= 0.25f,
-						edgeFade				= 0.125f,
-						useRetroReflections		= true,
-					//	useReflectionMipMap		= false,
-						
+						rayLengthFade = 0.25f,
+						edgeFade = 0.125f,
+						useRetroReflections = true,
+						//	useReflectionMipMap		= false,
 
-					//	useImportanceSampling	= true,
-						resolveSampleCount		= 4,
+
+						//	useImportanceSampling	= true,
+						resolveSampleCount = 4,
 						importanceSampleBias	= 0.75f,
-						useCameraMipMap			= true,
-					//	suppressFlickering		= true,
-						
-						
-						useTemporalSampling		= true,
-						response				= 0.05f,
-						toleranceMargin			= 2,
+						useCameraMipMap = true,
+						//	suppressFlickering		= true,
 
-						
-						debugOn					= false,
-						debugMode				= DebugMode.MipLevel,
-						mipLevelForDebug		= 0,
-//=======================================================================================
-				//		intensity = 1,
-				//		maxReflectionDistance = 100,
-				//		reflectionDistanceFade = 0.5f,
-				//		rayLengthFade = 0.25f,
-				//		edgeFade = 0.125f,
-				//		useRetroReflections = true,
-				//		cullBackFaces = false,
-				//		
-				//		stepCount = 96,
-				//	//	isExactPixelStride = false,
-				//		minPixelStride = 3,
-				//		maxPixelStride = 12,
-				//		noiseStrength = 1,
-				//
-				//		useMipMap = true,
-				//	//	suppressFlickering = false,
-				//		useTemporalSampling = true,
-				//
-				//	//	upSampleHitTexture = true,
-				//		rayTraceResol = TextureResolution.FullResolution,
-				//		reflectionResolution = TextureResolution.FullResolution,
-				//
-				//		debugOn = false,
-				//		debugMode = DebugMode.MipLevel,
-				//		mipLevelForDebug = 0,
+
+						useTemporalSampling = true,
+						response = 0.05f,
+						toleranceMargin = 2,
+
+
+						debugOn = false,
+						debugMode = DebugMode.MipLevel,
+						mipLevelForDebug = 0,
 					};
 				}
 			}
 
+			public enum Preset {
+			//	ExtremeHighQuality,
+				HighQuality = 1,
+				MediumuQality,
+				LowQuality,
+			//	ExtremeLowQuality,
+			}
+
+			public static Settings GetPreset(Preset preset) { 
+				var newSetting = new Settings();
+
+				switch (preset) {
+					case Preset.HighQuality: {
+							newSetting.rayTraceResol           = TextureResolution.FullResolution;
+							newSetting.stepCount               = 160;
+							//	newSetting.isExactPixelStride   = false;
+							newSetting.minPixelStride          = 3;
+							newSetting.maxPixelStride          = 12;
+							//newSetting.noiseStrength         = 0.5f;
+							newSetting.cullBackFaces           = true;
+							newSetting.maxReflectionDistance   = 100;
+							//	newSetting.upSampleHitTexture   = false;
+
+							newSetting.reflectionResolution    = TextureResolution.FullResolution;
+							newSetting.intensity               = 1;
+							newSetting.reflectionDistanceFade  = 0.5f;
+							newSetting.rayLengthFade           = 0.25f;
+							newSetting.edgeFade                = 0.125f;
+							newSetting.useRetroReflections     = true;
+							//	newSetting.useReflectionMipMap  = false;
+
+							//	newSetting.useImportanceSampling= true;
+							newSetting.resolveSampleCount      = 4;
+							newSetting.importanceSampleBias    = 0.75f;
+							newSetting.useCameraMipMap         = true;
+							//	newSetting.suppressFlickering   = true;
+
+							newSetting.useTemporalSampling     = true;
+							newSetting.response                = 0.05f;
+							newSetting.toleranceMargin         = 2;
+						};
+						break;
+					case Preset.MediumuQality: {
+							newSetting.rayTraceResol           = TextureResolution.HalfResolution;
+							newSetting.stepCount               = 128;
+							//	newSetting.isExactPixelStride   = false;
+							newSetting.minPixelStride          = 3;
+							newSetting.maxPixelStride          = 12;
+							//newSetting.noiseStrength         = 0.5f;
+							newSetting.cullBackFaces           = true;
+							newSetting.maxReflectionDistance   = 100;
+							//	newSetting.upSampleHitTexture   = false;
+
+							newSetting.reflectionResolution    = TextureResolution.FullResolution;
+							newSetting.intensity               = 1;
+							newSetting.reflectionDistanceFade  = 0.5f;
+							newSetting.rayLengthFade           = 0.25f;
+							newSetting.edgeFade                = 0.125f;
+							newSetting.useRetroReflections     = false;
+							//	newSetting.useReflectionMipMap  = false;
+
+							//	newSetting.useImportanceSampling= true;
+							newSetting.resolveSampleCount      = 4;
+							newSetting.importanceSampleBias    = 0.75f;
+							newSetting.useCameraMipMap         = true;
+							//	newSetting.suppressFlickering   = true;
+
+							newSetting.useTemporalSampling     = true;
+							newSetting.response                = 0.05f;
+							newSetting.toleranceMargin         = 2;
+						};
+						break;
+					case Preset.LowQuality: {
+							newSetting.rayTraceResol           = TextureResolution.HalfResolution;
+							newSetting.stepCount               = 96;
+							//	newSetting.isExactPixelStride   = false;
+							newSetting.minPixelStride          = 3;
+							newSetting.maxPixelStride          = 12;
+							//newSetting.noiseStrength         = 0.5f;
+							newSetting.cullBackFaces           = true;
+							newSetting.maxReflectionDistance   = 100;
+							//	newSetting.upSampleHitTexture   = false;
+
+							newSetting.reflectionResolution    = TextureResolution.HalfResolution;
+							newSetting.intensity               = 1;
+							newSetting.reflectionDistanceFade  = 0.5f;
+							newSetting.rayLengthFade           = 0.25f;
+							newSetting.edgeFade                = 0.125f;
+							newSetting.useRetroReflections     = false;
+							//	newSetting.useReflectionMipMap  = false;
+
+							//	newSetting.useImportanceSampling= true;
+							newSetting.resolveSampleCount      = 4;
+							newSetting.importanceSampleBias    = 0.75f;
+							newSetting.useCameraMipMap         = true;
+							//	newSetting.suppressFlickering   = true;
+
+							newSetting.useTemporalSampling     = true;
+							newSetting.response                = 0.05f;
+							newSetting.toleranceMargin         = 2;
+						};
+						break;
+					default: {
+							Debug.LogFormat("UnknownPresetmode '{0}'! using standard preset", preset);
+							newSetting.rayTraceResol           = TextureResolution.FullResolution;
+							newSetting.stepCount               = 96;
+							//	newSetting.isExactPixelStride   = false;
+							newSetting.minPixelStride          = 3;
+							newSetting.maxPixelStride          = 12;
+							//newSetting.noiseStrength         = 0.5f;
+							newSetting.cullBackFaces           = true;
+							newSetting.maxReflectionDistance   = 100;
+							//	newSetting.upSampleHitTexture   = false;
+
+							newSetting.reflectionResolution    = TextureResolution.FullResolution;
+							newSetting.intensity               = 1;
+							newSetting.reflectionDistanceFade  = 0.5f;
+							newSetting.rayLengthFade           = 0.25f;
+							newSetting.edgeFade                = 0.125f;
+							newSetting.useRetroReflections     = false;
+							//	newSetting.useReflectionMipMap  = false;
+
+							//	newSetting.useImportanceSampling= true;
+							newSetting.resolveSampleCount      = 4;
+							newSetting.importanceSampleBias    = 0.75f;
+							newSetting.useCameraMipMap         = true;
+							//	newSetting.suppressFlickering   = true;
+
+							newSetting.useTemporalSampling     = true;
+							newSetting.response                = 0.05f;
+							newSetting.toleranceMargin         = 2;
+						};
+						break;
+				}
+
+				newSetting.debugOn                 = false;
+				newSetting.debugMode               = DebugMode.MipLevel;
+				newSetting.mipLevelForDebug        = 0;
+
+				return newSetting;
+			}
 		}
 
 		[SerializeField]
@@ -255,7 +369,9 @@ namespace Cat.PostProcessing {
 			internal static readonly int MipLevelForDebug_i				= Shader.PropertyToID("_MipLevelForDebug");
 
 
-			internal static readonly int IsVelocityPredictionEnabled_b	= Shader.PropertyToID("_IsVelocityPredictionEnabled");
+			internal static readonly int FogColor_c						= Shader.PropertyToID("_FogColor");
+			internal static readonly int FogParams_v					= Shader.PropertyToID("_FogParams");
+
 			internal static readonly int FrameCounter_f					= Shader.PropertyToID("_FrameCounter");
 			internal static readonly int BlurDir_v						= Shader.PropertyToID("_BlurDir");
 			internal static readonly int MipLevel_f						= Shader.PropertyToID("_MipLevel");
@@ -362,12 +478,29 @@ namespace Cat.PostProcessing {
 			material.SetInt(PropertyIDs.DebugMode_i, (int)settings.debugMode);
 			material.SetInt(PropertyIDs.MipLevelForDebug_i, settings.mipLevelForDebug);
 
+			var isGammaColorSpace = QualitySettings.activeColorSpace == ColorSpace.Gamma;
+			var fogColor = RenderSettings.fogColor;
+			material.SetVector(PropertyIDs.FogColor_c, isGammaColorSpace ? fogColor : fogColor.linear);
+			material.SetVector(PropertyIDs.FogParams_v, new Vector3(RenderSettings.fogDensity, RenderSettings.fogStartDistance, RenderSettings.fogEndDistance));
+
+			material.DisableKeyword("FOG_LINEAR");
+			material.DisableKeyword("FOG_EXP");
+			material.DisableKeyword("FOG_EXP_SQR");
+			if (RenderSettings.fog) {
+				switch (RenderSettings.fogMode) {
+					case FogMode.Linear:
+						material.EnableKeyword("FOG_LINEAR");
+						break;
+					case FogMode.Exponential:
+						material.EnableKeyword("FOG_EXP");
+						break;
+					case FogMode.ExponentialSquared:
+						material.EnableKeyword("FOG_EXP_SQR");
+						break;
+				}
+			}
 
 			material.SetTexture(PropertyIDs.blueNoise_t, PostProcessingManager.blueNoiseTexture);
-
-			var allowVelocityPrediction = true && !isSceneView;
-			material.SetInt(PropertyIDs.IsVelocityPredictionEnabled_b, allowVelocityPrediction ? 1 : 0);
-
 		}
 
 		private enum SSRPass {
@@ -377,17 +510,6 @@ namespace Cat.PostProcessing {
 			MipMapBlur,
 			ComposeAndApplyReflections,
 			Debug,
-			Depth,
-			ReflectionBlur,
-			ComposeAndApplyReflections2,
-			/*
-			ResolveHitPoints    ,
-			SimpleBlur          ,
-		//	ComposeReflections  ,
-		//	ApplyReflections    ,
-			UpsampleRayHits     ,
-			PackNormals         ,
-			*/
 		}
 
 		override protected void PopulateCommandBuffer(CommandBuffer buffer, Material material, VectorInt2 cameraSize) {
@@ -413,11 +535,6 @@ namespace Cat.PostProcessing {
 				new VectorInt2(reflRTSize.x / 32, reflRTSize.y / 64),
 				new VectorInt2(reflRTSize.x / 64, reflRTSize.y / 128),
 			};
-
-		//	#region Depth
-		//	GetTemporaryRT(buffer, PropertyIDs.Depth_t, HitTextureSize, RenderTextureFormat.RHalf, FilterMode.Point, RenderTextureReadWrite.Linear);
-		//	Blit(buffer, PropertyIDs.Depth_t, material, (int)SSRPass.Depth);
-		//	#endregion
 
 			#region RayTrace
 			GetTemporaryRT(buffer, PropertyIDs.Hit_t, HitTextureSize, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
@@ -472,24 +589,6 @@ namespace Cat.PostProcessing {
 			}
 			#endregion
 	
-		//	#region ReflectionMipLevels
-		//	var maxReflectionMipLvl = settings.useReflectionMipMap ? 5 : 1;
-		//	for (int i = 1; i < maxReflectionMipLvl; ++i) {
-		//		GetT|emporaryRT(buffer, PropertyIDs.tempBuffers_t[i], mipTempSizes[i], RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
-		//		var pass = SSRPass.ReflectionBlur;//settings.suppressFlickering && i == 1 ? SSRPass.MipMapBlurComressor : SSRPass.MipMapBlurVanilla;
-		//		buffer.SetGlobalFloat(PropertyIDs.MipLevel_f, i-1);
-		//
-		//		buffer.SetGlobalVector(PropertyIDs.BlurDir_v, new Vector4(0, 2.25f/mipRTSizes[i-1].y, 0, -2.25f/mipRTSizes[i-1].y));
-		//		Blit(buffer, history, PropertyIDs.tempBuffers_t[i], material, (int)pass);
-		//
-		//		buffer.SetGlobalVector(PropertyIDs.BlurDir_v, new Vector4(2.25f/mipRTSizes[i-1].x, 0, -2.25f/mipRTSizes[i-1].x, 0));
-		//		buffer.SetGlobalTexture("_MainTex", PropertyIDs.tempBuffers_t[i]);
-		//		buffer.SetRenderTarget(history, i);
-		//		Blit(buffer, material, (int)pass);
-		//
-		//		ReleaseT|emporaryRT(buffer, PropertyIDs.tempBuffers_t[i]);	// release temporary RT
-		//	}
-		//	#endregion
 	
 			#region ComposeAndApplyReflections
 			Blit(buffer, BuiltinRenderTextureType.CameraTarget, material, (int)SSRPass.ComposeAndApplyReflections);

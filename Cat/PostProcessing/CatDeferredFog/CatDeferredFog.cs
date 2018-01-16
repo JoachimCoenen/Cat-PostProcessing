@@ -27,10 +27,8 @@ namespace Cat.PostProcessing {
 		}
 
 		static class PropertyIDs {
-			internal static readonly int Intensity_f		= Shader.PropertyToID("_Intensity");
-			internal static readonly int Color_c			= Shader.PropertyToID("_Color");
-			internal static readonly int StartDistance_f	= Shader.PropertyToID("_StartDistance");
-			internal static readonly int EndDistance_f		= Shader.PropertyToID("_EndDistance");
+			internal static readonly int FogColor_c			= Shader.PropertyToID("_FogColor");
+			internal static readonly int FogParams_v		= Shader.PropertyToID("_FogParams");
 		}
 				
 		internal override void RenderImage(RenderTexture source, RenderTexture destination) {
@@ -38,10 +36,8 @@ namespace Cat.PostProcessing {
 
 			var isGammaColorSpace = QualitySettings.activeColorSpace == ColorSpace.Gamma;
 			var fogColor = RenderSettings.fogColor;
-			material.SetColor(PropertyIDs.Color_c, isGammaColorSpace ? fogColor : fogColor.linear);
-			material.SetFloat(PropertyIDs.Intensity_f, RenderSettings.fogDensity);
-			material.SetFloat(PropertyIDs.StartDistance_f, RenderSettings.fogStartDistance);
-			material.SetFloat(PropertyIDs.EndDistance_f, RenderSettings.fogEndDistance);
+			material.SetColor(PropertyIDs.FogColor_c, isGammaColorSpace ? fogColor : fogColor.linear);
+			material.SetVector(PropertyIDs.FogParams_v, new Vector3(RenderSettings.fogDensity, RenderSettings.fogStartDistance, RenderSettings.fogEndDistance));
 
 			switch (RenderSettings.fogMode) {
 				case FogMode.Linear:
@@ -60,6 +56,7 @@ namespace Cat.PostProcessing {
 					material.EnableKeyword("FOG_EXP_SQR");
 					break;
 			}
+			Shader.DisableKeyword("FOG_EXP_SQR");
 
 			Blit(source, destination, material, 0);
 		}

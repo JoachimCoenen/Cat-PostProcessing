@@ -337,6 +337,7 @@ Shader "Hidden/Cat Color Grading" {
 			//rgb = HSVtoRGB(float3(i.uv.x, _HSV.y, i.uv.y));
 			
 			color.rgb = saturate(rgb);
+			
 			return color;
 			
 		}
