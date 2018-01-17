@@ -1,6 +1,10 @@
 # Cat-Post Processing Effects for Unity 2017.2
-High Quality Post-processing effects for Unity. Download [Cat-Post Processing Effects][Package_Newest_LINK] or [older versions][Releases_LINK]. It is compatible with Unity 5.5, Unity 5.6, Unity 2017.1
- and Unity 2017.2
+High Quality Post-processing effects for Unity. It is compatible with Unity 5.5, Unity 5.6, Unity 2017.1 and Unity 2017.2
+
+Downloads:  
+[Current Version][Package_Newest_LINK] <--  
+[Developement Version][Branch_Develop_LINK]
+
 
  <table style="width:100%;border-spacing:0px">
   <tr style="padding:0px">
@@ -164,6 +168,7 @@ Curves
 
 [Releases_LINK]:                 https://github.com/JoachimCoenen/Cat-PostProcessing/releases "Cat-PostProcessing/releases"
 [Package_Newest_LINK]:           https://github.com/JoachimCoenen/Cat-PostProcessing/releases/download/v0.4.1-alpha/Cat-Post.Processing.v0.4.1.unitypackage  "Cat-Post Processing v0.4.1-alpha - Source Code"
+[Branch_Develop_LINK]:           https://github.com/JoachimCoenen/Cat-PostProcessing/tree/develop "develop branch"
 
 
 

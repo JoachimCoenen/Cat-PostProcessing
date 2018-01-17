@@ -186,6 +186,7 @@ float4 RayTrace(int stepCount, float objectThickness, float minPixelStride, floa
 	
 	//return float4(samplePos.xyz, k / 6.0);
 	//return float4(samplePos.xyz, i / float(stepCount));
+	//return float4(samplePos.xyz, float(i) / float(stepCount));
 	return float4(samplePos.xyz, (hasHitObject) ? i * pixelStride / maxPixelStride : stepCount);
 }
 

@@ -172,35 +172,32 @@ VertexOutputFull vertFull(VertexInput v) {
 	o.wsRay = UnityWorldSpaceViewDir(o.wsRay);
 	return o;
 }
-/*
-struct VertexOutput {
-	float4 pos : POSITION;
-	float2 uv : TEXCOORD0;
-	float3 vsDir : TEXCOORD1;
-	float3 wsDir : TEXCOORD2;
-};
-VertexOutput vert(VertexInput v) {
-	VertexOutput o;
-//	o.pos = UnityObjectToClipPos(v.vertex);
-//	o.uv = v.texcoord;
-	
-	o.pos = float4(v.vertex.xy, 0, 1);
-//			o.pos = UnityObjectToClipPos(v.vertex);
-	o.uv = v.texcoord.xy;
-	#if UNITY_UV_STARTS_AT_TOP
-		o.uv.y = 1-o.uv.y;
+
+float2	GetVelocity(float2 uv) { return !_IsVelocityPredictionEnabled ? 0 : Tex2Dlod(_CameraMotionVectorsTexture, uv, 0).xy; } // - _TAAJitterVelocity * 0; // Does not seem to be neccessary in Unity2017.2f3
+
+///
+/// <param name='fogParams'> <c>= half3(Intensity, StartDistance, EndDistance);</c> </param>
+/// 
+half getFogDensity(float depth, half3 fogParams) {
+	half density = 0;
+	#if FOG_LINEAR
+		density = InvLerpSat(fogParams.y, fogParams.z, depth);
+	#elif FOG_EXP
+		density = 1 - exp2(-fogParams.x * depth);
+	#elif FOG_EXP_SQR
+		density = 1 - exp2(-Pow2(fogParams.x * depth));
 	#endif
-	
-	o.vsDir = ScreenToViewPos(GetScreenPos(o.uv, 0.5));
-	o.wsDir = ViewToWorldDir(o.vsDir);
-	
-//	float4x4 ipm = _InverseViewProjectionMatrix;
-//	float4x4 ixm = { ipm._m00_m10_m20_m30, ipm._m01_m11_m21_m31, ipm._m02_m12_m22_m32, ipm._m03_m13_m23_m33 } ;
-//	float2 ssPos = GetScreenPos(o.uv, 0).xy;
-//	o.worldPos = mul(_InverseViewProjectionMatrix, float4(ssPos, 0, 1));
-	return o;
+	density = depth*1.0125 < _ProjectionParams.z ? density : 0; // if not isSkybox, apply fog
+	return density;
 }
-*/
-float2	GetVelocity(float2 uv) { return !_IsVelocityPredictionEnabled ? 0 : Tex2Dlod(_CameraMotionVectorsTexture, uv, 0).xy; } // - _TAAJitterVelocity * 0; } // Does not seem to be neccessary in Unity2017.2f3
+
+///
+/// <remarks> requires _DepthTexture.</remarks>
+/// <param name='fogParams'> <c>= half3(Intensity, StartDistance, EndDistance);</c> </param>
+/// 
+half getFogDensity(float2 uv, half3 fogParams) {
+	float depth = sampleEyeDepth(_DepthTexture, uv);
+	return getFogDensity(depth, fogParams);
+}
 
 #endif // POST_PROCESSING_COMMON_INCLUDED

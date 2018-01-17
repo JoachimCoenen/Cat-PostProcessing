@@ -4,6 +4,7 @@
 /*
 # dont exclude folder Cat
 !/Cat
+!/Cat.meta
 # exclude everythng within flder Cat
 /Cat/*
 # dont exclude Cat/Includes, Cat/PostProcessing, Cat/Scripts
