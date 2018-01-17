@@ -17,6 +17,7 @@ namespace Cat.PostProcessingEditor {
 		}
 
 		public override void OnInspectorGUI() {
+			
 			serializedObject.Update();
 			EditorGUILayout.PropertyField(settings);
 			serializedObject.ApplyModifiedProperties();
