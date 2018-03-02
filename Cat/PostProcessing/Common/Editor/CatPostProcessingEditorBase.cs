@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections;
+using System.Reflection;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -8,25 +8,70 @@ using Cat.Common;
 using Cat.CommonEditor;
 using Cat.PostProcessing;
 
-namespace UnityEditor.Cat.PostProcessingEditor {
+namespace Cat.PostProcessingEditor {
+	public struct AttributedProperty {
+
+		public SerializedProperty serializedProperty { get; private set; }
+		public object rawValue { get; private set; }
+
+		public Attribute[] attributes { get; private set; }
+
+		public AttributedProperty(SerializedProperty serializedProperty, Attribute[] attributes, object rawValue) {
+			this.serializedProperty = serializedProperty;
+			this.rawValue = rawValue;
+			this.attributes = attributes;
+		}
+	}
+
 	public abstract class CatPostProcessingEditorBase {
 
-		SerializedProperty m_settings;
-		protected SerializedProperty settings { get { return m_settings;}}
-		SerializedObject m_serializedObject;
+		//SerializedProperty m_settings;
+		//protected SerializedProperty settings { get { return m_settings;}}
+		private SerializedObject m_serializedObject;
 		protected SerializedObject serializedObject { get { return m_serializedObject;}}
-		PostProcessingSettingsBase m_target;
+		private PostProcessingSettingsBase m_target;
 		protected PostProcessingSettingsBase target { get { return m_target;}}
+
 
 		public static CatPostProcessingEditorBase Create(Type t, SerializedProperty settings, PostProcessingSettingsBase target) {
 			var editor = (CatPostProcessingEditorBase)Activator.CreateInstance(t);
-			editor.m_settings = settings;
-			editor.m_serializedObject = new SerializedObject(target);
+			//var editor = (CatPostProcessingEditorBase)CreateEditor(target, t);
+			//editor.m_settings = settings;
+			//editor.m_serializedObject = new SerializedObject(target);
 			editor.m_target = target;
+			editor.m_serializedObject = new SerializedObject(target);
 			return editor;
 		}
 
-		public abstract void OnInspectorGUI() ;
+		internal static IEnumerable<AttributedProperty> GetAttributedProperties(object target, SerializedProperty serializedProperty) {
+			var properties = from field in target.GetType()
+				.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+					where field.Name != "enabled"
+					where (field.IsPublic && field.GetCustomAttributes(typeof(NonSerializedAttribute), false).Length == 0)
+				|| (field.GetCustomAttributes(typeof(UnityEngine.SerializeField), false).Length > 0)
+				let property = serializedProperty.FindPropertyRelative(field.Name)
+				let attributes = field.GetCustomAttributes(false).Cast<Attribute>().ToArray()
+				select new AttributedProperty(property, attributes, field.GetValue(target));
+			return properties;
+		}
+		internal IEnumerable<AttributedProperty> GetAttributedProperties(object target) {
+			var properties = from field in target.GetType()
+				.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+					where field.Name != "enabled"
+					where (field.IsPublic && field.GetCustomAttributes(typeof(NonSerializedAttribute), false).Length == 0)
+				|| (field.GetCustomAttributes(typeof(UnityEngine.SerializeField), false).Length > 0)
+				let property = serializedObject.FindProperty(field.Name)
+				let attributes = field.GetCustomAttributes(false).Cast<Attribute>().ToArray()
+				select new AttributedProperty(property, attributes, field.GetValue(target));
+			return properties;
+		}
+
+		internal void OnInspectorGUIInternal() {
+			var properties = GetAttributedProperties(target);
+			OnInspectorGUI(properties);
+		}
+
+		public abstract void OnInspectorGUI(IEnumerable<AttributedProperty> properties) ;
 
 		/*
 		private static Dictionary<Type, Type> s_allPropertyDrawers;
@@ -59,13 +104,13 @@ namespace UnityEditor.Cat.PostProcessingEditor {
 		).ToDictionary(x => x.Key, x => x.Value);
 */
 
-		protected void PropertyField(SerializedProperty property, Attribute[] attributes)
+		protected static void PropertyField(AttributedProperty property)
 		{
-			var title = new GUIContent(property.displayName);
-			PropertyField(property, attributes, title);
+			var title = new GUIContent(property.serializedProperty.displayName);
+			PropertyField(property, title);
 		}
 
-		protected void PropertyField(SerializedProperty property, Attribute[] attributes, GUIContent title)
+		protected static void PropertyField(AttributedProperty property, GUIContent title)
 		{
 			// Check for DisplayNameAttribute first
 		//	var displayNameAttr = (DisplayNameAttribute)attributes.FirstOrDefault(x => x is DisplayNameAttribute);//property.GetAttribute<DisplayNameAttribute>();
@@ -75,36 +120,20 @@ namespace UnityEditor.Cat.PostProcessingEditor {
 			// Add tooltip if it's missing and an attribute is available
 			if (string.IsNullOrEmpty(title.tooltip))
 			{
-				var tooltipAttr = (TooltipAttribute)attributes.FirstOrDefault(x => x is TooltipAttribute);//property.GetAttribute<TooltipAttribute>();
+				var tooltipAttr = (TooltipAttribute)property.attributes.FirstOrDefault(x => x is TooltipAttribute);//property.GetAttribute<TooltipAttribute>();
 				if (tooltipAttr != null)
 					title.tooltip = tooltipAttr.tooltip;
 			}
 
-			// Look for a compatible attribute decorator
-		//	AttributeDecorator decorator = null;
-
-
+			// Look for a compatible attribute drawer
 			PropertyDrawer propertyDrawer = null;
-			foreach (var attr in attributes)
-			{
-				/*
-				// Use the first decorator we found
-				if (decorator == null)
-				{
-					decorator = EditorUtilities.GetDecorator(attr.GetType());
-					attribute = attr;
-				}
-				*/
+			foreach (var attr in property.attributes) {
 				// Draw unity built-in Decorators (Space, Header)
-				if (attr is PropertyAttribute)
-				{
-					EditorGUILayout.HelpBox(attr.ToString(), MessageType.Info);
-					if (attr is SpaceAttribute)
-					{
+				if (attr is PropertyAttribute) {
+					if (attr is SpaceAttribute) {
 						EditorGUILayout.GetControlRect(false, (attr as SpaceAttribute).height);
 					}
-					else if (attr is HeaderAttribute)
-					{
+					else if (attr is HeaderAttribute) {
 						var rect = EditorGUILayout.GetControlRect(false, 24f);
 						rect.y += 8f;
 						rect = EditorGUI.IndentedRect(rect);
@@ -112,48 +141,47 @@ namespace UnityEditor.Cat.PostProcessingEditor {
 					}
 					else if (attr is Inlined) {
 						propertyDrawer = new InlinedAttributeDrawer();
+					} else {
+						Type drawerType = null;
+						if (CatPostProcessingProfileEditor.s_PropertyDrawers.TryGetValue(attr.GetType(), out drawerType)) {
+							propertyDrawer = (PropertyDrawer)Activator.CreateInstance(drawerType);
+							var field = drawerType.GetField("m_Attribute", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+							field.SetValue(propertyDrawer, attr);
+						}
 					}
 				}
 			}
 
-			bool invalidProp = false;
-			/*
-			if (decorator != null && !decorator.IsAutoProperty())
-			{
-				if (decorator.OnGUI(property.value, property.overrideState, title, attribute))
-					return;
-
-				// Attribute is invalid for the specified property; use default unity field instead
-				invalidProp = true;
-			}
-			*/
-			using (new EditorGUILayout.HorizontalScope())
-			{
-				// Property
-			/*
-				if (decorator != null && !invalidProp)
-				{
-					if (decorator.OnGUI(property.value, property.overrideState, title, attribute))
-						return;
+			var serializedProperty = property.serializedProperty;
+			if (propertyDrawer != null) {
+				if (propertyDrawer is InlinedAttributeDrawer) {
+					// Draw Inlined Attribute:
+					var innerProperties = GetAttributedProperties(property.rawValue, property.serializedProperty);
+					foreach (var innerProperty in innerProperties) {
+						PropertyField(innerProperty);
+					}
+				} else {
+					using (new EditorGUILayout.HorizontalScope()) {
+						// all Other Custom Attributes:
+						var height = propertyDrawer.GetPropertyHeight(serializedProperty, title);
+						var rect = EditorGUILayout.GetControlRect(true, height);
+						propertyDrawer.OnGUI(rect, serializedProperty, title);
+					}
 				}
-			*/
-
-				if (propertyDrawer != null) {
-					var height = propertyDrawer.GetPropertyHeight(property, title);
-					var rect = EditorGUILayout.GetControlRect(true, height);
-					propertyDrawer.OnGUI(rect, property, title);
-				} else if (property.hasVisibleChildren
-					&& property.propertyType != SerializedPropertyType.Vector2
-					&& property.propertyType != SerializedPropertyType.Vector3)
-				{
-					// Default unity field
-					GUILayout.Space(12f);
-					EditorGUILayout.PropertyField(property, title, true);
+			} else if (serializedProperty.hasVisibleChildren
+					&& serializedProperty.propertyType != SerializedPropertyType.Vector2
+					&& serializedProperty.propertyType != SerializedPropertyType.Vector3) {
+				// Default unity field
+				GUILayout.Space(12f);
+				EditorGUILayout.PropertyField(serializedProperty, title, false);
+				var innerProperties = GetAttributedProperties(property.rawValue, property.serializedProperty);
+				foreach (var innerProperty in innerProperties) {
+					PropertyField(innerProperty);
 				}
-				else
-				{
-					// Default unity field
-					EditorGUILayout.PropertyField(property, title);
+			} else {
+				// Default unity field
+				using (new EditorGUILayout.HorizontalScope()) {
+					EditorGUILayout.PropertyField(serializedProperty, title);
 				}
 			}
 		}
