@@ -28,10 +28,11 @@ namespace Cat.PostProcessingEditor {
 		//SerializedProperty m_settings;
 		//protected SerializedProperty settings { get { return m_settings;}}
 		private SerializedObject m_serializedObject;
-		protected SerializedObject serializedObject { get { return m_serializedObject;}}
+		internal SerializedObject serializedObject { get { return m_serializedObject;}}
 		private PostProcessingSettingsBase m_target;
-		protected PostProcessingSettingsBase target { get { return m_target;}}
+		internal PostProcessingSettingsBase target { get { return m_target;}}
 
+		internal bool isOpen = true;
 
 		public static CatPostProcessingEditorBase Create(Type t, SerializedProperty settings, PostProcessingSettingsBase target) {
 			var editor = (CatPostProcessingEditorBase)Activator.CreateInstance(t);
@@ -134,6 +135,7 @@ namespace Cat.PostProcessingEditor {
 						EditorGUILayout.GetControlRect(false, (attr as SpaceAttribute).height);
 					}
 					else if (attr is HeaderAttribute) {
+						CatEditorGUILayout.Splitter();
 						var rect = EditorGUILayout.GetControlRect(false, 24f);
 						rect.y += 8f;
 						rect = EditorGUI.IndentedRect(rect);

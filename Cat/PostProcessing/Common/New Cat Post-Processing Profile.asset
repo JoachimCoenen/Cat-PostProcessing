@@ -12,7 +12,41 @@ MonoBehaviour:
   m_Name: New Cat Post-Processing Profile
   m_EditorClassIdentifier: 
   m_settings: []
---- !u!114 &114268572625238544
+--- !u!114 &114274688330186072
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: CatSSRSettings
+  m_EditorClassIdentifier: Assembly-CSharp:Cat.PostProcessing:CatSSRSettings
+  isActive: 1
+  m_Settings:
+    rayTraceResol: 1
+    stepCount: 96
+    minPixelStride: 3
+    maxPixelStride: 12
+    cullBackFaces: 1
+    maxReflectionDistance: 100
+    reflectionResolution: 1
+    intensity: 1
+    reflectionDistanceFade: 0.5
+    rayLengthFade: 0.25
+    edgeFade: 0.125
+    useRetroReflections: 1
+    resolveSampleCount: 4
+    importanceSampleBias: 0.75
+    useCameraMipMap: 1
+    useTemporalSampling: 1
+    response: 0.05
+    toleranceMargin: 2
+    debugOn: 0
+    debugMode: 6
+    mipLevelForDebug: 0
+--- !u!114 &114404794202813930
 MonoBehaviour:
   m_ObjectHideFlags: 3
   m_PrefabParentObject: {fileID: 0}
@@ -47,6 +81,40 @@ MonoBehaviour:
     debugMode: 6
     mipLevelForDebug: 0
 --- !u!114 &114411563855522994
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: CatSSRSettings
+  m_EditorClassIdentifier: Assembly-CSharp:Cat.PostProcessing:CatSSRSettings
+  isActive: 1
+  m_Settings:
+    rayTraceResol: 1
+    stepCount: 96
+    minPixelStride: 3
+    maxPixelStride: 12
+    cullBackFaces: 1
+    maxReflectionDistance: 100
+    reflectionResolution: 1
+    intensity: 1
+    reflectionDistanceFade: 0.5
+    rayLengthFade: 0.25
+    edgeFade: 0.125
+    useRetroReflections: 1
+    resolveSampleCount: 4
+    importanceSampleBias: 0.75
+    useCameraMipMap: 1
+    useTemporalSampling: 1
+    response: 0.05
+    toleranceMargin: 2
+    debugOn: 0
+    debugMode: 6
+    mipLevelForDebug: 0
+--- !u!114 &114429417625840784
 MonoBehaviour:
   m_ObjectHideFlags: 3
   m_PrefabParentObject: {fileID: 0}

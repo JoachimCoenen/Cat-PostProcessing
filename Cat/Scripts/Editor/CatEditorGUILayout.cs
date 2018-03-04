@@ -6,40 +6,67 @@ namespace Cat.CommonEditor
 {
 	public static class CatEditorGUILayout {
 		private static class Styles {
-			private static GUIStyle boxSkin = null;
-			private static GUIStyle splitterSkin = null;
-			private static GUIStyle foldoutSkin = null;
+			private static GUIStyle s_BoxSkin = null;
+			private static GUIStyle s_SplitterSkin = null;
+			private static GUIStyle s_FoldoutSkin = null;
+			private static GUIStyle s_ContextButtonSkin = null;
+
+			private static Texture2D s_ContextButtonIcon = null;
 
 			public static GUIStyle BoxSkin {
 				get {
-					if (boxSkin == null) {
-						boxSkin = new GUIStyle(GUI.skin.box);
-						boxSkin.normal.background = Texture2D.whiteTexture;
-						//boxSkin.padding.top = Styles.boxSkin.padding.bottom+2;
-						boxSkin.overflow.left = 9;
+					if (s_BoxSkin == null) {
+						s_BoxSkin = new GUIStyle(GUI.skin.box);
+						s_BoxSkin.normal.background = Texture2D.whiteTexture;
+						//s_BoxSkin.padding.top = Styles.boxSkin.padding.bottom+2;
+						s_BoxSkin.overflow.left = 9;
 					}
-					return boxSkin;
+					return s_BoxSkin;
 				}
 			}
 			public static GUIStyle SplitterSkin {
 				get {
-					if (splitterSkin == null) {
-						splitterSkin = new GUIStyle(GUI.skin.box);
-						splitterSkin.normal.background = Texture2D.whiteTexture;
-						splitterSkin.margin.bottom = 6;
-						splitterSkin.overflow.left = 0;
-						splitterSkin.overflow.right = 0;
+					if (s_SplitterSkin == null) {
+						s_SplitterSkin = new GUIStyle(GUI.skin.box);
+						s_SplitterSkin.normal.background = Texture2D.whiteTexture;
+						s_SplitterSkin.margin.bottom = 6;
+						s_SplitterSkin.overflow.left = 0;
+						s_SplitterSkin.overflow.right = 0;
 					}
-					return splitterSkin;
+					return s_SplitterSkin;
 				}
 			}
 			public static GUIStyle FoldoutSkin {
 				get {
-					if (foldoutSkin == null) {
-						foldoutSkin = new GUIStyle(EditorStyles.foldout);
-						foldoutSkin.fontStyle = FontStyle.Bold;
+					if (s_FoldoutSkin == null) {
+						s_FoldoutSkin = new GUIStyle(EditorStyles.foldout);
+						s_FoldoutSkin.fontStyle = FontStyle.Bold;
 					}
-					return foldoutSkin;
+					return s_FoldoutSkin;
+				}
+			}
+			public static GUIStyle ContextButtonSkin {
+				get {
+					if (s_ContextButtonSkin == null) {
+						s_ContextButtonSkin = new GUIStyle(EditorStyles.label);
+						s_ContextButtonSkin.fixedWidth = 21;
+						s_ContextButtonSkin.padding = EditorStyles.foldout.padding;
+						s_ContextButtonSkin.padding.left = EditorStyles.label.padding.left;
+					}
+					return s_ContextButtonSkin;
+				}
+			}
+
+			public static Texture2D ContextButtonIcon {
+				get {
+					if (s_ContextButtonIcon == null) {
+						if (EditorGUIUtility.isProSkin) {
+							s_ContextButtonIcon = (Texture2D)EditorGUIUtility.Load("Builtin Skins/DarkSkin/Images/pane options.png");
+						} else {
+							s_ContextButtonIcon = (Texture2D)EditorGUIUtility.Load("Builtin Skins/LightSkin/Images/pane options.png");
+						}
+					}
+					return s_ContextButtonIcon;
 				}
 			}
 
@@ -82,6 +109,22 @@ namespace Cat.CommonEditor
 
 		public static void Header(GUIContent text) {
 			GUILayout.Label(text, EditorStyles.boldLabel);
+		}
+			
+		public static bool ContextButton() {
+			var contextIcon = Styles.ContextButtonIcon;
+			var rect = GUILayoutUtility.GetRect(new GUIContent(contextIcon), Styles.ContextButtonSkin);
+			var contextRect = new Rect(rect.x, rect.y + 3, contextIcon.width, contextIcon.height);
+
+			GUI.DrawTexture(contextRect, contextIcon);
+
+			var e = Event.current;
+			if (e.type == EventType.MouseDown && contextRect.Contains(e.mousePosition)) {   
+				e.Use();
+				return true;
+			}
+			return false;
+			//return GUILayout.Button(Styles.ContextButtonIcon, Styles.ContextButtonSkin);
 		}
 
 

@@ -920,7 +920,7 @@ namespace Cat.PostProcessing {
 		}
 
 		[SerializeField]
-		//[Inlined]
+		[Inlined]
 		private Settings m_Settings = Settings.defaultSettings;
 		public Settings settings {
 			get { return m_Settings; }
