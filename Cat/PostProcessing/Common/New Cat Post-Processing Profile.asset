@@ -13,6 +13,39 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_settings:
   - {fileID: 114259373304937008}
+  - {fileID: 114032854562954102}
+  - {fileID: 114718999370623820}
+--- !u!114 &114032854562954102
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: CatBloomSettings
+  m_EditorClassIdentifier: Assembly-CSharp:Cat.PostProcessing:CatBloomSettings
+  isActive: 1
+  intensity: 0.25
+  dirtIntensity: 0.5
+  dirtTexture: {fileID: 2800000, guid: a2960ffde020f27409e070d92fb2e00b, type: 3}
+  minLuminance: 0.5
+  kneeStrength: 1
+  debugOn: 0
+--- !u!114 &114155643419101832
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: CatChromaticAberrationSettings
+  m_EditorClassIdentifier: Assembly-CSharp:Cat.PostProcessing:CatChromaticAberrationSettings
+  isActive: 1
+  strength: 0.5
 --- !u!114 &114259373304937008
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -217,3 +250,19 @@ MonoBehaviour:
     debugOn: 0
     debugMode: 6
     mipLevelForDebug: 0
+--- !u!114 &114718999370623820
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: CatAOSettings
+  m_EditorClassIdentifier: Assembly-CSharp:Cat.PostProcessing:CatAOSettings
+  isActive: 1
+  intensity: 0.5
+  sampleCount: 10
+  radius: 0.3
+  debugOn: 0

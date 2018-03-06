@@ -7,37 +7,14 @@ namespace Cat.PostProcessing {
 	[ExecuteInEditMode]
 	[ImageEffectAllowedInSceneView]
 	[AddComponentMenu("Cat/PostProcessing/Chromatic Aberration")]
-	public class CatChromaticAberration : PostProcessingBaseImageEffect {
-
-		[Serializable]
-		public struct Settings {
-			[Range(0, 1)]
-			public float strength;
-
-			public static Settings defaultSettings { 
-				get {
-					return new Settings {
-						strength = 0.5f
-					};
-				}
-			}
-		}
-
-		[SerializeField]
-		[Inlined]
-		private Settings m_Settings = Settings.defaultSettings;
-		public Settings settings {
-			get { return m_Settings; }
-			set { 
-				m_Settings = value;
-				OnValidate();
-			}
-		}
+	public class CatChromaticAberration : PostProcessingBaseImageEffect<CatChromaticAberrationSettings> {
 
 		override protected string shaderName { get { return "Hidden/Cat Chromatic Aberration"; } }
 		override public string effectName { get { return "Chromatic Aberration"; } }
 		override internal DepthTextureMode requiredDepthTextureMode { get { return DepthTextureMode.None; } }
-		override public bool isActive { get { return true; } }
+		override public int queueingPosition {
+			get { return 2850; } 
+		}
 
 		static class PropertyIDs {
 			internal static readonly int Strength_f	= Shader.PropertyToID("_Strength");
@@ -61,4 +38,23 @@ namespace Cat.PostProcessing {
 		}
 	}
 
+	[Serializable]
+	[SettingsForPostProcessingEffect(typeof(CatChromaticAberration))]
+	public class CatChromaticAberrationSettings : PostProcessingSettingsBase {
+
+		override public string effectName { 
+			get { return "Chromatic Aberration"; } 
+		}
+
+		[Range(0, 1)]
+		public float strength = 0.5f;
+
+		public static CatChromaticAberrationSettings defaultSettings { 
+			get {
+				return new CatChromaticAberrationSettings {
+					strength = 0.5f
+				};
+			}
+		}
+	}
 }

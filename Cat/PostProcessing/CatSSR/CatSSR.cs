@@ -50,8 +50,8 @@ namespace Cat.PostProcessing {
 		override internal DepthTextureMode requiredDepthTextureMode { 
 			get { return DepthTextureMode.Depth | DepthTextureMode.MotionVectors; } 
 		}
-		override public int queueingPosition { 
-			get { return 2999; } 
+		override public int queueingPosition {
+			get { return 2900; } 
 		}
 
 		static class PropertyIDs {
@@ -356,8 +356,7 @@ namespace Cat.PostProcessing {
 		}
 			
 	}
-
-
+		
 	[Serializable]
 	[SettingsForPostProcessingEffect(typeof(CatSSR))]
 	public class CatSSRSettings : PostProcessingSettingsBase {

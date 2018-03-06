@@ -11,7 +11,7 @@ namespace Cat.PostProcessing {
 	[ExecuteInEditMode]
 	[ImageEffectAllowedInSceneView]
 	[AddComponentMenu("Cat/PostProcessing/Deferred Fog")]
-	public class CatDeferredFog : PostProcessingBaseImageEffect {
+	public class CatDeferredFog : PostProcessingBaseImageEffect<CatDeferredFogSettings> {
 
 		override public string effectName { 
 			get { return "Deferred Fog"; } 
@@ -23,7 +23,10 @@ namespace Cat.PostProcessing {
 			get { return DepthTextureMode.Depth; } 
 		}
 		override public bool isActive { 
-			get { return RenderSettings.fog; } 
+			get { return RenderSettings.fog && base.isActive; } 
+		}
+		override public int queueingPosition {
+			get { return 1990; } 
 		}
 
 		static class PropertyIDs {
@@ -66,4 +69,20 @@ namespace Cat.PostProcessing {
 		}
 	}
 
+	[Serializable]
+	[SettingsForPostProcessingEffect(typeof(CatDeferredFog))]
+	public class CatDeferredFogSettings : PostProcessingSettingsBase {
+
+		override public string effectName { 
+			get { return "Deferred Fog"; } 
+		}
+
+		public static CatDeferredFogSettings defaultSettings { 
+			get {
+				return new CatDeferredFogSettings {
+					
+				};
+			}
+		}
+	}
 }

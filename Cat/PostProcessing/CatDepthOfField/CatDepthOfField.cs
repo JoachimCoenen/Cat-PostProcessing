@@ -10,47 +10,7 @@ namespace Cat.PostProcessing {
 	[ExecuteInEditMode]
 	[ImageEffectAllowedInSceneView]
 	[AddComponentMenu("Cat/PostProcessing/DepthOfField")]
-	public class CatDepthOfField : PostProcessingBaseImageEffect {
-
-		[Serializable]
-		public struct Settings {
-			[CustomLabelRange(0.1f, 22, "f-Stop f/n")]
-			public float			fStop;
-
-			[Range(0.185f, 100f)]
-			public float			focusDistance;
-
-			[Range(1, 7)]
-			public float			radius;
-
-			[Header("Debugging")]
-			public bool					debugOn;
-
-			public static Settings defaultSettings { 
-				get {
-					return new Settings {
-						fStop					= 2f,
-						focusDistance			= 1.6f,
-
-						radius					= 3f,
-						
-						debugOn					= false,
-					};
-				}
-			}
-
-		}
-
-		[SerializeField]
-		[Inlined]
-		private Settings m_Settings = Settings.defaultSettings;
-		public Settings settings {
-			get { return m_Settings; }
-			set { 
-				m_Settings = value;
-				OnValidate();
-			}
-		}
+	public class CatDepthOfField : PostProcessingBaseImageEffect<CatDepthOfFieldSettings> {
 
 		override protected string shaderName { 
 			get { return "Hidden/Cat DepthOfField"; } 
@@ -61,8 +21,8 @@ namespace Cat.PostProcessing {
 		override internal DepthTextureMode requiredDepthTextureMode { 
 			get { return DepthTextureMode.Depth; } 
 		}
-		override public bool isActive { 
-			get { return true; } 
+		override public int queueingPosition {
+			get { return 2800; } 
 		}
 
 
@@ -184,6 +144,48 @@ namespace Cat.PostProcessing {
 		public void OnValidate () {
 			setMaterialDirty();
 		}
+	}
+
+	[Serializable]
+	[SettingsForPostProcessingEffect(typeof(CatDepthOfField))]
+	public class CatDepthOfFieldSettings : PostProcessingSettingsBase {
+
+		override public string effectName { 
+			get { return "Deferred Fog"; } 
+		}
+
+		[CustomLabelRange(0.1f, 22, "f-Stop f/n")]
+		public float			fStop;
+
+		[Range(0.185f, 100f)]
+		public float			focusDistance;
+
+		[Range(1, 7)]
+		public float			radius;
+
+		[Header("Debugging")]
+		public bool					debugOn;
+
+		public CatDepthOfFieldSettings() {
+			fStop					= 2f;
+			focusDistance			= 1.6f;
+			radius					= 3f;
+			debugOn					= false;
+		}
+
+		public static CatDepthOfFieldSettings defaultSettings { 
+			get {
+				return new CatDepthOfFieldSettings {
+					fStop					= 2f,
+					focusDistance			= 1.6f,
+
+					radius					= 3f,
+
+					debugOn					= false,
+				};
+			}
+		}
+
 	}
 
 }

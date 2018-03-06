@@ -3,75 +3,18 @@ using UnityEngine;
 using Cat.Common;
 
 namespace Cat.PostProcessing {
-	[RequireComponent(typeof(Camera))]
-	[ExecuteInEditMode]
-	[ImageEffectAllowedInSceneView]
-	[AddComponentMenu("Cat/PostProcessing/Tempral Anti-Alialising")]
-	public class CatAA : PostProcessingBaseImageEffect {
+	public class CatAA : PostProcessingBaseImageEffect<CatAASettings> {
 		private const bool disableTAAInSceneView = true;
-
-		[Serializable]
-		public struct Settings {
-
-			//[Range(0.0f, 2.0f)]
-			public const float jitterStrength = 1f;
-
-			[Range(0.0f, 2.0f)]
-			public float sharpness;
-
-			public const bool enableVelocityPrediction = true;
-
-			[CustomLabelRange(0.0f, 80.0f, "Velocity Scale")]
-			public float velocityWeightScale;
-
-			[Range(1e-3f, 1)]
-			public float response;
-
-			[Range(0, 5)]
-			public float toleranceMargin;
-
-			public JitterMatrixType jitterMatrix;
-
-			[CustomLabelRange(4, 16, "Halton Seq. Length")]
-			public int haltonSequenceLength;
-
-			public static Settings defaultSettings { 
-				get {
-					return new Settings {
-					//	jitterStrength = 1f,
-						sharpness = 0.075f,
-					//	enableVelocityPrediction = true,
-						velocityWeightScale = 40,
-						response			= 0.075f,
-						toleranceMargin		= 1,
-						jitterMatrix = JitterMatrixType.HaltonSequence,
-						haltonSequenceLength = 8
-					};
-				}
-			}
-		}
-
-		[SerializeField]
-		[Inlined]
-		private Settings m_Settings = Settings.defaultSettings;
-		public Settings settings {
-			get { return m_Settings; }
-			set { 
-				m_Settings = value;
-				OnValidate();
-			}
-		}
-
-		public enum JitterMatrixType {
-			ps0, ps, psy, HaltonSequence, psx, ps4
-		}
 
 		private readonly RenderTextureContainer lastFrame1 = new RenderTextureContainer();
 
 		override protected string shaderName { get { return "Hidden/CatAA"; } }
 		override public string effectName { get { return "Cat Temporal Antialialising"; } }
 		override internal DepthTextureMode requiredDepthTextureMode { get { return DepthTextureMode.MotionVectors | DepthTextureMode.Depth; } }
-		override public bool isActive { get { return true; } }
+		override public int queueingPosition {
+			get { return 2900; } 
+		}
+
 
 		static class PropertyIDs {
 			// jitterStrength
@@ -143,7 +86,7 @@ namespace Cat.PostProcessing {
 				newP = newP - new Vector2(0.5f, 0.5f);
 			}
 
-			newP *= Settings.jitterStrength;
+			newP *= CatAASettings.jitterStrength;
 
 
 			newP.x /= (float)cameraSize.x;
@@ -166,7 +109,7 @@ namespace Cat.PostProcessing {
 
 		override protected void UpdateMaterial(Material material, Camera camera, VectorInt2 cameraSize) {
 			var isSceneView = postProcessingManager.isSceneView;
-			var allowVelocityPrediction = Settings.enableVelocityPrediction && !isSceneView;
+			var allowVelocityPrediction = CatAASettings.enableVelocityPrediction && !isSceneView;
 			material.SetFloat(PropertyIDs.Sharpness_f, settings.sharpness);
 			material.SetInt(PropertyIDs.IsVelocityPredictionEnabled_b, allowVelocityPrediction ? 1 : 0);
 			material.SetFloat(PropertyIDs.VelocityWeightScale_f, settings.velocityWeightScale);
@@ -342,4 +285,53 @@ namespace Cat.PostProcessing {
 		};
 	}
 
+	public enum JitterMatrixType {
+		ps0, ps, psy, HaltonSequence, psx, ps4
+	}
+
+	[Serializable]
+	[SettingsForPostProcessingEffect(typeof(CatAA))]
+	public class CatAASettings : PostProcessingSettingsBase {
+
+		override public string effectName { 
+			get { return "Temporal Antialialising"; } 
+		}
+
+		//[Range(0.0f, 2.0f)]
+		public const float jitterStrength = 1f;
+
+		[Range(0.0f, 2.0f)]
+		public float sharpness = 0.075f;
+
+		public const bool enableVelocityPrediction = true;
+
+		[CustomLabelRange(0.0f, 80.0f, "Velocity Scale")]
+		public float velocityWeightScale = 40;
+
+		[Range(1e-3f, 1)]
+		public float response = 0.075f;
+
+		[Range(0, 5)]
+		public float toleranceMargin = 1;
+
+		public JitterMatrixType jitterMatrix = JitterMatrixType.HaltonSequence;
+
+		[CustomLabelRange(4, 16, "Halton Seq. Length")]
+		public int haltonSequenceLength = 8;
+
+		public static CatAASettings defaultSettings { 
+			get {
+				return new CatAASettings {
+					//	jitterStrength = 1f,
+					sharpness = 0.075f,
+					//	enableVelocityPrediction = true,
+					velocityWeightScale = 40,
+					response			= 0.075f,
+					toleranceMargin		= 1,
+					jitterMatrix = JitterMatrixType.HaltonSequence,
+					haltonSequenceLength = 8
+				};
+			}
+		}
+	}
 }

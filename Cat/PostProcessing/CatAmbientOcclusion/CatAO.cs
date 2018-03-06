@@ -8,49 +8,7 @@ using Cat.Common;
 //using UnityEditorInternal;
 
 namespace Cat.PostProcessing {
-	[RequireComponent(typeof(Camera))]
-	[ExecuteInEditMode]
-	[ImageEffectAllowedInSceneView]
-	[AddComponentMenu("Cat/PostProcessing/Ambient Occlusion")]
-	public class CatAO : PostProcessingBaseCommandBuffer {
-
-		[Serializable]
-		public struct Settings {
-			[Range(0, 1)]
-			public float		intensity;
-
-			[Range(3, 16)]
-			public int			sampleCount;
-
-			[Range(1e-4f, 2)]
-			public float		radius;
-
-			//[Space(15)]
-			public bool			debugOn;
-
-			public static Settings defaultSettings { 
-				get {
-					return new Settings {
-						intensity = 0.5f,
-						sampleCount = 10,
-						radius = 0.3f,
-						debugOn = false,
-						
-					};
-				}
-			}
-		}
-
-		[SerializeField]
-		[Inlined]
-		private Settings m_Settings = Settings.defaultSettings;
-		public Settings settings {
-			get { return m_Settings; }
-			set { 
-				m_Settings = value;
-				OnValidate();
-			}
-		}
+	public class CatAO : PostProcessingBaseCommandBuffer<CatAOSettings> {
 
 		private RenderingPath m_currentRenderingPath;
 		private CameraEvent GetAppropriateCameraEvent(bool isDebugModeOn, RenderingPath renderingPath) {
@@ -71,8 +29,8 @@ namespace Cat.PostProcessing {
 		override internal DepthTextureMode requiredDepthTextureMode { 
 			get { return DepthTextureMode.Depth | DepthTextureMode.MotionVectors; } 
 		}
-		override public bool isActive { 
-			get { return true; } 
+		override public int queueingPosition {
+			get { return 2050; } 
 		}
 
 		static class PropertyIDs {
@@ -143,6 +101,41 @@ namespace Cat.PostProcessing {
 		public void OnValidate () {
 			setMaterialDirty();
 		}
+	}
+
+	[Serializable]
+	[SettingsForPostProcessingEffect(typeof(CatAO))]
+	public class CatAOSettings : PostProcessingSettingsBase {
+
+		override public string effectName { 
+			get { return "Ambient Occlusion"; } 
+		}
+
+		[Range(0, 1)]
+		public float		intensity = 0.5f;
+
+		[Range(3, 16)]
+		public int			sampleCount = 10;
+
+		[Range(1e-4f, 2)]
+		public float		radius = 0.3f;
+
+		//[Space(15)]
+		public bool			debugOn = false;
+
+		public static CatAOSettings defaultSettings { 
+			get {
+				return new CatAOSettings {
+					intensity = 0.5f,
+					sampleCount = 10,
+					radius = 0.3f,
+					debugOn = false,
+
+				};
+			}
+		}
+
+
 	}
 
 }
