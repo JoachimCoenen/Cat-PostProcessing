@@ -43,16 +43,15 @@ namespace Cat.PostProcessing {
 			return rtc.rt;
 		}
 	}
-
-
-	[RequireComponent(typeof(Camera)), RequireComponent(typeof(PostProcessingManager))]
-	[ExecuteInEditMode]
-	//[ImageEffectAllowedInSceneView]
-	public abstract class PostProcessingBase : MonoBehaviour {
+		
+	public abstract class PostProcessingBase : UnityEngine.Object {
 		abstract protected string shaderName { get; }
 		abstract public string effectName { get; }
 		abstract internal DepthTextureMode requiredDepthTextureMode { get; }
-		abstract public bool isActive { get; }
+		public bool isActive { get { return (m_Settings != null) && m_Settings.isActive; } }
+		abstract public int queueingPosition { get; } // 10_000 is for ColorCorrection
+
+		public bool enabled = true;
 
 		virtual internal void InitializeEffect() {}
 		virtual protected void UpdateMaterial(Material material, Camera camera, VectorInt2 cameraSize) {}
@@ -88,6 +87,8 @@ namespace Cat.PostProcessing {
 			} 
 		}
 
+		internal PostProcessingSettingsBase m_Settings;
+
 	//	private Camera m_camera = null;
 	//	protected new Camera camera {
 	//		get {
@@ -104,14 +105,7 @@ namespace Cat.PostProcessing {
 	//	}
 
 		//private PostProcessingManager m_postProcessingManager = null;
-		protected PostProcessingManager postProcessingManager {
-			get {
-				var ppm = GetComponent<PostProcessingManager>();
-				Debug.AssertFormat(ppm != null, "{0} requires a PostProcessingManager component attached", effectName);
-				enabled = enabled && ppm != null;
-				return ppm;
-			} 
-		}
+		protected PostProcessingManager postProcessingManager { get; private set; }
 
 
 		private readonly HashSet<RenderTextureContainer> m_OldRenderTextures = new HashSet<RenderTextureContainer>();
@@ -220,6 +214,12 @@ namespace Cat.PostProcessing {
 			#endif
 		}
 
+
+		internal void InitializeEffectInternal(PostProcessingManager postProcessingManager) {
+			this.postProcessingManager = postProcessingManager;
+			InitializeEffect();
+		}
+
 		virtual internal void PreCull(Camera camera, VectorInt2 cameraSize) {
 			if (m_lastCameraSize != cameraSize) {
 				m_lastCameraSize = cameraSize;
@@ -242,13 +242,13 @@ namespace Cat.PostProcessing {
 		}
 
 		virtual protected void OnEnable() {
-			postProcessingManager.AddEffect(this);
+			//postProcessingManager.AddEffect(this);
 			setMaterialDirty();
 			setRenderTextureDirty();
 		}
 
 		virtual protected void OnDisable() {
-			postProcessingManager.RemoveEffect(this);
+			//postProcessingManager.RemoveEffect(this);
 			ReleaseAllRTs();
 			#if UNITY_DEBUG && DEBUG_OUTPUT_VERBIOUS
 			Debug.LogFormat("{0}.{1}.OnDisable(): No. of RenderTextures (created RTs / all RTs) = {2} / {3};", 
@@ -256,10 +256,10 @@ namespace Cat.PostProcessing {
 			#endif
 		}
 
-		virtual protected void OnDestroy() {
-			enabled = false;
+		virtual internal void OnDestroy() {
+			//enabled = false;
 			// becuase the 'DontSave' flag is set, we have to destroy the Material explicitly:
-			DestroyImmediate(m_Material);
+			UnityEngine.Object.DestroyImmediate(m_Material);
 			m_Material = null;
 			ReleaseAllRTs();
 		}
@@ -306,7 +306,11 @@ namespace Cat.PostProcessing {
 	[RequireComponent(typeof(Camera))]
 	[ExecuteInEditMode]
 	//[ImageEffectAllowedInSceneView]
-	public abstract class PostProcessingBaseCommandBuffer : PostProcessingBase {
+	public abstract class PostProcessingBaseCommandBuffer<Settings> : PostProcessingBase where Settings: PostProcessingSettingsBase {
+
+		public Settings settings {
+			get { return m_Settings as Settings; }
+		}
 
 		abstract protected CameraEvent cameraEvent { get; }
 		abstract protected void PopulateCommandBuffer(CommandBuffer buffer, Material material, VectorInt2 cameraSize);
@@ -411,7 +415,7 @@ namespace Cat.PostProcessing {
 	[RequireComponent(typeof(Camera))]
 	[ExecuteInEditMode]
 	//[ImageEffectAllowedInSceneView]
-	public abstract class PostProcessingBaseImageEffect : PostProcessingBase {
+	public abstract class PostProcessingBaseImageEffectBasis: PostProcessingBase {
 
 		internal abstract void RenderImage(RenderTexture source, RenderTexture destination);
 
@@ -500,9 +504,18 @@ namespace Cat.PostProcessing {
 		protected void Blit(RenderTexture renderTarget, Material material, int pass = -1) {
 			Blit(null, renderTarget, material, pass);
 		}
-			
+
 	}
 
+
+	[RequireComponent(typeof(Camera))]
+	[ExecuteInEditMode]
+	//[ImageEffectAllowedInSceneView]
+	public abstract class PostProcessingBaseImageEffect<Settings> : PostProcessingBaseImageEffectBasis where Settings: PostProcessingSettingsBase {
+		public Settings settings {
+			get { return m_Settings as Settings; }
+		}
+	}
 
 
 }

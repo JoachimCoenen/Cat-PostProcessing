@@ -9,8 +9,8 @@ using Cat.CommonEditor;
 namespace Cat.PostProcessingEditor {
 
 
-	using Settings = CatSSR.Settings;
-
+//	using Settings = CatSSR.Settings;
+	/*
 	[CustomEditor(typeof(CatSSR))]
 	//[CanEditMultipleObjects]
 	public class CatSSREditor : Editor {
@@ -67,4 +67,5 @@ namespace Cat.PostProcessingEditor {
 		}
 			
 	}
+	*/
 }
