@@ -91,6 +91,7 @@ namespace Cat.PostProcessing {
 
 			newP.x /= (float)cameraSize.x;
 			newP.y /= (float)cameraSize.y;
+			Debug.Log(isSceneView);
 			
             camera.nonJitteredProjectionMatrix = camera.projectionMatrix;
 			if (camera.orthographic) {
@@ -99,7 +100,7 @@ namespace Cat.PostProcessing {
 				camera.projectionMatrix = GetPerspectiveProjectionMatrix(newP, camera);
 			}
 			
-			Shader.SetGlobalVector(PropertyIDs.TAAJitterVelocity_v, isSceneView ? Vector2.zero : newP);
+			Shader.SetGlobalVector(PropertyIDs.TAAJitterVelocity_v, isSceneView ? Vector2.zero : -newP);
 		}
 
 		override protected void UpdateMaterialPerFrame(Material material, Camera camera, VectorInt2 cameraSize) {
@@ -132,6 +133,7 @@ namespace Cat.PostProcessing {
 
 			Blit(source, destination, material, 0);
 			Blit(destination, lastFrame1);
+			Debug.Log(Shader.GetGlobalVector(PropertyIDs.TAAJitterVelocity_v) * 100000 + " > " + (100000f/512f/3f) * CatAASettings.jitterStrength);
 		}
 
 
