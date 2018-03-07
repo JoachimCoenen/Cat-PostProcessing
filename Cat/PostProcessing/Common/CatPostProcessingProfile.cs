@@ -1,4 +1,4 @@
-﻿using System;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Cat.Common;
@@ -7,11 +7,14 @@ namespace Cat.PostProcessing {
 	
 	public sealed class CatPostProcessingProfile : ScriptableObject {
 		[Tooltip("A list of all settings & overrides.")]
-		public PostProcessingSettingsBase[] m_settings = new PostProcessingSettingsBase[]{} ;
+		[SerializeField] 
+		private List<PostProcessingSettingsBase> m_settings = new List<PostProcessingSettingsBase>();
+
+		public List<PostProcessingSettingsBase> settings { get { return m_settings; } }
 
 		void OnEnable() {
 			// Make sure every setting is valid:
-			// m_settings.RemoveAll(x => x == null);
+			settings.RemoveAll(x => x == null);
 		}
 	}
 }

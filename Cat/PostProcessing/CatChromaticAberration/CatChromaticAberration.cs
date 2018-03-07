@@ -3,22 +3,11 @@ using UnityEngine;
 using Cat.Common;
 
 namespace Cat.PostProcessing {
-
-	[Serializable]
-	[SettingsForPostProcessingEffect(typeof(CatChromaticAberrationEffect))]
-	public sealed class CatChromaticAberration : PostProcessingSettingsBase {
-		/*
-		override public string effectName { 
-			get { return "Chromatic Aberration"; } 
-		}
-		*/
-
-		[Range(0, 1)]
-		public float strength = 0.5f;
-
-	}
-
-	public sealed class CatChromaticAberrationEffect : PostProcessingBaseImageEffect<CatChromaticAberration> {
+	[RequireComponent(typeof(Camera))]
+	[ExecuteInEditMode]
+	[ImageEffectAllowedInSceneView]
+	[AddComponentMenu("Cat/PostProcessing/Chromatic Aberration")]
+	public class CatChromaticAberration : PostProcessingBaseImageEffect<CatChromaticAberrationSettings> {
 
 		override protected string shaderName { get { return "Hidden/Cat Chromatic Aberration"; } }
 		override public string effectName { get { return "Chromatic Aberration"; } }
@@ -46,6 +35,26 @@ namespace Cat.PostProcessing {
 
 		public void OnValidate () {
 			setMaterialDirty();
+		}
+	}
+
+	[Serializable]
+	[SettingsForPostProcessingEffect(typeof(CatChromaticAberration))]
+	public class CatChromaticAberrationSettings : PostProcessingSettingsBase {
+
+		override public string effectName { 
+			get { return "Chromatic Aberration"; } 
+		}
+
+		[Range(0, 1)]
+		public float strength = 0.5f;
+
+		public static CatChromaticAberrationSettings defaultSettings { 
+			get {
+				return new CatChromaticAberrationSettings {
+					strength = 0.5f
+				};
+			}
 		}
 	}
 }

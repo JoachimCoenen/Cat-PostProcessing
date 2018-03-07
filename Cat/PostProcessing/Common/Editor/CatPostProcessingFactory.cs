@@ -19,9 +19,7 @@ namespace Cat.PostProcessingEditor
         {
 			var profile = ScriptableObject.CreateInstance<CatPostProcessingProfile>();
             profile.name = Path.GetFileName(path);
-			AssetDatabase.CreateAsset(profile, path);
-			AssetDatabase.SaveAssets();
-			AssetDatabase.Refresh();
+            AssetDatabase.CreateAsset(profile, path);
             return profile;
         }
     }

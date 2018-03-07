@@ -12,7 +12,8 @@ MonoBehaviour:
   m_Name: New Cat Post-Processing Profile
   m_EditorClassIdentifier: 
   m_settings:
-  - {fileID: 114074936755310184}
+  - {fileID: 114478061537649226}
+  - {fileID: 114674257751253876}
 --- !u!114 &114032854562954102
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -31,40 +32,6 @@ MonoBehaviour:
   minLuminance: 0.5
   kneeStrength: 1
   debugOn: 0
---- !u!114 &114074936755310184
-MonoBehaviour:
-  m_ObjectHideFlags: 3
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
-  m_Name: CatSSRSettings
-  m_EditorClassIdentifier: Assembly-CSharp:Cat.PostProcessing:CatSSRSettings
-  isActive: 1
-  m_Settings:
-    rayTraceResol: 1
-    stepCount: 96
-    minPixelStride: 3
-    maxPixelStride: 12
-    cullBackFaces: 1
-    maxReflectionDistance: 100
-    reflectionResolution: 1
-    intensity: 1
-    reflectionDistanceFade: 0.5
-    rayLengthFade: 0.25
-    edgeFade: 0.125
-    useRetroReflections: 1
-    resolveSampleCount: 4
-    importanceSampleBias: 0.75
-    useCameraMipMap: 1
-    useTemporalSampling: 1
-    response: 0.05
-    toleranceMargin: 2
-    debugOn: 0
-    debugMode: 6
-    mipLevelForDebug: 0
 --- !u!114 &114155643419101832
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -112,24 +79,6 @@ MonoBehaviour:
     debugOn: 0
     debugMode: 6
     mipLevelForDebug: 0
---- !u!114 &114276717540162434
-MonoBehaviour:
-  m_ObjectHideFlags: 3
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
-  m_Name: CatAASettings
-  m_EditorClassIdentifier: Assembly-CSharp:Cat.PostProcessing:CatAASettings
-  isActive: 1
-  sharpness: 0.075
-  velocityWeightScale: 40
-  response: 0.075
-  toleranceMargin: 1
-  jitterMatrix: 4
-  haltonSequenceLength: 8
 --- !u!114 &114404794202813930
 MonoBehaviour:
   m_ObjectHideFlags: 3

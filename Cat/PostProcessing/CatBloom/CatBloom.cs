@@ -6,7 +6,11 @@ using Cat.Common;
 // https://github.com/keijiro/KinoBloom
 
 namespace Cat.PostProcessing {
-	public sealed class CatBloom : PostProcessingBaseImageEffect<CatBloomSettings> {
+	[RequireComponent(typeof(Camera))]
+	[ExecuteInEditMode]
+	[ImageEffectAllowedInSceneView]
+	[AddComponentMenu("Cat/PostProcessing/Bloom")]
+	public class CatBloom : PostProcessingBaseImageEffect<CatBloomSettings> {
 
 		override protected string shaderName { 
 			get { return "Hidden/Cat Bloom"; } 
@@ -131,12 +135,12 @@ namespace Cat.PostProcessing {
 
 	[Serializable]
 	[SettingsForPostProcessingEffect(typeof(CatBloom))]
-	public sealed class CatBloomSettings : PostProcessingSettingsBase {
-		/*
+	public class CatBloomSettings : PostProcessingSettingsBase {
+
 		override public string effectName { 
 			get { return "Bloom"; } 
 		}
-*/
+
 		[Header("Primary Settings")]
 		[Range(0, 1)]
 		public float				intensity = 0.25f;

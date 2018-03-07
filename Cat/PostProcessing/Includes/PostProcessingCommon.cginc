@@ -173,11 +173,7 @@ VertexOutputFull vertFull(VertexInput v) {
 	return o;
 }
 
-float2	GetVelocity(float2 uv) { 
-	return !_IsVelocityPredictionEnabled 
-		? 0 
-		: Tex2Dlod(_CameraMotionVectorsTexture, uv, 0).xy; 
-} // - _TAAJitterVelocity * 0; // Does not seem to be neccessary in Unity2017.2f3
+float2	GetVelocity(float2 uv) { return !_IsVelocityPredictionEnabled ? 0 : Tex2Dlod(_CameraMotionVectorsTexture, uv, 0).xy; } // - _TAAJitterVelocity * 0; // Does not seem to be neccessary in Unity2017.2f3
 
 ///
 /// <param name='fogParams'> <c>= half3(Intensity, StartDistance, EndDistance);</c> </param>
