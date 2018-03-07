@@ -54,24 +54,24 @@ namespace Cat.PostProcessing {
 			if (isSceneView && disableTAAInSceneView) {
 				return;
 			}
-
+			
 			Vector2[] jitterVectors = {
 				Vector2.zero, Vector2.zero,
 				Vector2.zero, Vector2.zero
 			};
 			switch (settings.jitterMatrix) {
-				case JitterMatrixType.ps0:
-					jitterVectors = ps0; break;
-				case JitterMatrixType.ps:
-					jitterVectors = ps; break;
-				case JitterMatrixType.psy:
-					jitterVectors = psy; break;
-				case JitterMatrixType.HaltonSequence:
-					jitterVectors = HaltonSequence; break;
-				case JitterMatrixType.psx:
-					jitterVectors = psx; break;
-				case JitterMatrixType.ps4:
-					jitterVectors = ps4; break;
+			case JitterMatrixType.ps0:
+				jitterVectors = ps0; break;
+			case JitterMatrixType.ps:
+				jitterVectors = ps; break;
+			case JitterMatrixType.psy:
+				jitterVectors = psy; break;
+			case JitterMatrixType.HaltonSequence:
+				jitterVectors = HaltonSequence; break;
+			case JitterMatrixType.psx:
+				jitterVectors = psx; break;
+			case JitterMatrixType.ps4:
+				jitterVectors = ps4; break;
 			}
 			//	camera.ResetProjectionMatrix();
 			if (settings.jitterMatrix == JitterMatrixType.HaltonSequence) {
@@ -91,15 +91,16 @@ namespace Cat.PostProcessing {
 
 			newP.x /= (float)cameraSize.x;
 			newP.y /= (float)cameraSize.y;
-
-			camera.nonJitteredProjectionMatrix = camera.projectionMatrix;
+			Debug.Log(isSceneView);
+			
+            camera.nonJitteredProjectionMatrix = camera.projectionMatrix;
 			if (camera.orthographic) {
 				camera.projectionMatrix = GetOrthographicProjectionMatrix(newP, camera);
 			} else {
 				camera.projectionMatrix = GetPerspectiveProjectionMatrix(newP, camera);
 			}
-
-			Shader.SetGlobalVector(PropertyIDs.TAAJitterVelocity_v, isSceneView ? Vector2.zero : newP);
+			
+			Shader.SetGlobalVector(PropertyIDs.TAAJitterVelocity_v, isSceneView ? Vector2.zero : -newP);
 		}
 
 		override protected void UpdateMaterialPerFrame(Material material, Camera camera, VectorInt2 cameraSize) {
@@ -132,6 +133,7 @@ namespace Cat.PostProcessing {
 
 			Blit(source, destination, material, 0);
 			Blit(destination, lastFrame1);
+			Debug.Log(Shader.GetGlobalVector(PropertyIDs.TAAJitterVelocity_v) * 100000 + " > " + (100000f/512f/3f) * CatAASettings.jitterStrength);
 		}
 
 
@@ -141,7 +143,7 @@ namespace Cat.PostProcessing {
 			Shader.SetGlobalVector(PropertyIDs.TAAJitterVelocity_v, Vector2.zero);
 			base.OnDisable();
 		}
-
+			
 		void OnValidate () {
 			setMaterialDirty();
 		}
