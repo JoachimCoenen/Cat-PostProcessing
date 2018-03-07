@@ -6,66 +6,7 @@ using Cat.Common;
 // https://github.com/keijiro/KinoBloom
 
 namespace Cat.PostProcessing {
-<<<<<<< HEAD
 	public sealed class CatBloom : PostProcessingBaseImageEffect<CatBloomSettings> {
-=======
-	[RequireComponent(typeof(Camera))]
-	[ExecuteInEditMode]
-	[ImageEffectAllowedInSceneView]
-	[AddComponentMenu("Cat/PostProcessing/Bloom")]
-	public class CatBloom : PostProcessingBaseImageEffect {
-
-		[Serializable]
-		public struct Settings {
-			[Header("Primary Settings")]
-			[Range(0, 1)]
-			public float				intensity;
-
-			[Range(0, 1)]
-			public float				dirtIntensity;
-
-			public Texture				dirtTexture;
-
-
-			[Header("Secondary Settings")]
-			[Range(0, 1)]
-			public float				minLuminance;
-
-			[Range(0, 4)]
-			public float				kneeStrength;
-
-
-			[Header("Debugging")]
-			public bool					debugOn;
-
-			public static Settings defaultSettings { 
-				get {
-					return new Settings {
-						intensity				= 0.25f,
-						dirtIntensity			= 0.5f,
-						dirtTexture				= null,
-
-						minLuminance			= 0.5f,
-						kneeStrength			= 1,
-						
-						debugOn					= false,
-					};
-				}
-			}
-
-		}
-
-		[SerializeField]
-		[Inlined]
-		private Settings m_Settings = Settings.defaultSettings;
-		public Settings settings {
-			get { return m_Settings; }
-			set { 
-				m_Settings = value;
-				OnValidate();
-			}
-		}
->>>>>>> parent of 8e36f04... Updated all Effects
 
 		override protected string shaderName { 
 			get { return "Hidden/Cat Bloom"; } 
@@ -76,9 +17,10 @@ namespace Cat.PostProcessing {
 		override internal DepthTextureMode requiredDepthTextureMode { 
 			get { return DepthTextureMode.None; } 
 		}
-		override public bool isActive { 
-			get { return true; } 
+		override public int queueingPosition {
+			get { return 2950; } 
 		}
+
 
 		static class PropertyIDs {
 			internal static readonly int Intensity_f		= Shader.PropertyToID("_Intensity");
@@ -187,7 +129,6 @@ namespace Cat.PostProcessing {
 		}
 	}
 
-<<<<<<< HEAD
 	[Serializable]
 	[SettingsForPostProcessingEffect(typeof(CatBloom))]
 	public sealed class CatBloomSettings : PostProcessingSettingsBase {
@@ -234,6 +175,4 @@ namespace Cat.PostProcessing {
 
 	}
 
-=======
->>>>>>> parent of 8e36f04... Updated all Effects
 }
