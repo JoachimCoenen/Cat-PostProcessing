@@ -138,7 +138,7 @@ namespace Cat.PostProcessing {
 			}
 
 			if (profile != null) {
-				var newEffects = (from setting in profile.settings
+				var newEffects = (from setting in profile.m_settings
 					let settingsType = setting.GetType()
 					where settingsType.IsDefined(typeof(SettingsForPostProcessingEffect), false)
 					let attributes = settingsType.GetCustomAttributes(typeof(SettingsForPostProcessingEffect), false)
