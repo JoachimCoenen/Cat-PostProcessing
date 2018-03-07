@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Name: New Cat Post-Processing Profile
   m_EditorClassIdentifier: 
   m_settings:
+<<<<<<< HEAD
   - {fileID: 114074936755310184}
 --- !u!114 &114032854562954102
 MonoBehaviour:
@@ -78,6 +79,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp:Cat.PostProcessing:CatChromaticAberrationSettings
   isActive: 1
   strength: 0.5
+=======
+  - {fileID: 114259373304937008}
+>>>>>>> parent of 8e36f04... Updated all Effects
 --- !u!114 &114259373304937008
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -318,6 +322,7 @@ MonoBehaviour:
     debugOn: 0
     debugMode: 6
     mipLevelForDebug: 0
+<<<<<<< HEAD
 --- !u!114 &114674257751253876
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -368,3 +373,5 @@ MonoBehaviour:
   sampleCount: 10
   radius: 0.3
   debugOn: 0
+=======
+>>>>>>> parent of 8e36f04... Updated all Effects

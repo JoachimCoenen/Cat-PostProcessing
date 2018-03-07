@@ -3,6 +3,7 @@ using UnityEngine;
 using Cat.Common;
 
 namespace Cat.PostProcessing {
+<<<<<<< HEAD
 
 	[Serializable]
 	[SettingsForPostProcessingEffect(typeof(CatChromaticAberrationEffect))]
@@ -19,13 +20,43 @@ namespace Cat.PostProcessing {
 	}
 
 	public sealed class CatChromaticAberrationEffect : PostProcessingBaseImageEffect<CatChromaticAberration> {
+=======
+	[RequireComponent(typeof(Camera))]
+	[ExecuteInEditMode]
+	[ImageEffectAllowedInSceneView]
+	[AddComponentMenu("Cat/PostProcessing/Chromatic Aberration")]
+	public class CatChromaticAberration : PostProcessingBaseImageEffect {
+
+		[Serializable]
+		public struct Settings {
+			[Range(0, 1)]
+			public float strength;
+
+			public static Settings defaultSettings { 
+				get {
+					return new Settings {
+						strength = 0.5f
+					};
+				}
+			}
+		}
+
+		[SerializeField]
+		[Inlined]
+		private Settings m_Settings = Settings.defaultSettings;
+		public Settings settings {
+			get { return m_Settings; }
+			set { 
+				m_Settings = value;
+				OnValidate();
+			}
+		}
+>>>>>>> parent of 8e36f04... Updated all Effects
 
 		override protected string shaderName { get { return "Hidden/Cat Chromatic Aberration"; } }
 		override public string effectName { get { return "Chromatic Aberration"; } }
 		override internal DepthTextureMode requiredDepthTextureMode { get { return DepthTextureMode.None; } }
-		override public int queueingPosition {
-			get { return 2850; } 
-		}
+		override public bool isActive { get { return true; } }
 
 		static class PropertyIDs {
 			internal static readonly int Strength_f	= Shader.PropertyToID("_Strength");
@@ -48,4 +79,8 @@ namespace Cat.PostProcessing {
 			setMaterialDirty();
 		}
 	}
+<<<<<<< HEAD
+=======
+
+>>>>>>> parent of 8e36f04... Updated all Effects
 }
