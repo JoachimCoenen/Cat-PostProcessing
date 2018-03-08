@@ -12,7 +12,7 @@ namespace Cat.PostProcessing {
 	[ExecuteInEditMode]
 	[ImageEffectAllowedInSceneView]
 	//[AddComponentMenu("Cat/PostProcessing/Screen Space Reflections")]
-	public class CatSSR : PostProcessingBaseCommandBuffer<CatSSRSettings> {
+	public class CatSSRRenderer : PostProcessingBaseCommandBuffer<CatSSR> {
 		public enum DebugMode {
 			AppliedReflectionsAndCubeMap = 0,
 			AppliedReflections = 1,
@@ -24,7 +24,7 @@ namespace Cat.PostProcessing {
 			DoesRaytrace = 7,
 		}
 
-		private CatSSRSettings.Settings lastSettings;
+		private CatSSR.Settings lastSettings;
 
 		private readonly RenderTextureContainer lastFrame = new RenderTextureContainer();
 		private readonly RenderTextureContainer history = new RenderTextureContainer();
@@ -122,7 +122,7 @@ namespace Cat.PostProcessing {
 			// Get RenderTexture sizes:
 			rayTraceRTSize = cameraSize * settings.rayTraceResol;
 			reflRTSize = cameraSize * settings.reflectionResolution;
-			HitTextureSize = CatSSRSettings.Settings.upSampleHitTexture ? reflRTSize : rayTraceRTSize;
+			HitTextureSize = CatSSR.Settings.upSampleHitTexture ? reflRTSize : rayTraceRTSize;
 
 			CreateCopyRT(lastFrame, reflRTSize, 0, settings.useCameraMipMap, RenderTextureFormat.DefaultHDR, FilterMode.Trilinear, RenderTextureReadWrite.Default, TextureWrapMode.Clamp, "lastFrame");
 			CreateRT(    history,   reflRTSize, 0, settings.useReflectionMipMap, RenderTextureFormat.DefaultHDR, FilterMode.Bilinear, RenderTextureReadWrite.Default, TextureWrapMode.Clamp, "history");
@@ -179,12 +179,12 @@ namespace Cat.PostProcessing {
 			material.SetFloat(PropertyIDs.MaxReflectionDistance_f, settings.maxReflectionDistance);
 			material.SetInt(PropertyIDs.StepCount_i, settings.stepCount);
 			// isExactPixelStride
-			var maxStride = CatSSRSettings.Settings.isExactPixelStride ? settings.minPixelStride : settings.maxPixelStride;
+			var maxStride = CatSSR.Settings.isExactPixelStride ? settings.minPixelStride : settings.maxPixelStride;
 			var minPixelStride = Math.Min(settings.minPixelStride, maxStride);
 			var maxPixelStride = Math.Max(settings.minPixelStride, maxStride);
 			material.SetFloat(PropertyIDs.MinPixelStride_i, minPixelStride);
 			material.SetFloat(PropertyIDs.MaxPixelStride_i, maxPixelStride);
-			material.SetFloat(PropertyIDs.NoiseStrength_f, CatSSRSettings.Settings.noiseStrength);
+			material.SetFloat(PropertyIDs.NoiseStrength_f, CatSSR.Settings.noiseStrength);
 			material.SetFloat(PropertyIDs.CullBackFaces_b, settings.cullBackFaces ? 1 : 0);
 			// rayTraceResol
 			// upSampleHitTexture
@@ -358,8 +358,8 @@ namespace Cat.PostProcessing {
 	}
 		
 	[Serializable]
-	[SettingsForPostProcessingEffect(typeof(CatSSR))]
-	public class CatSSRSettings : PostProcessingSettingsBase {
+	[SettingsForPostProcessingEffect(typeof(CatSSRRenderer))]
+	public class CatSSR : PostProcessingSettingsBase {
 
 		override public string effectName { 
 			get { return "Screen Space Reflections"; } 
@@ -418,8 +418,8 @@ namespace Cat.PostProcessing {
 
 			[CustomLabel("Use Import. Sampling")]
 			public const bool		useImportanceSampling = true;
-			[Header("Importance sampling")]
 
+			[Header("Importance sampling")]
 			[CustomLabelRange(1, 7, "Sample Count")]
 			public int					resolveSampleCount;
 

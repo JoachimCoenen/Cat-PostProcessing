@@ -207,7 +207,7 @@ Shader "Hidden/CatAA" {
 			result.rgb = float3(divisor == 0 ? 0 : abs(pureVelocity - jitterVelocity) / divisor, any(divisor == 00));
 			result.rg /= (1 + result.rg);
 			
-			//result.rg = abs(pureVelocity) * 100000;
+			result.rg = (pureVelocity - _TAAJitterVelocity) * 100;
 			return float4(result, 1);
 		}
 		

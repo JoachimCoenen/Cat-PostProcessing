@@ -7,7 +7,7 @@ namespace Cat.PostProcessing {
 	[ExecuteInEditMode]
 	[ImageEffectAllowedInSceneView]
 	[AddComponentMenu("Cat/PostProcessing/Chromatic Aberration")]
-	public class CatChromaticAberration : PostProcessingBaseImageEffect<CatChromaticAberrationSettings> {
+	public class CatChromaticAberrationRenderer : PostProcessingBaseImageEffect<CatChromaticAberration> {
 
 		override protected string shaderName { get { return "Hidden/Cat Chromatic Aberration"; } }
 		override public string effectName { get { return "Chromatic Aberration"; } }
@@ -39,8 +39,8 @@ namespace Cat.PostProcessing {
 	}
 
 	[Serializable]
-	[SettingsForPostProcessingEffect(typeof(CatChromaticAberration))]
-	public class CatChromaticAberrationSettings : PostProcessingSettingsBase {
+	[SettingsForPostProcessingEffect(typeof(CatChromaticAberrationRenderer))]
+	public class CatChromaticAberration : PostProcessingSettingsBase {
 
 		override public string effectName { 
 			get { return "Chromatic Aberration"; } 
@@ -49,9 +49,9 @@ namespace Cat.PostProcessing {
 		[Range(0, 1)]
 		public float strength = 0.5f;
 
-		public static CatChromaticAberrationSettings defaultSettings { 
+		public static CatChromaticAberration defaultSettings { 
 			get {
-				return new CatChromaticAberrationSettings {
+				return new CatChromaticAberration {
 					strength = 0.5f
 				};
 			}

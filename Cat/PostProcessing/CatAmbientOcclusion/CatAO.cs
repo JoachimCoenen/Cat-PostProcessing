@@ -8,7 +8,7 @@ using Cat.Common;
 //using UnityEditorInternal;
 
 namespace Cat.PostProcessing {
-	public class CatAO : PostProcessingBaseCommandBuffer<CatAOSettings> {
+	public class CatAORenderer : PostProcessingBaseCommandBuffer<CatAO> {
 
 		private RenderingPath m_currentRenderingPath;
 		private CameraEvent GetAppropriateCameraEvent(bool isDebugModeOn, RenderingPath renderingPath) {
@@ -104,8 +104,8 @@ namespace Cat.PostProcessing {
 	}
 
 	[Serializable]
-	[SettingsForPostProcessingEffect(typeof(CatAO))]
-	public class CatAOSettings : PostProcessingSettingsBase {
+	[SettingsForPostProcessingEffect(typeof(CatAORenderer))]
+	public class CatAO : PostProcessingSettingsBase {
 
 		override public string effectName { 
 			get { return "Ambient Occlusion"; } 
@@ -123,9 +123,9 @@ namespace Cat.PostProcessing {
 		//[Space(15)]
 		public bool			debugOn = false;
 
-		public static CatAOSettings defaultSettings { 
+		public static CatAO defaultSettings { 
 			get {
-				return new CatAOSettings {
+				return new CatAO {
 					intensity = 0.5f,
 					sampleCount = 10,
 					radius = 0.3f,

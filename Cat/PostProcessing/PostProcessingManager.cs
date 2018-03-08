@@ -194,7 +194,7 @@ namespace Cat.PostProcessing {
 			var activeEffects = from pair in m_Effects
 				let effect = pair.Value
 				where effect.enabled && effect.isActive
-				orderby effect.queueingPosition descending
+				orderby effect.queueingPosition ascending
 				select effect;
 
 			MakeRenderDelegate makeRenderDelegate = e => ((s, d) => e.RenderImage(s, d));

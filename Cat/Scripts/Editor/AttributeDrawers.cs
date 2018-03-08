@@ -113,9 +113,6 @@ namespace Cat.CommonEditor
 			var isFirst = true;
 			while (iterator.Next(isFirst)) {
 				rect.height = EditorGUI.GetPropertyHeight(iterator);
-				if (isFirst && rect.height >= 40) {
-					rect.y -= 9;
-				}
 				EditorGUI.PropertyField(rect, iterator);
 				rect.y += rect.height;
 				isFirst = false;
@@ -129,9 +126,6 @@ namespace Cat.CommonEditor
 			var isFirst = true;
 			while (iterator.Next(isFirst)) {
 				var height = EditorGUI.GetPropertyHeight(iterator);
-				if (isFirst && height >= 40) {
-					result -= 9;
-				}
 				result += height;
 				isFirst = false;
 			}

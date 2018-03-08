@@ -3,7 +3,7 @@ using UnityEngine;
 using Cat.Common;
 
 namespace Cat.PostProcessing {
-	public class CatAA : PostProcessingBaseImageEffect<CatAASettings> {
+	public class CatAARenderer : PostProcessingBaseImageEffect<CatAA> {
 		private const bool disableTAAInSceneView = true;
 
 		private readonly RenderTextureContainer lastFrame1 = new RenderTextureContainer();
@@ -49,7 +49,6 @@ namespace Cat.PostProcessing {
 		int TMSAACounter = 0;
 
 		override protected void UpdateCameraMatricesPerFrame(Camera camera, VectorInt2 cameraSize) {
-			var settings = this.settings;
 			var isSceneView = postProcessingManager.isSceneView;
 			if (isSceneView && disableTAAInSceneView) {
 				return;
@@ -86,7 +85,7 @@ namespace Cat.PostProcessing {
 				newP = newP - new Vector2(0.5f, 0.5f);
 			}
 
-			newP *= CatAASettings.jitterStrength;
+			newP *= CatAA.jitterStrength;
 
 
 			newP.x /= (float)cameraSize.x;
@@ -98,6 +97,7 @@ namespace Cat.PostProcessing {
 			} else {
 				camera.projectionMatrix = GetPerspectiveProjectionMatrix(newP, camera);
 			}
+			camera.useJitteredProjectionMatrixForTransparentRendering = false;
 			
 			Shader.SetGlobalVector(PropertyIDs.TAAJitterVelocity_v, isSceneView ? Vector2.zero : newP);
 		}
@@ -109,7 +109,7 @@ namespace Cat.PostProcessing {
 
 		override protected void UpdateMaterial(Material material, Camera camera, VectorInt2 cameraSize) {
 			var isSceneView = postProcessingManager.isSceneView;
-			var allowVelocityPrediction = CatAASettings.enableVelocityPrediction && !isSceneView;
+			var allowVelocityPrediction = CatAA.enableVelocityPrediction && !isSceneView;
 			material.SetFloat(PropertyIDs.Sharpness_f, settings.sharpness);
 			material.SetInt(PropertyIDs.IsVelocityPredictionEnabled_b, allowVelocityPrediction ? 1 : 0);
 			material.SetFloat(PropertyIDs.VelocityWeightScale_f, settings.velocityWeightScale);
@@ -132,6 +132,7 @@ namespace Cat.PostProcessing {
 
 			Blit(source, destination, material, 0);
 			Blit(destination, lastFrame1);
+			postProcessingManager.camera.ResetProjectionMatrix();
 		}
 
 
@@ -290,8 +291,8 @@ namespace Cat.PostProcessing {
 	}
 
 	[Serializable]
-	[SettingsForPostProcessingEffect(typeof(CatAA))]
-	public class CatAASettings : PostProcessingSettingsBase {
+	[SettingsForPostProcessingEffect(typeof(CatAARenderer))]
+	public class CatAA : PostProcessingSettingsBase {
 
 		override public string effectName { 
 			get { return "Temporal Antialialising"; } 
@@ -319,9 +320,9 @@ namespace Cat.PostProcessing {
 		[CustomLabelRange(4, 16, "Halton Seq. Length")]
 		public int haltonSequenceLength = 8;
 
-		public static CatAASettings defaultSettings { 
+		public static CatAA defaultSettings { 
 			get {
-				return new CatAASettings {
+				return new CatAA {
 					//	jitterStrength = 1f,
 					sharpness = 0.075f,
 					//	enableVelocityPrediction = true,

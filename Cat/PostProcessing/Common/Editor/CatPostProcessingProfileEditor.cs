@@ -22,8 +22,8 @@ namespace Cat.PostProcessingEditor {
 		Dictionary<Type, Type> m_EditorTypes; // SettingsType => EditorType
 		List<CatPostProcessingEditorBase> m_Editors = new List<CatPostProcessingEditorBase>();
 
-
-		internal static Dictionary<Type, Type> s_PropertyDrawers { get; private set; } // PropertyAttribute => PropertyDrawer
+		// Not neccessary any more! Yaaaaaaaayyyyyyyy!! :-) 
+		//internal static Dictionary<Type, Type> s_PropertyDrawers { get; private set; } // PropertyAttribute => PropertyDrawer
 
 
 		public void OnEnable() {
@@ -32,7 +32,8 @@ namespace Cat.PostProcessingEditor {
 			m_SettingsProperty = serializedObject.FindProperty("m_settings");
 			Assert.IsNotNull(m_SettingsProperty);
 
-			FindAllPropertyDrawers();
+			// Not neccessary any more! Yaaaaaaaayyyyyyyy!! :-) 
+			// FindAllPropertyDrawers();
 			FindAllEditors();
 			UpdateAllEditors();
 		}
@@ -49,19 +50,20 @@ namespace Cat.PostProcessingEditor {
 			                   select new KeyValuePair<Type, Type>(attribute.settingsType, editorType)
 			).ToDictionary(x => x.Key, x => x.Value);
 		}
-		//CustomPropertyDrawer
-		private void FindAllPropertyDrawers() {
-			s_PropertyDrawers = (from t in GetAllAssemblyTypes()
-			                     where t.IsSubclassOf(typeof(PropertyDrawer))
-			                     where t.IsDefined(typeof(CustomPropertyDrawer), false)
-			                     where !t.IsAbstract
-			                     let drawerType = t
-			                     let attributes = drawerType.GetCustomAttributes(typeof(CustomPropertyDrawer), false)
-			                     from a in attributes
-			                     let attributeType = a.GetType().GetField("m_Type", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic).GetValue(a) as Type
-			                     select new KeyValuePair<Type, Type>(attributeType, drawerType)
-			).ToDictionary(x => x.Key, x => x.Value);
-		}
+
+		// Not neccessary any more! Yaaaaaaaayyyyyyyy!! :-) 
+		// private void FindAllPropertyDrawers() {
+		// 	s_PropertyDrawers = (from t in GetAllAssemblyTypes()
+		// 	                     where t.IsSubclassOf(typeof(PropertyDrawer))
+		// 	                     where t.IsDefined(typeof(CustomPropertyDrawer), false)
+		// 	                     where !t.IsAbstract
+		// 	                     let drawerType = t
+		// 	                     let attributes = drawerType.GetCustomAttributes(typeof(CustomPropertyDrawer), false)
+		// 	                     from a in attributes
+		// 	                     let attributeType = a.GetType().GetField("m_Type", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic).GetValue(a) as Type
+		// 	                     select new KeyValuePair<Type, Type>(attributeType, drawerType)
+		// 	).ToDictionary(x => x.Key, x => x.Value);
+		// }
 
 		public static IEnumerable<Type> GetAllAssemblyTypes() {
 			return AppDomain.CurrentDomain.GetAssemblies()
@@ -96,11 +98,10 @@ namespace Cat.PostProcessingEditor {
 		}
 
 		public override void OnInspectorGUI() {
-			EditorGUILayout.PropertyField(serializedObject.FindProperty("m_settings"), true);
-
-			EditorGUILayout.Space();
-			CatEditorGUILayout.Splitter();
-			EditorGUILayout.Space();
+			// EditorGUILayout.PropertyField(serializedObject.FindProperty("m_settings"), true);
+			// EditorGUILayout.Space();
+			// CatEditorGUILayout.Splitter();
+			// EditorGUILayout.Space();
 
 			Action deferredAction = null;
 			foreach (var editor in m_Editors) {
@@ -111,6 +112,7 @@ namespace Cat.PostProcessingEditor {
 					editor.OnInspectorGUIInternal();
 				}
 				CatEditorGUILayout.EndBox();
+				EditorGUILayout.Space();
 			}
 
 			if (m_Editors.Count > 0) {

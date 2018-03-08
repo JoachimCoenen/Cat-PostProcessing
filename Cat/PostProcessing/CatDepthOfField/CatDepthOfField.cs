@@ -10,7 +10,7 @@ namespace Cat.PostProcessing {
 	[ExecuteInEditMode]
 	[ImageEffectAllowedInSceneView]
 	[AddComponentMenu("Cat/PostProcessing/DepthOfField")]
-	public class CatDepthOfField : PostProcessingBaseImageEffect<CatDepthOfFieldSettings> {
+	public class CatDepthOfFieldRenderer : PostProcessingBaseImageEffect<CatDepthOfField> {
 
 		override protected string shaderName { 
 			get { return "Hidden/Cat DepthOfField"; } 
@@ -147,8 +147,8 @@ namespace Cat.PostProcessing {
 	}
 
 	[Serializable]
-	[SettingsForPostProcessingEffect(typeof(CatDepthOfField))]
-	public class CatDepthOfFieldSettings : PostProcessingSettingsBase {
+	[SettingsForPostProcessingEffect(typeof(CatDepthOfFieldRenderer))]
+	public class CatDepthOfField : PostProcessingSettingsBase {
 
 		override public string effectName { 
 			get { return "Deferred Fog"; } 
@@ -166,16 +166,16 @@ namespace Cat.PostProcessing {
 		[Header("Debugging")]
 		public bool					debugOn;
 
-		public CatDepthOfFieldSettings() {
+		public CatDepthOfField() {
 			fStop					= 2f;
 			focusDistance			= 1.6f;
 			radius					= 3f;
 			debugOn					= false;
 		}
 
-		public static CatDepthOfFieldSettings defaultSettings { 
+		public static CatDepthOfField defaultSettings { 
 			get {
-				return new CatDepthOfFieldSettings {
+				return new CatDepthOfField {
 					fStop					= 2f,
 					focusDistance			= 1.6f,
 

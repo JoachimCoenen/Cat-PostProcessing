@@ -10,7 +10,7 @@ namespace Cat.PostProcessing {
 	[ExecuteInEditMode]
 	[ImageEffectAllowedInSceneView]
 	[AddComponentMenu("Cat/PostProcessing/Bloom")]
-	public class CatBloom : PostProcessingBaseImageEffect<CatBloomSettings> {
+	public class CatBloomRenderer : PostProcessingBaseImageEffect<CatBloom> {
 
 		override protected string shaderName { 
 			get { return "Hidden/Cat Bloom"; } 
@@ -134,8 +134,8 @@ namespace Cat.PostProcessing {
 	}
 
 	[Serializable]
-	[SettingsForPostProcessingEffect(typeof(CatBloom))]
-	public class CatBloomSettings : PostProcessingSettingsBase {
+	[SettingsForPostProcessingEffect(typeof(CatBloomRenderer))]
+	public class CatBloom : PostProcessingSettingsBase {
 
 		override public string effectName { 
 			get { return "Bloom"; } 
@@ -162,9 +162,9 @@ namespace Cat.PostProcessing {
 		[Header("Debugging")]
 		public bool					debugOn = false;
 
-		public static CatBloomSettings defaultSettings { 
+		public static CatBloom defaultSettings { 
 			get {
-				return new CatBloomSettings {
+				return new CatBloom {
 					intensity				= 0.25f,
 					dirtIntensity			= 0.5f,
 					dirtTexture				= null,

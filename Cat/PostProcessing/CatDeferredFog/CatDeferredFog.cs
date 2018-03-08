@@ -11,7 +11,7 @@ namespace Cat.PostProcessing {
 	[ExecuteInEditMode]
 	[ImageEffectAllowedInSceneView]
 	[AddComponentMenu("Cat/PostProcessing/Deferred Fog")]
-	public class CatDeferredFog : PostProcessingBaseImageEffect<CatDeferredFogSettings> {
+	public class CatDeferredFogRenderer : PostProcessingBaseImageEffect<CatDeferredFog> {
 
 		override public string effectName { 
 			get { return "Deferred Fog"; } 
@@ -70,16 +70,16 @@ namespace Cat.PostProcessing {
 	}
 
 	[Serializable]
-	[SettingsForPostProcessingEffect(typeof(CatDeferredFog))]
-	public class CatDeferredFogSettings : PostProcessingSettingsBase {
+	[SettingsForPostProcessingEffect(typeof(CatDeferredFogRenderer))]
+	public class CatDeferredFog : PostProcessingSettingsBase {
 
 		override public string effectName { 
 			get { return "Deferred Fog"; } 
 		}
 
-		public static CatDeferredFogSettings defaultSettings { 
+		public static CatDeferredFog defaultSettings { 
 			get {
-				return new CatDeferredFogSettings {
+				return new CatDeferredFog {
 					
 				};
 			}

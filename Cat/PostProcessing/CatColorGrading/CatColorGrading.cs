@@ -3,7 +3,7 @@ using UnityEngine;
 using Cat.Common;
 
 namespace Cat.PostProcessing {
-	public class CatColorGrading : PostProcessingBaseImageEffect<CatColorGradingSettings> {
+	public class CatColorGradingRenderer : PostProcessingBaseImageEffect<CatColorGrading> {
 
 		override protected string shaderName { get { return "Hidden/Cat Color Grading"; } }
 		override public string effectName { get { return "Color Grading"; } }
@@ -97,9 +97,9 @@ namespace Cat.PostProcessing {
 
 			var colorMixMatrix = Matrix4x4.identity;
 			switch (settings.colorMixer) {
-				case CatColorGradingSettings.ColorMixer.Off:
+				case CatColorGrading.ColorMixer.Off:
 					break;
-				case CatColorGradingSettings.ColorMixer.Sepia: {
+				case CatColorGrading.ColorMixer.Sepia: {
 						var column0 = Vector3.one * 0.4392157f;
 						var column1 = Vector3.one * 0.2588235f;
 						var column2 = Vector3.one * 0.0784314f;
@@ -107,17 +107,17 @@ namespace Cat.PostProcessing {
 					//	colorMixMatrix = NormalizeColorMatrix(colorMixMatrix);
 					}
 					break;
-				case CatColorGradingSettings.ColorMixer.Mono: {
+				case CatColorGrading.ColorMixer.Mono: {
 						var column = new Vector4(0.3333333f, 0.3333333f, 0.3333333f, 0f);
 						colorMixMatrix = new Matrix4x4(column, column, column, Vector4.zero);
 					} 
 					break;
-				case CatColorGradingSettings.ColorMixer.Noir: {
+				case CatColorGrading.ColorMixer.Noir: {
 						var column = new Vector4(0.2126729f, 0.7151522f, 0.0721750f, 0f);
 						colorMixMatrix = new Matrix4x4(column, column, column, Vector4.zero);
 					} 
 					break;
-				case CatColorGradingSettings.ColorMixer.Custom: {
+				case CatColorGrading.ColorMixer.Custom: {
 						colorMixMatrix = new Matrix4x4(settings.red, settings.green, settings.blue, Vector4.zero);
 						if (settings.isColorMatrixNormalized) {
 							colorMixMatrix = NormalizeColorMatrix(colorMixMatrix);
@@ -136,22 +136,22 @@ namespace Cat.PostProcessing {
 
 
 			switch (settings.tonemapper) {
-				case CatColorGradingSettings.Tonemapper.Off: 
+				case CatColorGrading.Tonemapper.Off: 
 					material.DisableKeyword("TONEMAPPING_FILMIC");
 					material.DisableKeyword("TONEMAPPING_NEUTRAL");
 					material.DisableKeyword("TONEMAPPING_UNCHARTED_2");
 					break;
-				case CatColorGradingSettings.Tonemapper.Filmic:
+				case CatColorGrading.Tonemapper.Filmic:
 					material.EnableKeyword("TONEMAPPING_FILMIC");
 					material.DisableKeyword("TONEMAPPING_NEUTRAL");
 					material.DisableKeyword("TONEMAPPING_UNCHARTED_2");
 					break;
-				case CatColorGradingSettings.Tonemapper.Neutral:
+				case CatColorGrading.Tonemapper.Neutral:
 					material.DisableKeyword("TONEMAPPING_FILMIC");
 					material.EnableKeyword("TONEMAPPING_NEUTRAL");
 					material.DisableKeyword("TONEMAPPING_UNCHARTED_2");
 					break;
-				case CatColorGradingSettings.Tonemapper.Uncharted2: 
+				case CatColorGrading.Tonemapper.Uncharted2: 
 					material.DisableKeyword("TONEMAPPING_FILMIC");
 					material.DisableKeyword("TONEMAPPING_NEUTRAL");
 					material.EnableKeyword("TONEMAPPING_UNCHARTED_2");
@@ -254,8 +254,8 @@ namespace Cat.PostProcessing {
 	}
 
 	[Serializable]
-	[SettingsForPostProcessingEffect(typeof(CatColorGrading))]
-	public class CatColorGradingSettings : PostProcessingSettingsBase {
+	[SettingsForPostProcessingEffect(typeof(CatColorGradingRenderer))]
+	public class CatColorGrading : PostProcessingSettingsBase {
 
 		override public string effectName { 
 			get { return "Color Grading"; } 
@@ -336,7 +336,7 @@ namespace Cat.PostProcessing {
 		//[Range(0, 1)]
 		//public float strength;
 
-		public CatColorGradingSettings() {
+		public CatColorGrading() {
 			tonemapper = Tonemapper.Off;
 			response = 0f;
 			gain = 0f;
@@ -363,9 +363,9 @@ namespace Cat.PostProcessing {
 
 		}
 
-		public static CatColorGradingSettings defaultSettings { 
+		public static CatColorGrading defaultSettings { 
 			get {
-				return new CatColorGradingSettings {
+				return new CatColorGrading {
 					tonemapper = Tonemapper.Off,
 					response = 0f,
 					gain = 0f,
