@@ -10,7 +10,7 @@ using Cat.CommonEditor;
 namespace Cat.PostProcessingEditor {
 
 
-	using Settings = CatSSR.Settings;
+	using Settings = CatSSR;
 
 	[CatPostProcessingEditorAttribute(typeof(CatSSR))]
 	public class CatSSREditor : CatPostProcessingEditorBase {
@@ -46,7 +46,7 @@ namespace Cat.PostProcessingEditor {
 			}
 			if (EditorGUI.EndChangeCheck()) {
 				if (selectedIndex >= 0) {
-					(target as CatSSR).settings = Settings.GetPreset(allowedValues[selectedIndex]);
+				//	target = Settings.GetPreset(allowedValues[selectedIndex]);
 				}
 			}
 			EditorGUI.showMixedValue = oldShowMixedValue;

@@ -22,7 +22,6 @@ namespace Cat.PostProcessingEditor {
 			this.attributes = attributes;
 		}
 	}
-
 	public abstract class CatPostProcessingEditorBase {
 
 		//SerializedProperty m_settings;
@@ -31,8 +30,6 @@ namespace Cat.PostProcessingEditor {
 		internal SerializedObject serializedObject { get { return m_serializedObject;}}
 		private PostProcessingSettingsBase m_target;
 		internal PostProcessingSettingsBase target { get { return m_target;}}
-
-		internal bool isOpen = true;
 
 		public static CatPostProcessingEditorBase Create(Type t, SerializedProperty settings, PostProcessingSettingsBase target) {
 			var editor = (CatPostProcessingEditorBase)Activator.CreateInstance(t);
@@ -58,7 +55,9 @@ namespace Cat.PostProcessingEditor {
 		internal IEnumerable<AttributedProperty> GetAttributedProperties(object target) {
 			var properties = from field in target.GetType()
 				.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+					where field.Name != "isActive"
 					where field.Name != "enabled"
+					where !field.IsInitOnly
 					where (field.IsPublic && field.GetCustomAttributes(typeof(NonSerializedAttribute), false).Length == 0)
 				|| (field.GetCustomAttributes(typeof(UnityEngine.SerializeField), false).Length > 0)
 				let property = serializedObject.FindProperty(field.Name)
@@ -87,69 +86,89 @@ namespace Cat.PostProcessingEditor {
 				if (tooltipAttr != null)
 					title.tooltip = tooltipAttr.tooltip;
 			}
-			EditorGUILayout.PropertyField(property.serializedProperty, title, property.serializedProperty.isExpanded);
+			// EditorGUILayout.PropertyField(property, title, property.isExpanded);
 
-			// Not neccessary any more! Yaaaaaaaayyyyyyyy!! :-) 
-			// // Look for a compatible attribute drawer
-			// PropertyDrawer propertyDrawer = null;
-			// foreach (var attr in property.attributes) {
-			// 	// Draw unity built-in Decorators (Space, Header)
-			// 	if (attr is PropertyAttribute) {
-			// 		if (attr is SpaceAttribute) {
-			// 			EditorGUILayout.GetControlRect(false, (attr as SpaceAttribute).height);
-			// 		}
-			// 		else if (attr is HeaderAttribute) {
-			// 			CatEditorGUILayout.Splitter();
-			// 			var rect = EditorGUILayout.GetControlRect(false, 24f);
-			// 			rect.y += 8f;
-			// 			rect = EditorGUI.IndentedRect(rect);
-			// 		//	EditorGUI.LabelField(rect, (attr as HeaderAttribute).header, EditorStyles.boldLabel);
-			// 		}
-			// 		else if (attr is Inlined) {
-			// 			propertyDrawer = new InlinedAttributeDrawer();
-			// 		} else {
-			// 			Type drawerType = null;
-			// 			if (CatPostProcessingProfileEditor.s_PropertyDrawers.TryGetValue(attr.GetType(), out drawerType)) {
-			// 				propertyDrawer = (PropertyDrawer)Activator.CreateInstance(drawerType);
-			// 				var field = drawerType.GetField("m_Attribute", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-			// 				field.SetValue(propertyDrawer, attr);
-			// 			}
-			// 		}
-			// 	}
-			// }
-			// 
-			// var serializedProperty = property.serializedProperty;
-			// if (propertyDrawer != null) {
-			// 	if (propertyDrawer is InlinedAttributeDrawer) {
-			// 		// Draw Inlined Attribute:
-			// 		var innerProperties = GetAttributedProperties(property.rawValue, property.serializedProperty);
-			// 		foreach (var innerProperty in innerProperties) {
-			// 			PropertyField(innerProperty);
-			// 		}
-			// 	} else {
-			// 		//using (new EditorGUILayout.HorizontalScope()) {
-			// 			// all Other Custom Attributes:
-			// 			var height = propertyDrawer.GetPropertyHeight(serializedProperty, title);
-			// 			var rect = EditorGUILayout.GetControlRect(true, height);
-			// 			propertyDrawer.OnGUI(rect, serializedProperty, title);
-			// 		//}
-			// 	}
-			// } else if (serializedProperty.hasVisibleChildren
-			// 		&& serializedProperty.propertyType != SerializedPropertyType.Vector2
-			// 		&& serializedProperty.propertyType != SerializedPropertyType.Vector3) {
-			// 	// Default unity field
-			// 	GUILayout.Space(12f);
-			// 	EditorGUILayout.PropertyField(serializedProperty, title, false);
-			// 	var innerProperties = GetAttributedProperties(property.rawValue, property.serializedProperty);
-			// 	foreach (var innerProperty in innerProperties) {
-			// 		PropertyField(innerProperty);
-			// 	}
-			// } else {
-			// 	// Default unity field
-			// 	using (new EditorGUILayout.HorizontalScope()) {
-			// 		EditorGUILayout.PropertyField(serializedProperty, title);
-			// 	}
-			// }
+			// Look for a compatible attribute drawer
+			PropertyDrawer propertyDrawer = null;
+			foreach (var attr in property.attributes) {
+				// Draw unity built-in Decorators (Space, Header)
+				if (attr is PropertyAttribute) {
+					if (attr is SpaceAttribute) {
+						EditorGUILayout.GetControlRect(false, (attr as SpaceAttribute).height);
+					}
+					else if (attr is HeaderAttribute) {
+						//CatEditorGUILayout.Splitter();
+						var rect = EditorGUILayout.GetControlRect(false, 24f);
+						rect.y += 8f;
+						rect = EditorGUI.IndentedRect(rect);
+						EditorGUI.LabelField(rect, (attr as HeaderAttribute).header, EditorStyles.boldLabel);
+					}
+					else if (attr is Inlined) {
+						propertyDrawer = new InlinedAttributeDrawer();
+					} else {
+						Type drawerType = null;
+						if (CatPostProcessingProfileEditor.s_PropertyDrawers.TryGetValue(attr.GetType(), out drawerType)) {
+							propertyDrawer = (PropertyDrawer)Activator.CreateInstance(drawerType);
+							var field = drawerType.GetField("m_Attribute", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+							field.SetValue(propertyDrawer, attr);
+						}
+					}
+				}
+			}
+			
+			var serializedProperty = property.serializedProperty;
+			var propertyOverride = property.rawValue as PropertyOverride;
+
+			if (propertyOverride != null) {
+				var overrideProperties = GetAttributedProperties(propertyOverride, serializedProperty);
+				using (new EditorGUILayout.HorizontalScope()) {
+					var isActive = overrideProperties.First(p => p.serializedProperty.name == "isActive").serializedProperty;
+					var rawValue = overrideProperties.First(p => p.serializedProperty.name == "m_RawValue");
+					var showAsActive = CatEditorGUILayout.FoldoutToggle(isActive.boolValue);
+					isActive.boolValue = showAsActive;
+					using (new EditorGUI.DisabledScope(!showAsActive)) {
+						PropertyField(rawValue, propertyDrawer, title);
+					}
+				}
+
+			} else {
+				// TODO: Draw field properly:
+				PropertyField(property, propertyDrawer, title);
+			}
+
+		}
+
+		private static void PropertyField(AttributedProperty property,PropertyDrawer propertyDrawer, GUIContent title) {
+			var serializedProperty = property.serializedProperty;
+			if (propertyDrawer != null) {
+				if (propertyDrawer is InlinedAttributeDrawer) {
+					// Draw Inlined Attribute:
+					var innerProperties = GetAttributedProperties(property.rawValue, serializedProperty);
+					foreach (var innerProperty in innerProperties) {
+						PropertyField(innerProperty);
+					}
+				} else {
+					//using (new EditorGUILayout.HorizontalScope()) {
+					// all Other Custom Attributes:
+					var height = propertyDrawer.GetPropertyHeight(serializedProperty, title);
+					var rect = EditorGUILayout.GetControlRect(true, height);
+					propertyDrawer.OnGUI(rect, serializedProperty, title);
+					//}
+				}
+			} else if (serializedProperty.hasVisibleChildren
+				&& serializedProperty.propertyType != SerializedPropertyType.Vector2
+				&& serializedProperty.propertyType != SerializedPropertyType.Vector3) {
+				// Default unity field
+				GUILayout.Space(12f);
+				EditorGUILayout.PropertyField(serializedProperty, title, false);
+				var innerProperties = GetAttributedProperties(property.rawValue, serializedProperty);
+				foreach (var innerProperty in innerProperties) {
+					PropertyField(innerProperty);
+				}
+			} else {
+				// Default unity field
+				EditorGUILayout.PropertyField(serializedProperty, title);
+			}
 		}
 
 	}

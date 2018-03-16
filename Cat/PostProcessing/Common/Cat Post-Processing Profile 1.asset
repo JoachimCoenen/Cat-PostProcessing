@@ -1,0 +1,260 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 59fc877289eebc4498be170384339dcb, type: 3}
+  m_Name: Cat Post-Processing Profile 1
+  m_EditorClassIdentifier: 
+  m_settings:
+  - {fileID: 114287470100924900}
+  - {fileID: 114625164204168074}
+  - {fileID: 114428496976125524}
+  - {fileID: 114536535171943158}
+  - {fileID: 114605782163178876}
+  - {fileID: 114971004360786896}
+--- !u!114 &114287470100924900
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1cb1c853f63ba7c4b82db1e81deda4c3, type: 3}
+  m_Name: CatAO
+  m_EditorClassIdentifier: 
+  isActive: 1
+  intensity:
+    isActive: 1
+    m_RawValue: 0.5
+  sampleCount:
+    isActive: 1
+    m_RawValue: 10
+  radius:
+    isActive: 1
+    m_RawValue: 0.3
+  debugOn:
+    isActive: 1
+    m_RawValue: 0
+--- !u!114 &114428496976125524
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 41041b03803b943beb7f5ac3e497eff0, type: 3}
+  m_Name: CatSSR
+  m_EditorClassIdentifier: 
+  isActive: 1
+  rayTraceResol:
+    isActive: 1
+    m_RawValue: 1
+  stepCount:
+    isActive: 1
+    m_RawValue: 96
+  minPixelStride:
+    isActive: 1
+    m_RawValue: 3
+  maxPixelStride:
+    isActive: 1
+    m_RawValue: 12
+  cullBackFaces:
+    isActive: 1
+    m_RawValue: 1
+  maxReflectionDistance:
+    isActive: 1
+    m_RawValue: 100
+  reflectionResolution:
+    isActive: 1
+    m_RawValue: 1
+  intensity:
+    isActive: 1
+    m_RawValue: 1
+  reflectionDistanceFade:
+    isActive: 1
+    m_RawValue: 0.5
+  rayLengthFade:
+    isActive: 1
+    m_RawValue: 0.25
+  edgeFade:
+    isActive: 1
+    m_RawValue: 0.125
+  useRetroReflections:
+    isActive: 1
+    m_RawValue: 0
+  resolveSampleCount:
+    isActive: 1
+    m_RawValue: 4
+  importanceSampleBias:
+    isActive: 1
+    m_RawValue: 0.75
+  useCameraMipMap:
+    isActive: 1
+    m_RawValue: 1
+  useTemporalSampling:
+    isActive: 1
+    m_RawValue: 1
+  response:
+    isActive: 1
+    m_RawValue: 0.05
+  toleranceMargin:
+    isActive: 1
+    m_RawValue: 2
+  debugOn:
+    isActive: 0
+    m_RawValue: 0
+  debugMode:
+    isActive: 0
+    m_RawValue: 6
+  mipLevelForDebug:
+    isActive: 1
+    m_RawValue: 0
+--- !u!114 &114536535171943158
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5e28affa801e26a4cb0f9ca731caa5ec, type: 3}
+  m_Name: CatAA
+  m_EditorClassIdentifier: 
+  isActive: 1
+  sharpness:
+    isActive: 1
+    m_RawValue: 0.075
+  velocityWeightScale:
+    isActive: 1
+    m_RawValue: 40
+  response:
+    isActive: 1
+    m_RawValue: 0.075
+  toleranceMargin:
+    isActive: 1
+    m_RawValue: 1
+  jitterMatrix:
+    isActive: 1
+    m_RawValue: 3
+  haltonSequenceLength:
+    isActive: 1
+    m_RawValue: 8
+--- !u!114 &114605782163178876
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d32b6368db1078448a822388135e3de2, type: 3}
+  m_Name: CatChromaticAberration
+  m_EditorClassIdentifier: 
+  isActive: 1
+  strength:
+    isActive: 1
+    m_RawValue: 0.18
+--- !u!114 &114625164204168074
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d91da77419a08534181a8b9745acd933, type: 3}
+  m_Name: CatBloom
+  m_EditorClassIdentifier: 
+  isActive: 1
+  intensity:
+    isActive: 1
+    m_RawValue: 0.25
+  dirtIntensity:
+    isActive: 1
+    m_RawValue: 0.5
+  dirtTexture:
+    isActive: 1
+    m_RawValue: {fileID: 2800000, guid: a506b49dea95da449be7d0cbd62dd312, type: 3}
+  minLuminance:
+    isActive: 1
+    m_RawValue: 0.5
+  kneeStrength:
+    isActive: 1
+    m_RawValue: 1
+  debugOn:
+    isActive: 1
+    m_RawValue: 0
+--- !u!114 &114971004360786896
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b190397d1d49de74a92288005fd04f07, type: 3}
+  m_Name: CatColorGrading
+  m_EditorClassIdentifier: 
+  isActive: 1
+  tonemapper:
+    isActive: 1
+    m_RawValue: 2
+  response:
+    isActive: 1
+    m_RawValue: 0
+  gain:
+    isActive: 1
+    m_RawValue: 0.51
+  exposure:
+    isActive: 1
+    m_RawValue: 0
+  contrast:
+    isActive: 1
+    m_RawValue: 0.28
+  saturation:
+    isActive: 1
+    m_RawValue: -0.16
+  temperature:
+    isActive: 1
+    m_RawValue: -0.04
+  tint:
+    isActive: 1
+    m_RawValue: 0.02
+  colorMixer:
+    isActive: 1
+    m_RawValue: 0
+  red:
+    isActive: 1
+    m_RawValue: {r: 1, g: 0, b: 0, a: 1}
+  green:
+    isActive: 1
+    m_RawValue: {r: 0, g: 1, b: 0, a: 1}
+  blue:
+    isActive: 1
+    m_RawValue: {r: 0, g: 0, b: 1, a: 1}
+  isColorMatrixNormalized:
+    isActive: 1
+    m_RawValue: 0
+  blackPoint:
+    isActive: 1
+    m_RawValue: 0
+  midPoint:
+    isActive: 1
+    m_RawValue: -0.28
+  whitePoint:
+    isActive: 1
+    m_RawValue: 0
+  shadows:
+    isActive: 1
+    m_RawValue: 0.25
+  highlights:
+    isActive: 1
+    m_RawValue: 0.59

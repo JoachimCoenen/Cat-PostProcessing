@@ -49,7 +49,10 @@ namespace Cat.PostProcessing {
 		abstract public string effectName { get; }
 		abstract internal DepthTextureMode requiredDepthTextureMode { get; }
 		virtual public bool isActive { get { return (m_Settings != null) && m_Settings.isActive; } }
-		abstract public int queueingPosition { get; } // 10_000 is for ColorCorrection
+		public int queueingPosition { get {
+				return null == m_Settings ? 999999999 : m_Settings.queueingPosition;
+			}
+		} 
 
 		public bool enabled = true;
 

@@ -12,9 +12,6 @@ namespace Cat.PostProcessing {
 		override protected string shaderName { get { return "Hidden/Cat Chromatic Aberration"; } }
 		override public string effectName { get { return "Chromatic Aberration"; } }
 		override internal DepthTextureMode requiredDepthTextureMode { get { return DepthTextureMode.None; } }
-		override public int queueingPosition {
-			get { return 2850; } 
-		}
 
 		static class PropertyIDs {
 			internal static readonly int Strength_f	= Shader.PropertyToID("_Strength");
@@ -45,15 +42,20 @@ namespace Cat.PostProcessing {
 		override public string effectName { 
 			get { return "Chromatic Aberration"; } 
 		}
+		override public int queueingPosition {
+			get { return 2900; } 
+		}
 
 		[Range(0, 1)]
-		public float strength = 0.5f;
+		public FloatProperty strength = new FloatProperty();
+
+		public CatChromaticAberration() {
+			strength.rawValue = 0.5f;
+		}
 
 		public static CatChromaticAberration defaultSettings { 
 			get {
-				return new CatChromaticAberration {
-					strength = 0.5f
-				};
+				return new CatChromaticAberration();
 			}
 		}
 	}

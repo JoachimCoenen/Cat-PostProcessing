@@ -21,9 +21,6 @@ namespace Cat.PostProcessing {
 		override internal DepthTextureMode requiredDepthTextureMode { 
 			get { return DepthTextureMode.None; } 
 		}
-		override public int queueingPosition {
-			get { return 2950; } 
-		}
 
 
 		static class PropertyIDs {
@@ -140,40 +137,45 @@ namespace Cat.PostProcessing {
 		override public string effectName { 
 			get { return "Bloom"; } 
 		}
+		override public int queueingPosition {
+			get { return 2950; } 
+		}
 
 		[Header("Primary Settings")]
 		[Range(0, 1)]
-		public float				intensity = 0.25f;
+		public FloatProperty intensity = new FloatProperty();
 
 		[Range(0, 1)]
-		public float				dirtIntensity = 0.5f;
+		public FloatProperty dirtIntensity = new FloatProperty();
 
-		public Texture				dirtTexture = null;
+		public TextureProperty dirtTexture = new TextureProperty();
 
 
 		[Header("Secondary Settings")]
 		[Range(0, 1)]
-		public float				minLuminance = 0.5f;
+		public FloatProperty minLuminance = new FloatProperty();
 
 		[Range(0, 4)]
-		public float				kneeStrength = 1;
+		public FloatProperty kneeStrength = new FloatProperty();
 
 
 		[Header("Debugging")]
-		public bool					debugOn = false;
+		public BoolProperty debugOn = new BoolProperty();
+
+		public CatBloom() {
+			intensity.rawValue		= 0.25f;
+			dirtIntensity.rawValue	= 0.5f;
+			dirtTexture.rawValue	= null;
+
+			minLuminance.rawValue	= 0.5f;
+			kneeStrength.rawValue	= 1;
+
+			debugOn.rawValue		= false;
+		}
 
 		public static CatBloom defaultSettings { 
 			get {
-				return new CatBloom {
-					intensity				= 0.25f,
-					dirtIntensity			= 0.5f,
-					dirtTexture				= null,
-
-					minLuminance			= 0.5f,
-					kneeStrength			= 1,
-
-					debugOn					= false,
-				};
+				return new CatBloom();
 			}
 		}
 

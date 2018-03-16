@@ -11,9 +11,6 @@ namespace Cat.PostProcessing {
 		override protected string shaderName { get { return "Hidden/CatAA"; } }
 		override public string effectName { get { return "Cat Temporal Antialialising"; } }
 		override internal DepthTextureMode requiredDepthTextureMode { get { return DepthTextureMode.MotionVectors | DepthTextureMode.Depth; } }
-		override public int queueingPosition {
-			get { return 2900; } 
-		}
 
 
 		static class PropertyIDs {
@@ -58,7 +55,7 @@ namespace Cat.PostProcessing {
 				Vector2.zero, Vector2.zero,
 				Vector2.zero, Vector2.zero
 			};
-			switch (settings.jitterMatrix) {
+			switch (settings.jitterMatrix.rawValue) {
 			case JitterMatrixType.ps0:
 				jitterVectors = ps0; break;
 			case JitterMatrixType.ps:
@@ -291,47 +288,54 @@ namespace Cat.PostProcessing {
 	}
 
 	[Serializable]
+	public class JitterMatrixTypeProperty : PropertyOverride<JitterMatrixType> {}
+
+	[Serializable]
 	[SettingsForPostProcessingEffect(typeof(CatAARenderer))]
 	public class CatAA : PostProcessingSettingsBase {
 
 		override public string effectName { 
 			get { return "Temporal Antialialising"; } 
 		}
+		override public int queueingPosition {
+			get { return 2850; } 
+		}
 
 		//[Range(0.0f, 2.0f)]
 		public const float jitterStrength = 1f;
 
 		[Range(0.0f, 2.0f)]
-		public float sharpness = 0.075f;
+		public FloatProperty sharpness = new FloatProperty();
 
 		public const bool enableVelocityPrediction = true;
 
 		[CustomLabelRange(0.0f, 80.0f, "Velocity Scale")]
-		public float velocityWeightScale = 40;
+		public FloatProperty velocityWeightScale = new FloatProperty();
 
 		[Range(1e-3f, 1)]
-		public float response = 0.075f;
+		public FloatProperty response = new FloatProperty();
 
 		[Range(0, 5)]
-		public float toleranceMargin = 1;
+		public FloatProperty toleranceMargin = new FloatProperty();
 
-		public JitterMatrixType jitterMatrix = JitterMatrixType.HaltonSequence;
+		public JitterMatrixTypeProperty jitterMatrix = new JitterMatrixTypeProperty();
 
 		[CustomLabelRange(4, 16, "Halton Seq. Length")]
-		public int haltonSequenceLength = 8;
+		public IntProperty haltonSequenceLength = new IntProperty();
 
+		public CatAA() {
+			//	jitterStrength.rawValue = 1f,
+			sharpness.rawValue = 0.075f;
+			//	enableVelocityPrediction.rawValue = true,
+			velocityWeightScale.rawValue = 40;
+			response.rawValue = 0.075f;
+			toleranceMargin.rawValue = 1;
+			jitterMatrix.rawValue = JitterMatrixType.HaltonSequence;
+			haltonSequenceLength.rawValue = 8;
+		}
 		public static CatAA defaultSettings { 
 			get {
-				return new CatAA {
-					//	jitterStrength = 1f,
-					sharpness = 0.075f,
-					//	enableVelocityPrediction = true,
-					velocityWeightScale = 40,
-					response			= 0.075f,
-					toleranceMargin		= 1,
-					jitterMatrix = JitterMatrixType.HaltonSequence,
-					haltonSequenceLength = 8
-				};
+				return new CatAA();
 			}
 		}
 	}

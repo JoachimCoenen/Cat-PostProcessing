@@ -9,7 +9,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 59fc877289eebc4498be170384339dcb, type: 3}
-  m_Name: New Cat Post-Processing Profile 2
+  m_Name: New Cat Post-Processing Profile 3
   m_EditorClassIdentifier: 
   m_settings:
   - {fileID: 114617959953460526}
@@ -33,17 +33,17 @@ MonoBehaviour:
   isActive: 1
   m_Settings:
     rayTraceResol: 1
-    stepCount: 160
+    stepCount: 96
     minPixelStride: 3
     maxPixelStride: 12
-    cullBackFaces: 0
+    cullBackFaces: 1
     maxReflectionDistance: 100
     reflectionResolution: 1
     intensity: 1
     reflectionDistanceFade: 0.5
     rayLengthFade: 0.25
     edgeFade: 0.125
-    useRetroReflections: 0
+    useRetroReflections: 1
     resolveSampleCount: 4
     importanceSampleBias: 0.75
     useCameraMipMap: 1
@@ -82,7 +82,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5e28affa801e26a4cb0f9ca731caa5ec, type: 3}
   m_Name: CatAA
   m_EditorClassIdentifier: 
-  isActive: 1
+  isActive: 0
   sharpness: 0.075
   velocityWeightScale: 40
   response: 0.075
@@ -113,24 +113,24 @@ MonoBehaviour:
   m_Name: CatColorGrading
   m_EditorClassIdentifier: 
   isActive: 1
-  tonemapper: 1
+  tonemapper: 0
   response: 0
   gain: 0
-  exposure: 0.33333
+  exposure: 0
   contrast: 0
-  saturation: 0.05
-  temperature: -0.05
-  tint: 0.04
+  saturation: 0
+  temperature: 0
+  tint: 0
   colorMixer: 0
   red: {r: 1, g: 0, b: 0, a: 1}
   green: {r: 0, g: 1, b: 0, a: 1}
   blue: {r: 0, g: 0, b: 1, a: 1}
   isColorMatrixNormalized: 0
   blackPoint: 0
-  midPoint: -0.18
+  midPoint: 0
   whitePoint: 0
-  shadows: 0.4
-  highlights: -0.25
+  shadows: 0
+  highlights: 0
 --- !u!114 &114827523087132132
 MonoBehaviour:
   m_ObjectHideFlags: 3

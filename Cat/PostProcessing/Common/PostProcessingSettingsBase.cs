@@ -2,6 +2,8 @@
 using System.Reflection;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
 using UnityEngine;
 using Cat.Common;
 namespace Cat.PostProcessing {
@@ -12,65 +14,36 @@ namespace Cat.PostProcessing {
 		public bool isActive = true;
 
 		public abstract string effectName { get; }
+		public abstract int queueingPosition { get; } 
 
+		internal ReadOnlyCollection<PropertyOverride> properties;
+		void OnEnable() {
+			// Automatically grab all fields of type ParameterOverride for this instance
+			properties = GetType()
+				.GetFields(BindingFlags.Public | BindingFlags.Instance)
+				.Where(t => t.FieldType.IsSubclassOf(typeof(PropertyOverride)))
+				.OrderBy(t => t.MetadataToken) // Guaranteed order
+				.Select(t => (PropertyOverride)t.GetValue(this))
+				.ToList()
+				.AsReadOnly();
 
+		}
 
-/*
-		public static PostProcessingSettingsBase defaultSettings { 
-			get {
-				return new PostProcessingSettingsBase();//This();
+		internal void TurnAllOverridesOff() {
+			foreach (var property in properties) {
+				property.isActive = false;
 			}
 		}
-*/
 
-/*
-		public PostProcessingSettingsBase Copy() {
-			var original = this;
-			var copy = defaultSettings;
+		internal void InterpolateTo(PostProcessingSettingsBase other, float otherFactor) {
+			for (int i = 0; i < properties.Count; i++) {
+				otherFactor = properties[i].isActive ? otherFactor : 1f;
 
-
-			var fields = original.GetType().GetFields();
-			foreach (var field in fields) {
-				//field.DeclaringType.IsArray;
-				object fieldValue = field.GetValue(original);
-
-				if (fieldValue is Array) {
-					CopyArrayMembers(fieldValue, field);
+				if (other.properties[i].isActive || !properties[i].isActive) {
+					properties[i].InterpolateTo(other.properties[i], otherFactor);
+					properties[i].isActive = other.properties[i].isActive;
 				}
-
 			}
-
-			copy.MemberwiseClone();
 		}
-
-		private void CopyField(FieldInfo field, object original, object copy) {
-
-			//field.DeclaringType.IsArray;
-			object originalFieldValue = field.GetValue(original);
-
-			object copiedFieldValue = null;
-
-			if (originalFieldValue is Array) {
-				CopyArrayMembers(originalFieldValue, ref copiedFieldValue);
-			}
-
-			field.SetValue(copy, fieldValue);
-
-
-		}
-
-		private void CopyArrayMembers(object originalFieldValue, ref object copiedFieldValue) {
-			Debug.Assert(originalFieldValue is Array);
-
-			var originalArray = originalFieldValue as Array;
-			var copiedArray = originalFieldValue.GetType().GetConstructor()
-
-			foreach (var member in originalArray) {
-				member;
-			}
-
-			copiedFieldValue = copiedArray;
-		}
-*/
 	}
 }

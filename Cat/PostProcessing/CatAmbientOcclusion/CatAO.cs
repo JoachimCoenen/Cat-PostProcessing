@@ -29,9 +29,6 @@ namespace Cat.PostProcessing {
 		override internal DepthTextureMode requiredDepthTextureMode { 
 			get { return DepthTextureMode.Depth | DepthTextureMode.MotionVectors; } 
 		}
-		override public int queueingPosition {
-			get { return 2050; } 
-		}
 
 		static class PropertyIDs {
 			internal static readonly int OcclusionNormals1_t	= Shader.PropertyToID("_OcclusionNormals1");
@@ -110,28 +107,32 @@ namespace Cat.PostProcessing {
 		override public string effectName { 
 			get { return "Ambient Occlusion"; } 
 		}
+		override public int queueingPosition {
+			get { return 1050; } 
+		}
 
 		[Range(0, 1)]
-		public float		intensity = 0.5f;
+		public FloatProperty intensity = new FloatProperty();
 
 		[Range(3, 16)]
-		public int			sampleCount = 10;
+		public IntProperty sampleCount = new IntProperty();
 
 		[Range(1e-4f, 2)]
-		public float		radius = 0.3f;
+		public FloatProperty radius = new FloatProperty();
 
 		//[Space(15)]
-		public bool			debugOn = false;
-
+		public BoolProperty debugOn = new BoolProperty();
+		
+		public CatAO() {
+			intensity.rawValue = 0.5f;
+			sampleCount.rawValue = 10;
+			radius.rawValue = 0.3f;
+			debugOn.rawValue = false;
+		}
+		
 		public static CatAO defaultSettings { 
 			get {
-				return new CatAO {
-					intensity = 0.5f,
-					sampleCount = 10,
-					radius = 0.3f,
-					debugOn = false,
-
-				};
+				return new CatAO();
 			}
 		}
 

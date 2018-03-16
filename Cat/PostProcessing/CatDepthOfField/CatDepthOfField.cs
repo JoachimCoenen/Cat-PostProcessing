@@ -21,9 +21,6 @@ namespace Cat.PostProcessing {
 		override internal DepthTextureMode requiredDepthTextureMode { 
 			get { return DepthTextureMode.Depth; } 
 		}
-		override public int queueingPosition {
-			get { return 2800; } 
-		}
 
 
 		private readonly RenderTextureContainer blurTex = new RenderTextureContainer();
@@ -151,38 +148,41 @@ namespace Cat.PostProcessing {
 	public class CatDepthOfField : PostProcessingSettingsBase {
 
 		override public string effectName { 
-			get { return "Deferred Fog"; } 
+			get { return "Depth Of Field"; } 
+		}
+		override public int queueingPosition {
+			get { return 2800; } 
 		}
 
 		[CustomLabelRange(0.1f, 22, "f-Stop f/n")]
-		public float			fStop;
+		public FloatProperty fStop = new FloatProperty();
 
 		[Range(0.185f, 100f)]
-		public float			focusDistance;
+		public FloatProperty focusDistance = new FloatProperty();
 
 		[Range(1, 7)]
-		public float			radius;
+		public FloatProperty radius = new FloatProperty();
 
 		[Header("Debugging")]
-		public bool					debugOn;
+		public BoolProperty debugOn = new BoolProperty();
 
 		public CatDepthOfField() {
-			fStop					= 2f;
-			focusDistance			= 1.6f;
-			radius					= 3f;
-			debugOn					= false;
+			fStop.rawValue			= 2f;
+			focusDistance.rawValue	= 1.6f;
+			radius.rawValue			= 3f;
+			debugOn.rawValue		= false;
 		}
 
 		public static CatDepthOfField defaultSettings { 
 			get {
-				return new CatDepthOfField {
-					fStop					= 2f,
-					focusDistance			= 1.6f,
+				return new CatDepthOfField() /*{
+					fStop			= 2f,
+					focusDistance	= 1.6f,
 
-					radius					= 3f,
+					radius			= 3f,
 
-					debugOn					= false,
-				};
+					debugOn			= false,
+				}*/;
 			}
 		}
 

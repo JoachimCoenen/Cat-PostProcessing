@@ -25,9 +25,6 @@ namespace Cat.PostProcessing {
 		override public bool isActive { 
 			get { return RenderSettings.fog && base.isActive; } 
 		}
-		override public int queueingPosition {
-			get { return 1990; } 
-		}
 
 		static class PropertyIDs {
 			internal static readonly int FogColor_c			= Shader.PropertyToID("_FogColor");
@@ -75,6 +72,9 @@ namespace Cat.PostProcessing {
 
 		override public string effectName { 
 			get { return "Deferred Fog"; } 
+		}
+		override public int queueingPosition {
+			get { return 1990; } 
 		}
 
 		public static CatDeferredFog defaultSettings { 

@@ -22,8 +22,7 @@ namespace Cat.PostProcessingEditor {
 		Dictionary<Type, Type> m_EditorTypes; // SettingsType => EditorType
 		List<CatPostProcessingEditorBase> m_Editors = new List<CatPostProcessingEditorBase>();
 
-		// Not neccessary any more! Yaaaaaaaayyyyyyyy!! :-) 
-		//internal static Dictionary<Type, Type> s_PropertyDrawers { get; private set; } // PropertyAttribute => PropertyDrawer
+		internal static Dictionary<Type, Type> s_PropertyDrawers { get; private set; } // PropertyAttribute => PropertyDrawer
 
 
 		public void OnEnable() {
@@ -32,8 +31,7 @@ namespace Cat.PostProcessingEditor {
 			m_SettingsProperty = serializedObject.FindProperty("m_settings");
 			Assert.IsNotNull(m_SettingsProperty);
 
-			// Not neccessary any more! Yaaaaaaaayyyyyyyy!! :-) 
-			// FindAllPropertyDrawers();
+			FindAllPropertyDrawers();
 			FindAllEditors();
 			UpdateAllEditors();
 		}
@@ -51,19 +49,18 @@ namespace Cat.PostProcessingEditor {
 			).ToDictionary(x => x.Key, x => x.Value);
 		}
 
-		// Not neccessary any more! Yaaaaaaaayyyyyyyy!! :-) 
-		// private void FindAllPropertyDrawers() {
-		// 	s_PropertyDrawers = (from t in GetAllAssemblyTypes()
-		// 	                     where t.IsSubclassOf(typeof(PropertyDrawer))
-		// 	                     where t.IsDefined(typeof(CustomPropertyDrawer), false)
-		// 	                     where !t.IsAbstract
-		// 	                     let drawerType = t
-		// 	                     let attributes = drawerType.GetCustomAttributes(typeof(CustomPropertyDrawer), false)
-		// 	                     from a in attributes
-		// 	                     let attributeType = a.GetType().GetField("m_Type", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic).GetValue(a) as Type
-		// 	                     select new KeyValuePair<Type, Type>(attributeType, drawerType)
-		// 	).ToDictionary(x => x.Key, x => x.Value);
-		// }
+		private void FindAllPropertyDrawers() {
+			s_PropertyDrawers = (from t in GetAllAssemblyTypes()
+			                     where t.IsSubclassOf(typeof(PropertyDrawer))
+			                     where t.IsDefined(typeof(CustomPropertyDrawer), false)
+			                     where !t.IsAbstract
+			                     let drawerType = t
+			                     let attributes = drawerType.GetCustomAttributes(typeof(CustomPropertyDrawer), false)
+			                     from a in attributes
+			                     let attributeType = a.GetType().GetField("m_Type", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic).GetValue(a) as Type
+			                     select new KeyValuePair<Type, Type>(attributeType, drawerType)
+			).ToDictionary(x => x.Key, x => x.Value);
+		}
 
 		public static IEnumerable<Type> GetAllAssemblyTypes() {
 			return AppDomain.CurrentDomain.GetAssemblies()
@@ -82,11 +79,12 @@ namespace Cat.PostProcessingEditor {
 			m_Editors.Clear();
 
 			for (int i = 0; i < m_profile.settings.Count; i++) {
-				m_Editors.Add(GetEditor(m_SettingsProperty.GetArrayElementAtIndex(i),  m_profile.settings[i]));
+				m_Editors.Add(CreateNewEditor(m_SettingsProperty.GetArrayElementAtIndex(i),  m_profile.settings[i]));
 			}
+			m_Editors.Sort( (x, y) => x.target.queueingPosition.CompareTo(y.target.queueingPosition) );
 		}
 
-		private CatPostProcessingEditorBase GetEditor(SerializedProperty settings, PostProcessingSettingsBase target) {
+		private CatPostProcessingEditorBase CreateNewEditor(SerializedProperty settings, PostProcessingSettingsBase target) {
 			CatPostProcessingEditorBase editor = null;
 			Type settingsType = target.GetType();
 			Type editorType;
@@ -103,12 +101,11 @@ namespace Cat.PostProcessingEditor {
 			// CatEditorGUILayout.Splitter();
 			// EditorGUILayout.Space();
 
-			Action deferredAction = null;
 			foreach (var editor in m_Editors) {
 				CatEditorGUILayout.BeginBox();
-				DrawEffectHeader(editor, ref deferredAction);
+				;
 
-				if(editor.isOpen) {
+				if(DrawEffectHeader(editor)) {
 					editor.OnInspectorGUIInternal();
 				}
 				CatEditorGUILayout.EndBox();
@@ -116,49 +113,45 @@ namespace Cat.PostProcessingEditor {
 			}
 
 			if (m_Editors.Count > 0) {
-				CatEditorGUILayout.Splitter();
-				EditorGUILayout.Space();
 			} else {
 				EditorGUILayout.HelpBox("No Post-Processing effects in this profile", MessageType.Info);
 			}
 
 
 			DrawFooter();
+			CatEditorGUILayout.Splitter();
 			EditorGUILayout.Space();
-
-			if (null != deferredAction) {
-				deferredAction();
-			}
 		}
 
-		private void AskRemoveEffectOverride(CatPostProcessingEditorBase editor/*, ref Action deferredAction*/) {
-			if (EditorUtility.DisplayDialog("", String.Format("Do you really want to remove {0}", editor.target.effectName), "Delete", "Cancel")) {
-				//deferredAction = () => RemoveEffectOverride(editor);
-				RemoveEffectOverride(editor);
-			}
-		}
+		private bool DrawEffectHeader(CatPostProcessingEditorBase editor) {
+			var target = editor.target;
+			var index = m_profile.settings.IndexOf(target);
+			var serializedProperty = m_SettingsProperty.GetArrayElementAtIndex(index);
 
-		private void DrawEffectHeader(CatPostProcessingEditorBase editor, ref Action deferredAction) {
 			using (new EditorGUILayout.HorizontalScope()) {
-				editor.isOpen = CatEditorGUILayout.Foldout(editor.isOpen, editor.target.effectName);
+				//serializedProperty.isExpanded = CatEditorGUILayout.Foldout(serializedProperty.isExpanded, target.effectName);
+				//serializedProperty.isExpanded = CatEditorGUILayout.ToggledFoldout(serializedProperty.isExpanded, target.isActive, b => target.isActive = b, target.effectName);
 
-				//var removeText = new GUIContent("...");
-				//var style = CatEditorGUILayout.ContextButtonSkin;//EditorStyles.miniButton;
-				//var size = style.CalcSize(removeText);
-				//var rect = GUILayoutUtility.GetRect(1, -15, size.y, size.y);
+				serializedProperty.isExpanded = CatEditorGUILayout.FoldoutToggle(serializedProperty.isExpanded);
+				target.isActive = EditorGUILayout.ToggleLeft(target.effectName, target.isActive, EditorStyles.boldLabel);
+				//target.isActive = CatEditorGUILayout.PureToggle(target.isActive);
+				//EditorGUILayout.PrefixLabel(target.effectName, CatEditorGUILayout.Styles.ContextButtonSkin, EditorStyles.boldLabel);
+				//serializedProperty.isExpanded = CatEditorGUILayout.Foldout(serializedProperty.isExpanded, target.effectName);
 
 				if (CatEditorGUILayout.ContextButton()) {
 					var menu = new GenericMenu();
 					var resetTitle = new GUIContent("Reset");
 					var removeTitle = new GUIContent("Remove");
-					menu.AddItem(resetTitle, false, () => EditorUtility.DisplayDialog("", "Not Implemented!", "OK"));
-					menu.AddItem(removeTitle, false, () => AskRemoveEffectOverride(editor/*, ref deferredAction*/));
+					menu.AddItem(resetTitle, false, () => ResetEffectOverride(target));
+					menu.AddItem(removeTitle, false, () => AskRemoveEffectOverride(target/*, ref deferredAction*/));
 					menu.ShowAsContext();
 				}
 			}
+			return serializedProperty.isExpanded;
 		}
 
 		private void DrawFooter() {
+			CatEditorGUILayout.BeginBox();
 			if (GUILayout.Button("Add effect...", EditorStyles.miniButton))
 			{
 				var menu = new GenericMenu();
@@ -181,20 +174,7 @@ namespace Cat.PostProcessingEditor {
 
 				menu.ShowAsContext();
 			}
-		}
-
-
-
-		private void DrawLine() {
-			var rect = GUILayoutUtility.GetRect(1f, 1f);
-			// Splitter rect should be full-width
-			rect.xMin = 0f;
-			rect.width += 4f;
-			if (Event.current.type != EventType.Repaint)
-				return;
-			EditorGUI.DrawRect(rect, !EditorGUIUtility.isProSkin
-				? new Color(0.6f, 0.6f, 0.6f, 1.333f)
-				: new Color(0.12f, 0.12f, 0.12f, 1.333f));
+			CatEditorGUILayout.EndBox();
 		}
 
 		void AddEffectOverride(Type type) {
@@ -214,15 +194,19 @@ namespace Cat.PostProcessingEditor {
 			// Force save / refresh
 			EditorUtility.SetDirty(m_profile);
 			AssetDatabase.SaveAssets();
-
 			serializedObject.ApplyModifiedProperties();
-			// Create & store the internal editor object for this effect
-			UpdateAllEditors();
 
-			//serializedObject.Update();
+			UpdateAllEditors();
 		}
 
-		void RemoveEffectOverride(CatPostProcessingEditorBase editor) {
+		private void AskRemoveEffectOverride(PostProcessingSettingsBase target/*, ref Action deferredAction*/) {
+			if (EditorUtility.DisplayDialog("", String.Format("Do you really want to remove {0}", target.effectName), "Remove", "Cancel")) {
+				//deferredAction = () => RemoveEffectOverride(editor);
+				RemoveEffectOverride(target);
+			}
+		}
+
+		void RemoveEffectOverride(PostProcessingSettingsBase target) {
 			// Huh. Hack to keep foldout state on the next element...
 			// bool nextFoldoutState = false;
 			// if (id < m_Editors.Count - 1)
@@ -230,20 +214,19 @@ namespace Cat.PostProcessingEditor {
 
 			// Remove from the cached editors list
 			//editor.OnDisable();
-			var id = m_Editors.IndexOf(editor);
+			var index = m_profile.settings.IndexOf(target);
 			// m_Editors.RemoveAt(id);
 
 			serializedObject.Update();
 
 			//var property = m_SettingsProperty.GetArrayElementAtIndex(id);
-			var effect = editor.target;
 
 			// Unassign it (should be null already but serialization does funky things
-			m_SettingsProperty.GetArrayElementAtIndex(id).objectReferenceValue = null;
+			m_SettingsProperty.GetArrayElementAtIndex(index).objectReferenceValue = null;
 
 			// ...and remove the array index itself from the list
-			m_SettingsProperty.DeleteArrayElementAtIndex(id);
-			m_profile.settings.RemoveAt(id);
+			m_SettingsProperty.DeleteArrayElementAtIndex(index);
+			m_profile.settings.RemoveAt(index);
 
 			// Finally refresh editor reference to the serialized settings list
 			// for (int i = 0; i < m_Editors.Count; i++)
@@ -255,16 +238,42 @@ namespace Cat.PostProcessingEditor {
 			// Destroy the setting object after ApplyModifiedProperties(). If we do it before, redo
 			// actions will be in the wrong order and the reference to the setting object in the
 			// list will be lost.
-			Undo.DestroyObjectImmediate(effect);
+			Undo.DestroyObjectImmediate(target);
+
+			// Force save / refresh
+			EditorUtility.SetDirty(m_profile);
+			AssetDatabase.SaveAssets();
+			serializedObject.ApplyModifiedProperties();
+
+			UpdateAllEditors();
+		}
+
+		void ResetEffectOverride(PostProcessingSettingsBase target) {
+
+			var index = m_profile.settings.IndexOf(target);
+
+			serializedObject.Update();
+
+			var serializedProperty = m_SettingsProperty.GetArrayElementAtIndex(index);
+			serializedProperty.objectReferenceValue = null;
+
+			// Create a new object
+			var newEffect = CreateEffect(target.GetType());
+			Undo.RegisterCreatedObjectUndo(newEffect, "Reset Effect Override");
+			AssetDatabase.AddObjectToAsset(newEffect, m_profile);
+			serializedProperty.objectReferenceValue = newEffect;
+
+			serializedObject.ApplyModifiedProperties();
+
+			// Same as RemoveEffectOverride, destroy at the end so it's recreated first on Undo to
+			// make sure the GUID exists before undoing the list state
+			Undo.DestroyObjectImmediate(target);
 
 			// Force save / refresh
 			EditorUtility.SetDirty(m_profile);
 			AssetDatabase.SaveAssets();
 
-
 			UpdateAllEditors();
-
-			serializedObject.ApplyModifiedProperties();
 		}
 
 		PostProcessingSettingsBase CreateEffect(Type type) {

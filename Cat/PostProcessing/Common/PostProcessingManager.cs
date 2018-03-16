@@ -34,6 +34,8 @@ namespace Cat.PostProcessing {
 		//public CatPostProcessingProfile m_profile;
 		public CatPostProcessingProfile profile;
 
+		private VirtualPostProcessingProfile virtualProfile = new VirtualPostProcessingProfile();
+
 		private Camera m_camera = null;
 		internal new Camera camera {
 			get {
@@ -108,18 +110,11 @@ namespace Cat.PostProcessing {
 				m_CommandBuffers.Remove(s.Key);
 			}
 		}
-
-
-
+			
 		delegate RenderFunc MakeRenderDelegate(PostProcessingBaseImageEffectBasis e);
 		delegate SupportFunc MakeSupportDelegate(PostProcessingBase e);
-
 		delegate void RenderFunc(RenderTexture source, RenderTexture destination);
 		delegate void SupportFunc(Camera camera, VectorInt2 cameraSize); // JCO@@@ TODO: find better name
-		// delegate void PreCullFunc();
-		// delegate void PreRenderFunc();
-		// delegate void PostRenderFunc();
-
 
 		private IEnumerable<RenderFunc> m_imageEffectsRenderChain = new List<RenderFunc>();
 		private IEnumerable<SupportFunc> m_preCullChain = new List<SupportFunc>();
@@ -137,25 +132,31 @@ namespace Cat.PostProcessing {
 				m_OldEffects_helper.Add(pair.Key, pair.Value);
 			}
 
+			virtualProfile.Reset();
 			if (profile != null) {
-				var newEffects = (from setting in profile.settings
-					let settingsType = setting.GetType()
-					where settingsType.IsDefined(typeof(SettingsForPostProcessingEffect), false)
-					let attributes = settingsType.GetCustomAttributes(typeof(SettingsForPostProcessingEffect), false)
-					let attribute = attributes[0] as SettingsForPostProcessingEffect
-					select new { type = attribute.m_EffectType, setting = setting}
-				);
+				virtualProfile.InterpolateTo(profile, 1);
+			}
+			PostProcessingVoume.GetActiveProfile(this.transform, virtualProfile);
 
-				foreach (var effect in newEffects) {
-					PostProcessingBase effectInstance = null;
-					if (m_OldEffects_helper.TryGetValue(effect.type, out effectInstance)) {
-						m_OldEffects_helper.Remove(effect.type);
-					} else {
-						effectInstance = (PostProcessingBase)Activator.CreateInstance(effect.type);
-						AddEffect(effectInstance);
-					}
-					effectInstance.m_Settings = effect.setting;
+			var newEffects = (from pair in virtualProfile.settings
+				let setting = pair.Value
+				let settingsType = pair.Key
+				where setting.isActive
+				where settingsType.IsDefined(typeof(SettingsForPostProcessingEffect), false)
+				let attributes = settingsType.GetCustomAttributes(typeof(SettingsForPostProcessingEffect), false)
+				let attribute = attributes[0] as SettingsForPostProcessingEffect
+				select new { type = attribute.m_EffectType, setting = setting}
+			);
+
+			foreach (var effect in newEffects) {
+				PostProcessingBase effectInstance = null;
+				if (m_OldEffects_helper.TryGetValue(effect.type, out effectInstance)) {
+					m_OldEffects_helper.Remove(effect.type);
+				} else {
+					effectInstance = (PostProcessingBase)Activator.CreateInstance(effect.type);
+					AddEffect(effectInstance);
 				}
+				effectInstance.m_Settings = effect.setting;
 			}
 
 			foreach (var oldEffect in m_OldEffects_helper) {
@@ -270,11 +271,8 @@ namespace Cat.PostProcessing {
 
 		private bool TryRemoveEffect(PostProcessingBase effect) {
 			RemoveAllCommandBuffers(effect);
-			var wasSuccessfull = false;
-			if (m_Effects.ContainsKey(effect.GetType())) {
-				wasSuccessfull = m_Effects.Remove(effect.GetType());
-			}
-			return wasSuccessfull; // JCO@@@ TODO: TryRemoveEffectFromCamera return value!!! TUT
+			effect.OnDestroy();
+			return m_Effects.Remove(effect.GetType());
 		}
 
 		private void RemoveEffect(PostProcessingBase effect) {
@@ -286,7 +284,7 @@ namespace Cat.PostProcessing {
 		//[ImageEffectTransformsToLDR]
 		void OnRenderImage(RenderTexture source, RenderTexture destination) {
 			if (!enabled) {
-				Debug.LogFormat("WTF Unity? {0}.OnRenderImage() on {1} called, even though {0} is NOT enabled.", GetType().Name, name);
+				Debug.LogFormat("WTF Unity?! {0}.OnRenderImage() on {1} called, even though {0} is NOT enabled.", GetType().Name, name);
 				Graphics.Blit(source, destination);
 			}
 			var last = source;
@@ -342,9 +340,9 @@ namespace Cat.PostProcessing {
 		}
 
 		private void OnDestroy() {
-			foreach (var effect in m_Effects) {
-				RemoveEffect(effect.Value);
-				effect.Value.OnDestroy();
+			var tempEffects = (from pair in m_Effects select pair.Value).ToList();
+			foreach (var effect in tempEffects) {
+				RemoveEffect(effect);
 			}
 			m_Effects.Clear();
 
@@ -357,6 +355,8 @@ namespace Cat.PostProcessing {
 		void OnValidate() {
 			// UpdateEffectsSetup();
 		}
+
+
 
 
 		private static Texture2D s_BlueNoiseTexture = null;
@@ -493,33 +493,7 @@ namespace Cat.PostProcessing {
 		private readonly Dictionary<Tuple<Type, CameraEvent>, CommandBuffer> m_CommandBuffers = 
 			new Dictionary<Tuple<Type, CameraEvent>, CommandBuffer>();
 
-
-
-		// static Dictionary<Type, PostProcessingBase> GetEffects(Camera aCamera) {
-		// 	// Get Effects of camera
-		// 	// if camera doesn't have this effectType: return null;
-		// 	//
-		// 	Dictionary<Type, PostProcessingBase> effects = null;
-		// 	m_Effects.TryGetValue(aCamera, out effects);
-		// 	return effects;
-		// }
-
-		// static Dictionary<Tuple<Type, CameraEvent>, CommandBuffer> GetCommandBuffers(Camera aCamera) {
-		// 	Dictionary<Tuple<Type, CameraEvent>, CommandBuffer> cbs = null;
-		// 	m_CommandBuffers.TryGetValue(aCamera, out cbs);
-		// 	return cbs;
-		// }
-
-
-
-
-
-		//static readonly Dictionary<Light, Dictionary<Type, PostProcessingBase>> m_LightPostProcessingEffects = 
-		//	new Dictionary<Light, Dictionary<Type, PostProcessingBase>>();
-		//static readonly Dictionary<Light, Dictionary<Tuple<Type, LightEvent>, CommandBuffer>> m_LightCommandBuffers = 
-		//	new Dictionary<Light, Dictionary<Tuple<Type, LightEvent>, CommandBuffer>>();
-
-}
+	}
 
 
 }

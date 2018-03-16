@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
-using Cat.Common;
 using Cat.PostProcessing;
 using Cat.CommonEditor;
 
@@ -24,7 +23,7 @@ namespace Cat.PostProcessingEditor {
 			var propertyIterator = properties.GetEnumerator();
 
 			DrawPropertyField(propertyIterator);
-			var tonemapper = propertyIterator.Current.serializedProperty.enumValueIndex;
+			var tonemapper = (int)(propertyIterator.Current.rawValue as TonemapperProperty).rawValue;
 			if (tonemapper == 2) {
 				DrawPropertyField(propertyIterator);
 				DrawPropertyField(propertyIterator);
@@ -56,7 +55,7 @@ namespace Cat.PostProcessingEditor {
 			// Color Mixer:
 			//
 			DrawPropertyField(propertyIterator);
-			var colorMapper = propertyIterator.Current.serializedProperty.enumValueIndex;
+			var colorMapper = (int)(propertyIterator.Current.rawValue as ColorMixerProperty).rawValue;
 			if (colorMapper == 4) {
 				EditorGUI.BeginChangeCheck(); {
 					EditorGUILayout.BeginHorizontal(); {
@@ -73,11 +72,11 @@ namespace Cat.PostProcessingEditor {
 				for (int i = 0; i <= (int)colorMapperChannel; i++) {
 					SkipPropertyField(propertyIterator);
 				}
-				var c = propertyIterator.Current.serializedProperty.colorValue;
+				var c = (propertyIterator.Current.rawValue as ColorProperty).rawValue;
 				c.r = EditorGUILayout.Slider("Red", c.r, -1, 1);
 				c.g = EditorGUILayout.Slider("Green", c.g, -1, 1);
 				c.b = EditorGUILayout.Slider("Blue", c.b, -1, 1);
-				propertyIterator.Current.serializedProperty.colorValue = c;
+				(propertyIterator.Current.rawValue as ColorProperty).rawValue = c;
 				for (int i = (int)colorMapperChannel+1; i <= 2; i++) {
 					SkipPropertyField(propertyIterator);
 				}
