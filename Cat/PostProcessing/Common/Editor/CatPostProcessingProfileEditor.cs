@@ -133,7 +133,7 @@ namespace Cat.PostProcessingEditor {
 				//serializedProperty.isExpanded = CatEditorGUILayout.ToggledFoldout(serializedProperty.isExpanded, target.isActive, b => target.isActive = b, target.effectName);
 
 				serializedProperty.isExpanded = CatEditorGUILayout.FoldoutToggle(serializedProperty.isExpanded);
-				target.isActive = EditorGUILayout.ToggleLeft(target.effectName, target.isActive, EditorStyles.boldLabel);
+				target.isOverriding = EditorGUILayout.ToggleLeft(target.effectName, target.isOverriding, EditorStyles.boldLabel);
 				//target.isActive = CatEditorGUILayout.PureToggle(target.isActive);
 				//EditorGUILayout.PrefixLabel(target.effectName, CatEditorGUILayout.Styles.ContextButtonSkin, EditorStyles.boldLabel);
 				//serializedProperty.isExpanded = CatEditorGUILayout.Foldout(serializedProperty.isExpanded, target.effectName);
@@ -280,7 +280,8 @@ namespace Cat.PostProcessingEditor {
 			var effect = (PostProcessingSettingsBase)ScriptableObject.CreateInstance(type);
 			effect.hideFlags = HideFlags.HideInInspector | HideFlags.HideInHierarchy;
 			effect.name = type.Name;
-			effect.isActive = true;
+			effect.isOverriding = true;
+			effect.Reset();
 			return effect;
 		}
 

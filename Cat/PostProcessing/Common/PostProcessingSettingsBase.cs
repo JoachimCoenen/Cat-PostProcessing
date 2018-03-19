@@ -10,11 +10,13 @@ namespace Cat.PostProcessing {
 	
 	[Serializable]
 	public abstract class PostProcessingSettingsBase : ScriptableObject {
-
-		public bool isActive = true;
+		abstract public bool enabled { get; }
+		public bool isOverriding = true;
 
 		public abstract string effectName { get; }
 		public abstract int queueingPosition { get; } 
+
+		public abstract void Reset();
 
 		internal ReadOnlyCollection<PropertyOverride> properties;
 		void OnEnable() {
@@ -31,17 +33,17 @@ namespace Cat.PostProcessing {
 
 		internal void TurnAllOverridesOff() {
 			foreach (var property in properties) {
-				property.isActive = false;
+				property.isOverriding = false;
 			}
 		}
 
 		internal void InterpolateTo(PostProcessingSettingsBase other, float otherFactor) {
 			for (int i = 0; i < properties.Count; i++) {
-				otherFactor = properties[i].isActive ? otherFactor : 1f;
+				otherFactor = properties[i].isOverriding ? otherFactor : 1f;
 
-				if (other.properties[i].isActive || !properties[i].isActive) {
+				if (other.properties[i].isOverriding || !properties[i].isOverriding) {
 					properties[i].InterpolateTo(other.properties[i], otherFactor);
-					properties[i].isActive = other.properties[i].isActive;
+					properties[i].isOverriding = other.properties[i].isOverriding;
 				}
 			}
 		}

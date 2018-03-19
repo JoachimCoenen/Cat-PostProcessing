@@ -55,7 +55,7 @@ namespace Cat.PostProcessingEditor {
 		internal IEnumerable<AttributedProperty> GetAttributedProperties(object target) {
 			var properties = from field in target.GetType()
 				.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-					where field.Name != "isActive"
+					where field.Name != "isOverriding"
 					where field.Name != "enabled"
 					where !field.IsInitOnly
 					where (field.IsPublic && field.GetCustomAttributes(typeof(NonSerializedAttribute), false).Length == 0)
@@ -122,10 +122,10 @@ namespace Cat.PostProcessingEditor {
 			if (propertyOverride != null) {
 				var overrideProperties = GetAttributedProperties(propertyOverride, serializedProperty);
 				using (new EditorGUILayout.HorizontalScope()) {
-					var isActive = overrideProperties.First(p => p.serializedProperty.name == "isActive").serializedProperty;
+					var isOverriding = overrideProperties.First(p => p.serializedProperty.name == "isOverriding").serializedProperty;
 					var rawValue = overrideProperties.First(p => p.serializedProperty.name == "m_RawValue");
-					var showAsActive = CatEditorGUILayout.FoldoutToggle(isActive.boolValue);
-					isActive.boolValue = showAsActive;
+					var showAsActive = CatEditorGUILayout.FoldoutToggle(isOverriding.boolValue);
+					isOverriding.boolValue = showAsActive;
 					using (new EditorGUI.DisabledScope(!showAsActive)) {
 						PropertyField(rawValue, propertyDrawer, title);
 					}

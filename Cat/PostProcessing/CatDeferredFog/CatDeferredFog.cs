@@ -22,17 +22,19 @@ namespace Cat.PostProcessing {
 		override internal DepthTextureMode requiredDepthTextureMode { 
 			get { return DepthTextureMode.Depth; } 
 		}
-		override public bool isActive { 
-			get { return RenderSettings.fog && base.isActive; } 
+		override public bool enabled { 
+			get { return RenderSettings.fog && base.enabled && m_currentRenderingPath == RenderingPath.DeferredShading; } 
 		}
+
+		private RenderingPath m_currentRenderingPath;
 
 		static class PropertyIDs {
 			internal static readonly int FogColor_c			= Shader.PropertyToID("_FogColor");
 			internal static readonly int FogParams_v		= Shader.PropertyToID("_FogParams");
 		}
-				
-		internal override void RenderImage(RenderTexture source, RenderTexture destination) {
-			var material = this.material;
+
+		override protected void UpdateMaterialPerFrame(Material material, Camera camera, VectorInt2 cameraSize) {
+			m_currentRenderingPath = camera.actualRenderingPath;
 
 			var isGammaColorSpace = QualitySettings.activeColorSpace == ColorSpace.Gamma;
 			var fogColor = RenderSettings.fogColor;
@@ -57,7 +59,10 @@ namespace Cat.PostProcessing {
 					break;
 			}
 			Shader.DisableKeyword("FOG_EXP_SQR");
+		}
 
+		internal override void RenderImage(RenderTexture source, RenderTexture destination) {
+			var material = this.material;
 			Blit(source, destination, material, 0);
 		}
 
@@ -70,6 +75,8 @@ namespace Cat.PostProcessing {
 	[SettingsForPostProcessingEffect(typeof(CatDeferredFogRenderer))]
 	public class CatDeferredFog : PostProcessingSettingsBase {
 
+		override public bool enabled { get { return true; } }
+
 		override public string effectName { 
 			get { return "Deferred Fog"; } 
 		}
@@ -77,12 +84,6 @@ namespace Cat.PostProcessing {
 			get { return 1990; } 
 		}
 
-		public static CatDeferredFog defaultSettings { 
-			get {
-				return new CatDeferredFog {
-					
-				};
-			}
-		}
+		public override void Reset() { }
 	}
 }

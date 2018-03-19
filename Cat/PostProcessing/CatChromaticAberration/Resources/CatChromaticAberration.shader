@@ -38,7 +38,7 @@ Shader "Hidden/Cat Chromatic Aberration" {
 		half4 chromaticAberration(VertexOutput i) : SV_Target {
 			float2 uv = i.uv;
 			float2 ssPos = GetScreenPos(uv, 0).xy;
-			float strength = 0.03125 * _Strength * 2;
+			float strength = 0.03125 * _Strength;
 			
 			float2 shift = ssPos * _MainTex_TexelSize.zw / length(_MainTex_TexelSize.zw) * strength;
 			
@@ -73,7 +73,7 @@ Shader "Hidden/Cat Chromatic Aberration" {
 		half4 chromaticAberration2(VertexOutput i) : SV_Target {
 			float2 uv = i.uv;
 			float2 uvX = i.uv * 2 - 1;
-			float strength = 0.03125 * _Strength;
+			float strength = 0.03125 * _Strength * 0.5;
 			
 			float2 aspect = _MainTex_TexelSize.zw * MinC(_MainTex_TexelSize.xy);
 			float2 uvY = uvX * aspect; 

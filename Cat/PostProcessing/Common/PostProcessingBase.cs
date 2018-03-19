@@ -48,13 +48,13 @@ namespace Cat.PostProcessing {
 		abstract protected string shaderName { get; }
 		abstract public string effectName { get; }
 		abstract internal DepthTextureMode requiredDepthTextureMode { get; }
-		virtual public bool isActive { get { return (m_Settings != null) && m_Settings.isActive; } }
+		virtual public bool enabled { get { return isValid && m_Settings != null && m_Settings.enabled; } }
 		public int queueingPosition { get {
 				return null == m_Settings ? 999999999 : m_Settings.queueingPosition;
 			}
 		} 
 
-		public bool enabled = true;
+		protected bool isValid = true;
 
 		virtual internal void InitializeEffect() {}
 		virtual protected void UpdateMaterial(Material material, Camera camera, VectorInt2 cameraSize) {}
@@ -79,7 +79,7 @@ namespace Cat.PostProcessing {
 				if (m_Material == null) {
 					var shader = Shader.Find(shaderName);
 					if (shader == null) {
-						this.enabled = false;
+						this.isValid = false;
 						throw new ArgumentException(String.Format("Shader not found: '{0}'", shaderName));
 					}
 					m_Material = new Material(shader);

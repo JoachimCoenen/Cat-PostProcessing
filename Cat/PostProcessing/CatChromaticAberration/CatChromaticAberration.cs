@@ -38,6 +38,7 @@ namespace Cat.PostProcessing {
 	[Serializable]
 	[SettingsForPostProcessingEffect(typeof(CatChromaticAberrationRenderer))]
 	public class CatChromaticAberration : PostProcessingSettingsBase {
+		override public bool enabled { get { return strength > 0; } }
 
 		override public string effectName { 
 			get { return "Chromatic Aberration"; } 
@@ -46,17 +47,11 @@ namespace Cat.PostProcessing {
 			get { return 2900; } 
 		}
 
-		[Range(0, 1)]
+		[Range(0, 2)]
 		public FloatProperty strength = new FloatProperty();
 
-		public CatChromaticAberration() {
-			strength.rawValue = 0.5f;
-		}
-
-		public static CatChromaticAberration defaultSettings { 
-			get {
-				return new CatChromaticAberration();
-			}
+		public override void Reset() {
+			strength.rawValue = 0.0f;
 		}
 	}
 }

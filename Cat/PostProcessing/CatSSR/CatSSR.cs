@@ -356,6 +356,7 @@ namespace Cat.PostProcessing {
 	[Serializable]
 	[SettingsForPostProcessingEffect(typeof(CatSSRRenderer))]
 	public sealed class CatSSR : PostProcessingSettingsBase {
+		override public bool enabled { get { return intensity > 0; } }
 
 		override public string effectName { 
 			get { return "Screen Space Reflections"; } 
@@ -366,6 +367,9 @@ namespace Cat.PostProcessing {
 
 		//[Serializable]
 		// public sealed class Settings {
+		[Range(0, 1)]
+		public FloatProperty intensity = new FloatProperty();
+
 		[Header("RayTracing")]
 		[CustomLabel("Ray Trace Resol.")]
 		public TextureResolutionProperty rayTraceResol = new TextureResolutionProperty();
@@ -395,9 +399,6 @@ namespace Cat.PostProcessing {
 		[Header("Reflections")]
 		[CustomLabel("Reflection Resol.")]
 		public TextureResolutionProperty reflectionResolution = new TextureResolutionProperty();
-
-		[Range(0, 1)]
-		public FloatProperty intensity = new FloatProperty();
 
 		[CustomLabelRange(0, 1, "Distance Fade")]
 		public FloatProperty reflectionDistanceFade = new FloatProperty();
@@ -450,7 +451,9 @@ namespace Cat.PostProcessing {
 		[Range(0, 7)]
 		public IntProperty mipLevelForDebug = new IntProperty();
 
-		public CatSSR() {
+		public override void Reset() {
+			intensity.rawValue              = 0;
+
 			rayTraceResol.rawValue          = TextureResolution.FullResolution;
 			stepCount.rawValue              = 96;
 		//	isExactPixelStride.rawValue     = false;
@@ -463,7 +466,6 @@ namespace Cat.PostProcessing {
 
 
 			reflectionResolution.rawValue   = TextureResolution.FullResolution;
-			intensity.rawValue              = 1;
 			reflectionDistanceFade.rawValue = 0.5f;
 			rayLengthFade.rawValue          = 0.25f;
 			edgeFade.rawValue               = 0.125f;
@@ -491,13 +493,6 @@ namespace Cat.PostProcessing {
 			debugMode.rawValue               = DebugMode.MipLevel;
 			mipLevelForDebug.rawValue        = 0;
 		}
-
-		public static CatSSR defaultSettings {
-				get {
-					// default Settings are LowQuality:
-					return GetPreset(Preset.LowQuality);
-				}
-			}
 
 			public enum Preset {
 				//	ExtremeHighQuality,

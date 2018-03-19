@@ -121,7 +121,7 @@ Shader "Hidden/Cat Bloom" {
 		//----------------------------------------------------------------------------------------------------------------------
 		
 		float4 getDirt(float2 uv) {
-			float3 dirt = _Intensity*2 + 4 * _DirtIntensity * Tex2Dlod(_DirtTexture, uv, 0).rgb;
+			float3 dirt = _Intensity*0.5 + 2 * _DirtIntensity * Tex2Dlod(_DirtTexture, uv, 0).rgb;
 			return float4(dirt, MaxC(dirt));// * MaxC(dirt);
 		}
 		

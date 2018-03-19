@@ -152,7 +152,7 @@ Shader "Hidden/Cat Ambient Occlusion" {
 				ao += ax;// * (all(abs(ssPos_s1.xy)<=1) ? 1 : 0.00);
 			}
 			ao *= _Radius; // intensity normalization
-			ao *= _Intensity;
+			ao *= _Intensity * 0.5;
 			ao /= float(sampleCount);
 			// Apply other parameters.
 			ao = pow(max(0, ao), kContrast);

@@ -133,6 +133,7 @@ namespace Cat.PostProcessing {
 	[Serializable]
 	[SettingsForPostProcessingEffect(typeof(CatBloomRenderer))]
 	public class CatBloom : PostProcessingSettingsBase {
+		override public bool enabled { get { return intensity > 0 || (dirtIntensity > 0 && dirtTexture.rawValue != null); } }
 
 		override public string effectName { 
 			get { return "Bloom"; } 
@@ -142,10 +143,10 @@ namespace Cat.PostProcessing {
 		}
 
 		[Header("Primary Settings")]
-		[Range(0, 1)]
+		[Range(0, 4)]
 		public FloatProperty intensity = new FloatProperty();
 
-		[Range(0, 1)]
+		[Range(0, 2)]
 		public FloatProperty dirtIntensity = new FloatProperty();
 
 		public TextureProperty dirtTexture = new TextureProperty();
@@ -162,21 +163,15 @@ namespace Cat.PostProcessing {
 		[Header("Debugging")]
 		public BoolProperty debugOn = new BoolProperty();
 
-		public CatBloom() {
-			intensity.rawValue		= 0.25f;
-			dirtIntensity.rawValue	= 0.5f;
+		public override void Reset() {
+			intensity.rawValue		= 0.0f;
+			dirtIntensity.rawValue	= 0.0f;
 			dirtTexture.rawValue	= null;
 
 			minLuminance.rawValue	= 0.5f;
 			kneeStrength.rawValue	= 1;
 
 			debugOn.rawValue		= false;
-		}
-
-		public static CatBloom defaultSettings { 
-			get {
-				return new CatBloom();
-			}
 		}
 
 	}

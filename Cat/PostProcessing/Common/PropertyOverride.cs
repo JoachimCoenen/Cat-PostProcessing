@@ -8,10 +8,10 @@ namespace Cat.PostProcessing {
 	[Serializable]
 	public abstract class PropertyOverride {
 		[SerializeField]
-		public bool isActive = true;
+		public bool isOverriding = true;
 
-		protected PropertyOverride(bool isActive){
-			this.isActive = isActive;
+		protected PropertyOverride(bool isOverriding){
+			this.isOverriding = isOverriding;
 		}
 
 		public T rawValue<T>() {
@@ -89,5 +89,9 @@ namespace Cat.PostProcessing {
 	public class TextureResolutionProperty : PropertyOverride<TextureResolution> {}
 
 	[Serializable]
-	public class TextureProperty : PropertyOverride<Texture> {}
+	public class TextureProperty : PropertyOverride<Texture> {
+		public override void InterpolateTo(PropertyOverride<Texture> other, float otherFactor) {
+			this.rawValue = (this.rawValue != null && otherFactor < 1) || otherFactor <= 0 ? this.rawValue : other.rawValue;
+		}
+	}
 }

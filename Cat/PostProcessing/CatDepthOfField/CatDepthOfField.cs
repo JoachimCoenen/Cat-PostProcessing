@@ -26,6 +26,7 @@ namespace Cat.PostProcessing {
 		private readonly RenderTextureContainer blurTex = new RenderTextureContainer();
 
 		static class PropertyIDs {
+			internal static readonly int Intensity_f		= Shader.PropertyToID("_Intensity");
 			internal static readonly int fStop_f			= Shader.PropertyToID("_fStop");
 			internal static readonly int FocusDistance_f	= Shader.PropertyToID("_FocusDistance");
 			internal static readonly int Radius_f			= Shader.PropertyToID("_Radius");
@@ -62,6 +63,7 @@ namespace Cat.PostProcessing {
 
 		override protected void UpdateMaterial(Material material, Camera camera, VectorInt2 cameraSize) {
 			var settings = this.settings;
+			material.SetFloat(PropertyIDs.Intensity_f, settings.intensity);
 			material.SetFloat(PropertyIDs.fStop_f, settings.fStop);
 			material.SetFloat(PropertyIDs.FocusDistance_f, settings.focusDistance);
 			material.SetFloat(PropertyIDs.Radius_f, settings.radius);
@@ -146,6 +148,7 @@ namespace Cat.PostProcessing {
 	[Serializable]
 	[SettingsForPostProcessingEffect(typeof(CatDepthOfFieldRenderer))]
 	public class CatDepthOfField : PostProcessingSettingsBase {
+		override public bool enabled { get { return intensity > 0; } }
 
 		override public string effectName { 
 			get { return "Depth Of Field"; } 
@@ -153,6 +156,9 @@ namespace Cat.PostProcessing {
 		override public int queueingPosition {
 			get { return 2800; } 
 		}
+
+		[Range(0, 1)]
+		public FloatProperty intensity = new FloatProperty();
 
 		[CustomLabelRange(0.1f, 22, "f-Stop f/n")]
 		public FloatProperty fStop = new FloatProperty();
@@ -166,24 +172,12 @@ namespace Cat.PostProcessing {
 		[Header("Debugging")]
 		public BoolProperty debugOn = new BoolProperty();
 
-		public CatDepthOfField() {
+		public override void Reset() {
+			intensity.rawValue		= 0f;
 			fStop.rawValue			= 2f;
 			focusDistance.rawValue	= 1.6f;
 			radius.rawValue			= 3f;
 			debugOn.rawValue		= false;
-		}
-
-		public static CatDepthOfField defaultSettings { 
-			get {
-				return new CatDepthOfField() /*{
-					fStop			= 2f,
-					focusDistance	= 1.6f,
-
-					radius			= 3f,
-
-					debugOn			= false,
-				}*/;
-			}
 		}
 
 	}

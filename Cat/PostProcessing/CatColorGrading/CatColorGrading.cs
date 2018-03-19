@@ -259,6 +259,7 @@ namespace Cat.PostProcessing {
 	[Serializable]
 	[SettingsForPostProcessingEffect(typeof(CatColorGradingRenderer))]
 	public class CatColorGrading : PostProcessingSettingsBase {
+		override public bool enabled { get { return true; } }
 
 		override public string effectName { 
 			get { return "Color Grading"; } 
@@ -342,7 +343,7 @@ namespace Cat.PostProcessing {
 		//[Range(0, 1)]
 		//public float strength;
 
-		public CatColorGrading() {
+		public override void Reset() {
 			tonemapper.rawValue = Tonemapper.Off;
 			response.rawValue = 0f;
 			gain.rawValue = 0f;
@@ -367,38 +368,6 @@ namespace Cat.PostProcessing {
 			shadows.rawValue = 0;
 			highlights.rawValue = 0;
 
-		}
-
-		public static CatColorGrading defaultSettings { 
-			get {
-				return new CatColorGrading() /*{
-					tonemapper = Tonemapper.Off,
-					response = 0f,
-					gain = 0f,
-
-					exposure = 0,
-					contrast = 0,
-					saturation = 0,
-
-					temperature = 0,
-					tint = 0,
-
-					colorMixer = ColorMixer.Off,
-					red = Color.red,
-					green = Color.green,
-					blue = Color.blue,
-					isColorMatrixNormalized = false,
-
-					blackPoint = 0,
-					midPoint = 0,
-					whitePoint = 0,
-
-					shadows = 0,
-					highlights = 0,
-
-					//strength = 0.5f,
-				}*/;
-			}
 		}
 
 		public Vector4 GetCurveParams() {

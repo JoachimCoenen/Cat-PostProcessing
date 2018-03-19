@@ -293,6 +293,7 @@ namespace Cat.PostProcessing {
 	[Serializable]
 	[SettingsForPostProcessingEffect(typeof(CatAARenderer))]
 	public class CatAA : PostProcessingSettingsBase {
+		override public bool enabled { get { return m_isEnabled.rawValue; } }
 
 		override public string effectName { 
 			get { return "Temporal Antialialising"; } 
@@ -301,6 +302,7 @@ namespace Cat.PostProcessing {
 			get { return 2850; } 
 		}
 
+		public BoolProperty m_isEnabled = new BoolProperty();
 		//[Range(0.0f, 2.0f)]
 		public const float jitterStrength = 1f;
 
@@ -323,7 +325,8 @@ namespace Cat.PostProcessing {
 		[CustomLabelRange(4, 16, "Halton Seq. Length")]
 		public IntProperty haltonSequenceLength = new IntProperty();
 
-		public CatAA() {
+		public override void Reset() {
+			m_isEnabled.rawValue = false;
 			//	jitterStrength.rawValue = 1f,
 			sharpness.rawValue = 0.075f;
 			//	enableVelocityPrediction.rawValue = true,
@@ -332,11 +335,6 @@ namespace Cat.PostProcessing {
 			toleranceMargin.rawValue = 1;
 			jitterMatrix.rawValue = JitterMatrixType.HaltonSequence;
 			haltonSequenceLength.rawValue = 8;
-		}
-		public static CatAA defaultSettings { 
-			get {
-				return new CatAA();
-			}
 		}
 	}
 }

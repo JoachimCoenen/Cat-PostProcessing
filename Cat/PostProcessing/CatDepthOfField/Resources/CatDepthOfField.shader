@@ -37,6 +37,7 @@ Shader "Hidden/Cat DepthOfField" {
 		
 		#include "../../Includes/PostProcessingCommon.cginc"
 		
+		float	_Intensity;
 		float	_fStop;
 		float	_FocusDistance;
 		float	_Radius;
@@ -131,7 +132,7 @@ Shader "Hidden/Cat DepthOfField" {
 		float getMipLevel(float blurRadius) {
 			//    totalRadius = 2^(mip) * (1 + _Radius) - _Radius
 			// => mip = log2((_Radius + totalRadius) / (_Radius + 1))
-			return log2((_Radius + max(1, blurRadius * _MainTex_TexelSize.w)) / (_Radius + 1));
+			return log2(_Intensity * (_Radius + max(1, blurRadius * _MainTex_TexelSize.w)) / (_Radius + 1));
 		}
 		
 		float getMipLevel(float2 uv) {

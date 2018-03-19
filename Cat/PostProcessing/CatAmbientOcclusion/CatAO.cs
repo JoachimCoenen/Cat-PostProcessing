@@ -103,6 +103,7 @@ namespace Cat.PostProcessing {
 	[Serializable]
 	[SettingsForPostProcessingEffect(typeof(CatAORenderer))]
 	public class CatAO : PostProcessingSettingsBase {
+		override public bool enabled { get { return intensity > 0; } }
 
 		override public string effectName { 
 			get { return "Ambient Occlusion"; } 
@@ -111,7 +112,7 @@ namespace Cat.PostProcessing {
 			get { return 1050; } 
 		}
 
-		[Range(0, 1)]
+		[Range(0, 2)]
 		public FloatProperty intensity = new FloatProperty();
 
 		[Range(3, 16)]
@@ -122,21 +123,13 @@ namespace Cat.PostProcessing {
 
 		//[Space(15)]
 		public BoolProperty debugOn = new BoolProperty();
-		
-		public CatAO() {
-			intensity.rawValue = 0.5f;
+
+		public override void Reset() {
+			intensity.rawValue = 0f;
 			sampleCount.rawValue = 10;
 			radius.rawValue = 0.3f;
 			debugOn.rawValue = false;
 		}
-		
-		public static CatAO defaultSettings { 
-			get {
-				return new CatAO();
-			}
-		}
-
-
 	}
 
 }
