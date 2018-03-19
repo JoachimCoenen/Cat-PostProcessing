@@ -62,7 +62,7 @@ namespace Cat.PostProcessing {
 
 			var wsRay = new Ray(transform.position, transform.TransformDirection(Vector3.forward));
 			var wsPos = transform.position;
-
+			/*
 			// Filter all volumes, that have an effect on the camera and group them by their Importance:
 			var filteredVolumes = 
 				from v in Volumes
@@ -89,7 +89,7 @@ namespace Cat.PostProcessing {
 					}
 				}
 			}
-
+			*/
 
 		}
 

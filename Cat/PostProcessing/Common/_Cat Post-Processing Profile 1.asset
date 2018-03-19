@@ -9,7 +9,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 59fc877289eebc4498be170384339dcb, type: 3}
-  m_Name: Cat Post-Processing Profile 1
+  m_Name: _Cat Post-Processing Profile 1
   m_EditorClassIdentifier: 
   m_settings:
   - {fileID: 114287470100924900}
@@ -17,7 +17,7 @@ MonoBehaviour:
   - {fileID: 114428496976125524}
   - {fileID: 114536535171943158}
   - {fileID: 114605782163178876}
-  - {fileID: 114971004360786896}
+  - {fileID: 114831901126372088}
 --- !u!114 &114287470100924900
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -32,7 +32,7 @@ MonoBehaviour:
   isActive: 1
   intensity:
     isActive: 1
-    m_RawValue: 0.5
+    m_RawValue: 1
   sampleCount:
     isActive: 1
     m_RawValue: 10
@@ -128,7 +128,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5e28affa801e26a4cb0f9ca731caa5ec, type: 3}
   m_Name: CatAA
   m_EditorClassIdentifier: 
-  isActive: 1
+  isActive: 0
   sharpness:
     isActive: 1
     m_RawValue: 0.075
@@ -192,7 +192,7 @@ MonoBehaviour:
   debugOn:
     isActive: 1
     m_RawValue: 0
---- !u!114 &114971004360786896
+--- !u!114 &114831901126372088
 MonoBehaviour:
   m_ObjectHideFlags: 3
   m_PrefabParentObject: {fileID: 0}
@@ -212,22 +212,22 @@ MonoBehaviour:
     m_RawValue: 0
   gain:
     isActive: 1
-    m_RawValue: 0.51
+    m_RawValue: 0
   exposure:
     isActive: 1
     m_RawValue: 0
   contrast:
     isActive: 1
-    m_RawValue: 0.28
+    m_RawValue: 0
   saturation:
     isActive: 1
-    m_RawValue: -0.16
+    m_RawValue: 0
   temperature:
     isActive: 1
-    m_RawValue: -0.04
+    m_RawValue: 0
   tint:
     isActive: 1
-    m_RawValue: 0.02
+    m_RawValue: 0
   colorMixer:
     isActive: 1
     m_RawValue: 0
@@ -248,13 +248,13 @@ MonoBehaviour:
     m_RawValue: 0
   midPoint:
     isActive: 1
-    m_RawValue: -0.28
+    m_RawValue: 0
   whitePoint:
     isActive: 1
     m_RawValue: 0
   shadows:
     isActive: 1
-    m_RawValue: 0.25
+    m_RawValue: 0
   highlights:
     isActive: 1
-    m_RawValue: 0.59
+    m_RawValue: 0

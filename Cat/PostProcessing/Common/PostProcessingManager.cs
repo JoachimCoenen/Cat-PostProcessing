@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Reflection;
+using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -116,10 +118,10 @@ namespace Cat.PostProcessing {
 		delegate void RenderFunc(RenderTexture source, RenderTexture destination);
 		delegate void SupportFunc(Camera camera, VectorInt2 cameraSize); // JCO@@@ TODO: find better name
 
-		private IEnumerable<RenderFunc> m_imageEffectsRenderChain = new List<RenderFunc>();
-		private IEnumerable<SupportFunc> m_preCullChain = new List<SupportFunc>();
-		private IEnumerable<SupportFunc> m_preRenderChain = new List<SupportFunc>();
-//		private IEnumerable<SupportFunc> m_postRenderChain = new List<SupportFunc>();
+//		private SortedDictionary<int, RenderFunc> m_imageEffectsRenderChain = new List<RenderFunc>();
+//		private IEnumerable<SupportFunc> m_preCullChain = new List<SupportFunc>();
+//		private IEnumerable<SupportFunc> m_preRenderChain = new List<SupportFunc>();
+////		private IEnumerable<SupportFunc> m_postRenderChain = new List<SupportFunc>();
 
 		private readonly Dictionary<Type, PostProcessingBase> m_OldEffects_helper = 
 			new Dictionary<Type, PostProcessingBase>();
@@ -128,21 +130,22 @@ namespace Cat.PostProcessing {
 
 			// Detect changes in effects setup, then add new effects and remove old effects:
 			m_OldEffects_helper.Clear();
-			foreach (var pair in m_Effects) {
-				m_OldEffects_helper.Add(pair.Key, pair.Value);
+			foreach (var effect in m_Effects) {
+				m_OldEffects_helper.Add(effect.GetType(), effect);
 			}
-
+		
 			virtualProfile.Reset();
 			if (profile != null) {
 				virtualProfile.InterpolateTo(profile, 1);
 			}
 			PostProcessingVoume.GetActiveProfile(this.transform, virtualProfile);
-
+		
 			var newEffects = (from pair in virtualProfile.settings
 				let setting = pair.Value
 				let settingsType = pair.Key
 				where setting.isActive
 				where settingsType.IsDefined(typeof(SettingsForPostProcessingEffect), false)
+				orderby setting.queueingPosition ascending
 				let attributes = settingsType.GetCustomAttributes(typeof(SettingsForPostProcessingEffect), false)
 				let attribute = attributes[0] as SettingsForPostProcessingEffect
 				select new { type = attribute.m_EffectType, setting = setting}
@@ -164,7 +167,7 @@ namespace Cat.PostProcessing {
 				oldEffect.Value.OnDestroy();
 			}
 			m_OldEffects_helper.Clear();
-
+		
 
 			/*
 			foreach (var cb in m_CommandBuffers) {
@@ -173,7 +176,7 @@ namespace Cat.PostProcessing {
 			m_CommandBuffers.Clear();
 			m_Effects.Clear();
 
-			if (profile != null) {
+			if (profile != null) { 
 				var newEffects = (from setting in profile.settings
 				                 let settingsType = setting.GetType()
 				                 where settingsType.IsDefined(typeof(SettingsForPostProcessingEffect), false)
@@ -188,30 +191,31 @@ namespace Cat.PostProcessing {
 				}
 			}
 			*/
-
+		
 			UpdateCameraDepthTextureMode();
+
 			UpdateCameraCommandBuffers();
-
-			var activeEffects = from pair in m_Effects
-				let effect = pair.Value
-				where effect.enabled && effect.isActive
-				orderby effect.queueingPosition ascending
-				select effect;
-
-			MakeRenderDelegate makeRenderDelegate = e => ((s, d) => e.RenderImage(s, d));
-			m_imageEffectsRenderChain = from effect in activeEffects
-				where effect is PostProcessingBaseImageEffectBasis
-				let imgEffect = effect as PostProcessingBaseImageEffectBasis
-				select makeRenderDelegate(imgEffect);
-
-			MakeSupportDelegate makePreCullDelegate = e => ((cam, size) => e.PreCull(cam, size));
-			m_preCullChain = from effect in activeEffects
-				select makePreCullDelegate(effect);
-			
-			MakeSupportDelegate makePreRenderDelegate = e => ((cam, size) => e.PreRender(cam, size));
-			m_preRenderChain = from effect in activeEffects
-				select makePreRenderDelegate(effect);
-			
+		
+			// var activeEffects = from pair in m_Effects
+			// 	let effect = pair//.Value
+			// 	where effect.enabled && effect.isActive
+			// 	orderby effect.queueingPosition ascending
+			// 	select effect;
+			// REMOVE THIS!!!!!!!::::-->
+			// MakeRenderDelegate makeRenderDelegate = e => ((s, d) => e.RenderImage(s, d));
+			// m_imageEffectsRenderChain = from effect in activeEffects
+			// 	where effect is PostProcessingBaseImageEffectBasis
+			// 	let imgEffect = effect as PostProcessingBaseImageEffectBasis
+			// 	select makeRenderDelegate(imgEffect);
+			// 
+			// MakeSupportDelegate makePreCullDelegate = e => ((cam, size) => e.PreCull(cam, size));
+			// m_preCullChain = from effect in activeEffects
+			// 	select makePreCullDelegate(effect);
+			// 
+			// MakeSupportDelegate makePreRenderDelegate = e => ((cam, size) => e.PreRender(cam, size));
+			// m_preRenderChain = from effect in activeEffects
+			// 	select makePreRenderDelegate(effect);
+		
 			//MakeSupportDelegate makePostRenderDelegate = e => ((cam, size) => e.PostRender());
 			//m_postRenderChain = from effect in activeEffects
 			//	select makePostRenderDelegate(effect);
@@ -223,10 +227,10 @@ namespace Cat.PostProcessing {
 			if (enabled) {
 				//depthTextureMode = (from pair in effects where pair.Value.enabled select pair.Value.requiredDepthTextureMode).Aggregate((l, r) => l | r);
 				depthTextureMode = m_Effects
-					.Where(pair => pair.Value.enabled)
-					.Select(pair => pair.Value.requiredDepthTextureMode)
+					.Where(effect => effect.enabled)
+					.Select(effect => effect.requiredDepthTextureMode)
 					.Aggregate(depthTextureMode, (l, r) => l | r);
-
+				
 			}
 			camera.depthTextureMode = depthTextureMode;
 			m_requiresDepthTexture = (depthTextureMode & DepthTextureMode.Depth) == DepthTextureMode.Depth;
@@ -242,8 +246,7 @@ namespace Cat.PostProcessing {
 				select effect;
 			*/
 			//Debug.Log(activeEffects.Count());
-			var buffers = from effectPair in m_Effects
-				let effect = effectPair.Value
+			var buffers = from effect in m_Effects
 				join pair in m_CommandBuffers on effect.GetType() equals pair.Key.item1
 				select new { cameraEvent = pair.Key.item2, buffer = pair.Value, isActiveAndEnabled = effect.enabled && effect.isActive }; //produces flat sequence (hopefully)
 			
@@ -263,22 +266,30 @@ namespace Cat.PostProcessing {
 			// Get Effects of camera
 			// if camera doesn't have this effectType: add it. else throw exception?
 			//
-			if (!m_Effects.ContainsKey(effect.GetType())) {
-				m_Effects.Add(effect.GetType(), effect);
-			}
+			//if (!m_Effects.ContainsKey(effect.GetType())) {
+				m_Effects.Add(effect);
+			//}
 			effect.InitializeEffectInternal(this);
 		}
 
 		private bool TryRemoveEffect(PostProcessingBase effect) {
 			RemoveAllCommandBuffers(effect);
 			effect.OnDestroy();
-			return m_Effects.Remove(effect.GetType());
+			return m_Effects.Remove(effect);
 		}
 
 		private void RemoveEffect(PostProcessingBase effect) {
 			if (!TryRemoveEffect(effect)) {
 				Debug.LogErrorFormat("PostProcessingBase.TryRemoveEffectFromCamera({0}, {1}) failed", camera.name, effect.effectName);
 			}
+		}
+
+		private void RemoveAllEffects() {
+			var tempEffects = (from effect in m_Effects select effect).ToList();
+			foreach (var effect in tempEffects) {
+				RemoveEffect(effect);
+			}
+			m_Effects.Clear();
 		}
 
 		//[ImageEffectTransformsToLDR]
@@ -288,9 +299,10 @@ namespace Cat.PostProcessing {
 				Graphics.Blit(source, destination);
 			}
 			var last = source;
-			foreach (RenderFunc renderFunc in m_imageEffectsRenderChain) {
+
+			foreach (var effect in m_Effects.OfType<PostProcessingBaseImageEffectBasis>().Where(x => x.enabled)) {
 				var current = RenderTexture.GetTemporary(last.width, last.height, 0, last.format);
-				renderFunc(last, current);
+				effect.RenderImage(last, current);
 				if (last != source) { RenderTexture.ReleaseTemporary(last); }
 				last = current;
 			}
@@ -316,16 +328,16 @@ namespace Cat.PostProcessing {
 			}
 			UpdateCameraDepthBufferCameraEvent(cam.actualRenderingPath);
 
-			foreach (var preCullFunc in m_preCullChain) {
-				preCullFunc(cam, size);
+			foreach (var effect in m_Effects.Where(x => x.enabled)) {
+				effect.PreCull(cam, size);
 			}
 		}
 
 		private void OnPreRender(){
 			var cam = this.camera;
 			var size = this.cameraSize;
-			foreach (var preRenderFunc in m_preRenderChain) {
-				preRenderFunc(cam, size);
+			foreach (var effect in m_Effects.Where(x => x.enabled)) {
+				effect.PreRender(cam, size);
 			}
 		}
 
@@ -335,16 +347,12 @@ namespace Cat.PostProcessing {
 		}
 
 		private void OnDisable(){
-			UpdateCameraCommandBuffers();
+			RemoveAllEffects();
 			UpdateCameraDepthTextureMode();
 		}
 
 		private void OnDestroy() {
-			var tempEffects = (from pair in m_Effects select pair.Value).ToList();
-			foreach (var effect in tempEffects) {
-				RemoveEffect(effect);
-			}
-			m_Effects.Clear();
+			RemoveAllEffects();
 
 			if (m_DepthTexture != null) {
 				m_DepthTexture.Release();
@@ -488,8 +496,11 @@ namespace Cat.PostProcessing {
 			}
 		}
 
-		private readonly Dictionary<Type, PostProcessingBase> m_Effects = 
-			new Dictionary<Type, PostProcessingBase>();
+
+		// private readonly Dictionary<Type, PostProcessingBase> m_Effects = 
+		// 	new Dictionary<Type, PostProcessingBase>();
+		private readonly List<PostProcessingBase> m_Effects = 
+			new List<PostProcessingBase>();
 		private readonly Dictionary<Tuple<Type, CameraEvent>, CommandBuffer> m_CommandBuffers = 
 			new Dictionary<Tuple<Type, CameraEvent>, CommandBuffer>();
 

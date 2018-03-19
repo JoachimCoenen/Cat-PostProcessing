@@ -13,7 +13,6 @@ namespace Cat.PostProcessing {
 		public Dictionary<Type, PostProcessingSettingsBase> settings { get { return m_Settings; } }
 
 		public void Reset() {
-			Debug.LogError("TODO: Reset()");
 			m_SettingsOnHold.Clear();
 			foreach (var oldSetting in m_Settings) {
 				m_SettingsOnHold[oldSetting.Key] = oldSetting.Value;
@@ -31,7 +30,6 @@ namespace Cat.PostProcessing {
 		}
 
 		private void InterpolateTo(IEnumerable<PostProcessingSettingsBase> other, float otherFactor) {
-			Debug.LogError("TODO: InterpolateTo(List<PostProcessingSettingsBase> other, float otherFactor)");
 			foreach (var otherSetting in other) {
 				if (!otherSetting.isActive) {
 					continue;
