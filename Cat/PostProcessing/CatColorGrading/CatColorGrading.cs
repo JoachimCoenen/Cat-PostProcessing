@@ -3,155 +3,11 @@ using UnityEngine;
 using Cat.Common;
 
 namespace Cat.PostProcessing {
-	[RequireComponent(typeof(Camera))]
-	[ExecuteInEditMode]
-	[ImageEffectAllowedInSceneView]
-	[AddComponentMenu("Cat/PostProcessing/Color Grading")]
-	public class CatColorGrading : PostProcessingBaseImageEffect {
-
-		[Serializable]
-		public struct Settings {
-			public enum Tonemapper {
-				Off = 0,
-				Filmic,
-				Neutral,
-				Uncharted2
-			}
-
-			public enum ColorMixer {
-				Off = 0,
-				Sepia,
-				Mono,
-				Noir,
-				Custom
-			}
-
-			[Header("Tonemapping")]
-			public Tonemapper tonemapper;
-
-			[Range(-3, 3)]
-			public float response;
-
-			[Range(-3, 3)]
-			public float gain;
-
-
-			[Header("Color Grading")]
-			[Range(-3, 3)]
-			public float exposure;
-
-			[Range(-1, 1)]
-			public float contrast;
-
-			[Range(-1, 1)]
-			public float saturation;
-
-
-			[Header("Color Correction")]
-			[Range(-1, 1)]
-			public float temperature;
-
-			[Range(-1, 1)]
-			public float tint;
-
-
-			[Header("Color Mixer")]
-			public ColorMixer colorMixer;
-			public Color red;
-			public Color green;
-			public Color blue;
-			[CustomLabel("Normalized")]
-			public bool isColorMatrixNormalized;
-
-
-			[Header("Curves")]
-			[Range(-1, 1)]
-			public float blackPoint;
-
-			[Range(-1, 1)]
-			public float midPoint;
-
-			[Range(-1, 1)]
-			public float whitePoint;
-
-			[Space(10)]
-			[Range(-1, 1)]
-			public float shadows;
-
-			[Range(-1, 1)]
-			public float highlights;
-
-
-			//[Header("Tone Mapping")]
-			//[Range(0, 1)]
-			//public float strength;
-
-
-
-			public static Settings defaultSettings { 
-				get {
-					return new Settings {
-						tonemapper = Tonemapper.Off,
-						response = 0f,
-						gain = 0f,
-
-						exposure = 0,
-						contrast = 0,
-						saturation = 0,
-
-						temperature = 0,
-						tint = 0,
-
-						colorMixer = ColorMixer.Off,
-						red = Color.red,
-						green = Color.green,
-						blue = Color.blue,
-						isColorMatrixNormalized = false,
-
-						blackPoint = 0,
-						midPoint = 0,
-						whitePoint = 0,
-
-						shadows = 0,
-						highlights = 0,
-
-						//strength = 0.5f,
-					};
-				}
-			}
-		
-			public Vector4 GetCurveParams() {
-				// var black = 0.0f + settings.blackPoint * 0.25f;
-				var gray  = 0.5f + midPoint  * 0.125f;
-				// var white = 1.0f + settings.whitePoint * 0.5f;
-
-				var slopeShadows    = shadows*2+1;// Mathf.Pow(2f,  1.5f * shadows);
-				var slopeHighlights = -highlights*2+1;// Mathf.Pow(2f, -1.5f * highlights);
-
-				float G = gray*gray-gray;
-				float a = (0.5f + gray*(-slopeShadows + gray*((slopeHighlights + 2*slopeShadows - 3) + gray*-(slopeHighlights + slopeShadows - 2)))) / (G*G);
-				float b = -2 - 2*a + slopeHighlights + slopeShadows;
-				float c =  3 + a - slopeHighlights - 2*slopeShadows;
-				float d = slopeShadows;
-				return new Vector4(a, b, c, d);
-			}
-		}
-
-		[SerializeField]
-		[Inlined]
-		private Settings m_Settings = Settings.defaultSettings;
-		public Settings settings {
-			get { return m_Settings; }
-			set { 
-				m_Settings = value;
-				OnValidate();
-			}
-		}
+	public class CatColorGradingRenderer : PostProcessingBaseImageEffect<CatColorGrading> {
 
 		override protected string shaderName { get { return "Hidden/Cat Color Grading"; } }
 		override public string effectName { get { return "Color Grading"; } }
 		override internal DepthTextureMode requiredDepthTextureMode { get { return DepthTextureMode.None; } }
-		override public bool isActive { get { return true; } }
 
 		static class PropertyIDs {
 			internal static readonly int Response_f		= Shader.PropertyToID("_Response");
@@ -237,10 +93,10 @@ namespace Cat.PostProcessing {
 			var mat3 = mat1 * mat2;
 
 			var colorMixMatrix = Matrix4x4.identity;
-			switch (settings.colorMixer) {
-				case Settings.ColorMixer.Off:
+			switch (settings.colorMixer.rawValue) {
+				case CatColorGrading.ColorMixer.Off:
 					break;
-				case Settings.ColorMixer.Sepia: {
+				case CatColorGrading.ColorMixer.Sepia: {
 						var column0 = Vector3.one * 0.4392157f;
 						var column1 = Vector3.one * 0.2588235f;
 						var column2 = Vector3.one * 0.0784314f;
@@ -248,17 +104,17 @@ namespace Cat.PostProcessing {
 					//	colorMixMatrix = NormalizeColorMatrix(colorMixMatrix);
 					}
 					break;
-				case Settings.ColorMixer.Mono: {
+				case CatColorGrading.ColorMixer.Mono: {
 						var column = new Vector4(0.3333333f, 0.3333333f, 0.3333333f, 0f);
 						colorMixMatrix = new Matrix4x4(column, column, column, Vector4.zero);
 					} 
 					break;
-				case Settings.ColorMixer.Noir: {
+				case CatColorGrading.ColorMixer.Noir: {
 						var column = new Vector4(0.2126729f, 0.7151522f, 0.0721750f, 0f);
 						colorMixMatrix = new Matrix4x4(column, column, column, Vector4.zero);
 					} 
 					break;
-				case Settings.ColorMixer.Custom: {
+				case CatColorGrading.ColorMixer.Custom: {
 						colorMixMatrix = new Matrix4x4(settings.red, settings.green, settings.blue, Vector4.zero);
 						if (settings.isColorMatrixNormalized) {
 							colorMixMatrix = NormalizeColorMatrix(colorMixMatrix);
@@ -276,23 +132,23 @@ namespace Cat.PostProcessing {
 			colorMixMatrix = colorMixMatrix * mat3;
 
 
-			switch (settings.tonemapper) {
-				case Settings.Tonemapper.Off: 
+			switch (settings.tonemapper.rawValue) {
+				case CatColorGrading.Tonemapper.Off: 
 					material.DisableKeyword("TONEMAPPING_FILMIC");
 					material.DisableKeyword("TONEMAPPING_NEUTRAL");
 					material.DisableKeyword("TONEMAPPING_UNCHARTED_2");
 					break;
-				case Settings.Tonemapper.Filmic:
+				case CatColorGrading.Tonemapper.Filmic:
 					material.EnableKeyword("TONEMAPPING_FILMIC");
 					material.DisableKeyword("TONEMAPPING_NEUTRAL");
 					material.DisableKeyword("TONEMAPPING_UNCHARTED_2");
 					break;
-				case Settings.Tonemapper.Neutral:
+				case CatColorGrading.Tonemapper.Neutral:
 					material.DisableKeyword("TONEMAPPING_FILMIC");
 					material.EnableKeyword("TONEMAPPING_NEUTRAL");
 					material.DisableKeyword("TONEMAPPING_UNCHARTED_2");
 					break;
-				case Settings.Tonemapper.Uncharted2: 
+				case CatColorGrading.Tonemapper.Uncharted2: 
 					material.DisableKeyword("TONEMAPPING_FILMIC");
 					material.DisableKeyword("TONEMAPPING_NEUTRAL");
 					material.EnableKeyword("TONEMAPPING_UNCHARTED_2");
@@ -392,6 +248,143 @@ namespace Cat.PostProcessing {
 
 
 	
+	}
+
+	[Serializable]
+	public class TonemapperProperty : PropertyOverride<CatColorGrading.Tonemapper> {}
+
+	[Serializable]
+	public class ColorMixerProperty : PropertyOverride<CatColorGrading.ColorMixer> {}
+
+	[Serializable]
+	[SettingsForPostProcessingEffect(typeof(CatColorGradingRenderer))]
+	public class CatColorGrading : PostProcessingSettingsBase {
+		override public bool enabled { get { return true; } }
+
+		override public string effectName { 
+			get { return "Color Grading"; } 
+		}
+		override public int queueingPosition {
+			get { return 3500; } 
+		}
+
+		public enum Tonemapper {
+			Off = 0,
+			Filmic,
+			Neutral,
+			Uncharted2
+		}
+
+		public enum ColorMixer {
+			Off = 0,
+			Sepia,
+			Mono,
+			Noir,
+			Custom
+		}
+
+		[Header("Tonemapping")]
+		public TonemapperProperty tonemapper = new TonemapperProperty();
+
+		[Range(-3, 3)]
+		public FloatProperty response = new FloatProperty();
+
+		[Range(-3, 3)]
+		public FloatProperty gain = new FloatProperty();
+
+
+		[Header("Color Grading")]
+		[Range(-3, 3)]
+		public FloatProperty exposure = new FloatProperty();
+
+		[Range(-1, 1)]
+		public FloatProperty contrast = new FloatProperty();
+
+		[Range(-1, 1)]
+		public FloatProperty saturation = new FloatProperty();
+
+
+		[Header("Color Correction")]
+		[Range(-1, 1)]
+		public FloatProperty temperature = new FloatProperty();
+
+		[Range(-1, 1)]
+		public FloatProperty tint = new FloatProperty();
+
+
+		[Header("Color Mixer")]
+		public ColorMixerProperty colorMixer = new ColorMixerProperty();
+		public ColorProperty red = new ColorProperty();
+		public ColorProperty green = new ColorProperty();
+		public ColorProperty blue = new ColorProperty();
+		[CustomLabel("Normalized")]
+		public BoolProperty isColorMatrixNormalized = new BoolProperty();
+
+
+		[Header("Curves")]
+		[Range(-1, 1)]
+		public FloatProperty blackPoint = new FloatProperty();
+
+		[Range(-1, 1)]
+		public FloatProperty midPoint = new FloatProperty();
+
+		[Range(-1, 1)]
+		public FloatProperty whitePoint = new FloatProperty();
+
+		[Space(10)]
+		[Range(-1, 1)]
+		public FloatProperty shadows = new FloatProperty();
+
+		[Range(-1, 1)]
+		public FloatProperty highlights = new FloatProperty();
+
+
+		//[Header("Tone Mapping")]
+		//[Range(0, 1)]
+		//public float strength;
+
+		public override void Reset() {
+			tonemapper.rawValue = Tonemapper.Off;
+			response.rawValue = 0f;
+			gain.rawValue = 0f;
+
+			exposure.rawValue = 0;
+			contrast.rawValue = 0;
+			saturation.rawValue = 0;
+
+			temperature.rawValue = 0;
+			tint.rawValue = 0;
+
+			colorMixer.rawValue = ColorMixer.Off;
+			red.rawValue = Color.red;
+			green.rawValue = Color.green;
+			blue.rawValue = Color.blue;
+			isColorMatrixNormalized.rawValue = false;
+
+			blackPoint.rawValue = 0;
+			midPoint.rawValue = 0;
+			whitePoint.rawValue = 0;
+
+			shadows.rawValue = 0;
+			highlights.rawValue = 0;
+
+		}
+
+		public Vector4 GetCurveParams() {
+			// var black = 0.0f + settings.blackPoint * 0.25f;
+			var gray  = 0.5f + midPoint  * 0.125f;
+			// var white = 1.0f + settings.whitePoint * 0.5f;
+
+			var slopeShadows    = shadows*2+1;// Mathf.Pow(2f,  1.5f * shadows);
+			var slopeHighlights = -highlights*2+1;// Mathf.Pow(2f, -1.5f * highlights);
+
+			float G = gray*gray-gray;
+			float a = (0.5f + gray*(-slopeShadows + gray*((slopeHighlights + 2*slopeShadows - 3) + gray*-(slopeHighlights + slopeShadows - 2)))) / (G*G);
+			float b = -2 - 2*a + slopeHighlights + slopeShadows;
+			float c =  3 + a - slopeHighlights - 2*slopeShadows;
+			float d = slopeShadows;
+			return new Vector4(a, b, c, d);
+		}
 	}
 
 }

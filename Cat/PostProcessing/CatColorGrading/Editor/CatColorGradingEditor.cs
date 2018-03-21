@@ -1,40 +1,35 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
-using Cat.Common;
 using Cat.PostProcessing;
 using Cat.CommonEditor;
 
 namespace Cat.PostProcessingEditor {
 
-	[CustomEditor(typeof(CatColorGrading))]
+	[CatPostProcessingEditorAttribute(typeof(CatColorGrading))]
 	//[CanEditMultipleObjects]
-	public class CatColorGradingEditor : Editor {
-		public SerializedProperty settings;
+	public class CatColorGradingEditor : CatPostProcessingEditorBase {
 		private ColorMapperChannel colorMapperChannel;
 
-		public void OnEnable() {
-			settings = serializedObject.FindProperty("m_Settings");
-		}
-
-		public override void OnInspectorGUI() {
-			SerializedProperty propertyIterator = serializedObject.FindProperty("m_Settings");
+		public override void OnInspectorGUI(IEnumerable<AttributedProperty> properties) {
 			var isFirst = true;
 			var count = 1;
 
 			serializedObject.Update();
 			//
 			// Tonemapping:
-			//
+     			//
+			var propertyIterator = properties.GetEnumerator();
 
-			DrawPropertyField(propertyIterator, ref isFirst);
-			var tonemapper = settings.FindPropertyRelative("tonemapper").enumValueIndex;
+			DrawPropertyField(propertyIterator);
+			var tonemapper = (int)(propertyIterator.Current.rawValue as TonemapperProperty).rawValue;
 			if (tonemapper == 2) {
-				DrawPropertyField(propertyIterator, ref isFirst);
-				DrawPropertyField(propertyIterator, ref isFirst);
+				DrawPropertyField(propertyIterator);
+				DrawPropertyField(propertyIterator);
 			} else {
-				SkipPropertyField(propertyIterator, ref isFirst);
-				SkipPropertyField(propertyIterator, ref isFirst);
+				SkipPropertyField(propertyIterator);
+				SkipPropertyField(propertyIterator);
 
 			}
 			if (tonemapper >= 2) {
@@ -46,21 +41,21 @@ namespace Cat.PostProcessingEditor {
 			//
 			// Color Grading:
 			//
-			DrawPropertyField(propertyIterator, ref isFirst);
-			DrawPropertyField(propertyIterator, ref isFirst);
-			DrawPropertyField(propertyIterator, ref isFirst);
+			DrawPropertyField(propertyIterator);
+			DrawPropertyField(propertyIterator);
+			DrawPropertyField(propertyIterator);
 
 			//
 			// Color Correction:
 			//
-			DrawPropertyField(propertyIterator, ref isFirst);
-			DrawPropertyField(propertyIterator, ref isFirst);
+			DrawPropertyField(propertyIterator);
+			DrawPropertyField(propertyIterator);
 
 			//
 			// Color Mixer:
 			//
-			DrawPropertyField(propertyIterator, ref isFirst);
-			var colorMapper = settings.FindPropertyRelative("colorMixer").enumValueIndex;
+			DrawPropertyField(propertyIterator);
+			var colorMapper = (int)(propertyIterator.Current.rawValue as ColorMixerProperty).rawValue;
 			if (colorMapper == 4) {
 				EditorGUI.BeginChangeCheck(); {
 					EditorGUILayout.BeginHorizontal(); {
@@ -75,38 +70,39 @@ namespace Cat.PostProcessingEditor {
 				}
 
 				for (int i = 0; i <= (int)colorMapperChannel; i++) {
-					SkipPropertyField(propertyIterator, ref isFirst);
+					SkipPropertyField(propertyIterator);
 				}
-				var c = propertyIterator.colorValue;
+				var c = (propertyIterator.Current.rawValue as ColorProperty).rawValue;
 				c.r = EditorGUILayout.Slider("Red", c.r, -1, 1);
 				c.g = EditorGUILayout.Slider("Green", c.g, -1, 1);
 				c.b = EditorGUILayout.Slider("Blue", c.b, -1, 1);
-				propertyIterator.colorValue = c;
+				(propertyIterator.Current.rawValue as ColorProperty).rawValue = c;
 				for (int i = (int)colorMapperChannel+1; i <= 2; i++) {
-					SkipPropertyField(propertyIterator, ref isFirst);
+					SkipPropertyField(propertyIterator);
 				}
 
-				DrawPropertyField(propertyIterator, ref isFirst);
+				DrawPropertyField(propertyIterator);
 			} else {
-				SkipPropertyField(propertyIterator, ref isFirst);
-				SkipPropertyField(propertyIterator, ref isFirst);
-				SkipPropertyField(propertyIterator, ref isFirst);
-				SkipPropertyField(propertyIterator, ref isFirst);
+				SkipPropertyField(propertyIterator);
+				SkipPropertyField(propertyIterator);
+				SkipPropertyField(propertyIterator);
+				SkipPropertyField(propertyIterator);
 
 			}
 
 			//
 			// Curves:
 			//
-			DrawPropertyField(propertyIterator, ref isFirst);
-			DrawPropertyField(propertyIterator, ref isFirst);
-			DrawPropertyField(propertyIterator, ref isFirst);
+			DrawPropertyField(propertyIterator);
+			DrawPropertyField(propertyIterator);
+			DrawPropertyField(propertyIterator);
 
-			DrawPropertyField(propertyIterator, ref isFirst);
-			DrawPropertyField(propertyIterator, ref isFirst);
+			DrawPropertyField(propertyIterator);
+			DrawPropertyField(propertyIterator);
 
 
-			//while (DrawPropertyField(propertyIterator, ref isFirst)) { /* NOP; */ }
+			DrawPropertyField(propertyIterator);
+			//while (DrawPropertyField(propertyIterator)) { /* NOP; */ }
 			serializedObject.ApplyModifiedProperties();
 
 			// serializedObject.Update();
@@ -122,33 +118,23 @@ namespace Cat.PostProcessingEditor {
 			EditorGUILayout.Space();
 		}
 
-		bool DrawPropertyField(SerializedProperty prop, ref bool isFirst) {
-			var hasNext = prop.Next(isFirst);
-			isFirst = false;
+		bool DrawPropertyField(IEnumerator<AttributedProperty> enumerator) {
+			var hasNext = enumerator.MoveNext();
 			if (hasNext) {
-				EditorGUILayout.PropertyField(prop);
+				PropertyField(enumerator.Current);
 			}
 			return hasNext;
 		}
 
-		bool SkipPropertyField(SerializedProperty prop, ref bool isFirst) {
-			var hasNext = prop.Next(isFirst);
-			isFirst = false;
+		bool SkipPropertyField(IEnumerator<AttributedProperty> enumerator) {
+			var hasNext = enumerator.MoveNext();
 			return hasNext;
 		}
 
 		void DrawToneMappingFunction(float width, float height, int tonemappingFuncionIndex) {
-			var blackPoint = settings.FindPropertyRelative("blackPoint").floatValue;
-			var grayPoint  = settings.FindPropertyRelative("midPoint").floatValue;
-			var whitePoint = settings.FindPropertyRelative("whitePoint").floatValue;
-
-			var response = Mathf.Pow(2, settings.FindPropertyRelative("response").floatValue);
-			var gain =     Mathf.Pow(2, settings.FindPropertyRelative("gain").floatValue);
-
-
-			var black = 0.0f + blackPoint * 0.25f;
-			var gray  = 0.5f + grayPoint  * 0.125f;
-			var white = 1.0f + whitePoint * 0.25f;
+			var settings = target as CatColorGrading;
+			var response = Mathf.Pow(2, settings.response);
+			var gain =     Mathf.Pow(2, settings.gain);
 
 			var range = new Rect(
 				0f, 0f,
@@ -203,7 +189,7 @@ namespace Cat.PostProcessingEditor {
 
 			// Graph
 			//graph.DrawFunction(x => x * Mathf.Pow(Mathf.Max(0, x - minLuminance) / (x + 1e-1f), kneeStrength + 1), 0.1f);
-			var curveParams = (serializedObject.targetObject as CatColorGrading).settings.GetCurveParams();
+			var curveParams = settings.GetCurveParams();
 			graph.DrawFunction(
 				//x => NeutralTonemap(x, a, b, c, d, e, f, whiteLevel, whiteClip)
 				x => NeutralTonemap(x, 1, 1), 
@@ -271,9 +257,10 @@ namespace Cat.PostProcessingEditor {
 		}
 
 		void DrawResponseFunction(float width, float height) {
-			var blackPoint = settings.FindPropertyRelative("blackPoint").floatValue;
-			var grayPoint  = settings.FindPropertyRelative("midPoint").floatValue;
-			var whitePoint = settings.FindPropertyRelative("whitePoint").floatValue;
+			var settings = target as CatColorGrading;
+			var blackPoint = settings.blackPoint;
+			var grayPoint  = settings.midPoint;
+			var whitePoint = settings.whitePoint;
 
 			var black = 0.0f + blackPoint * 0.25f;
 			var gray  = 0.5f + grayPoint  * 0.125f;
@@ -312,7 +299,7 @@ namespace Cat.PostProcessingEditor {
 
 			// Graph
 			//graph.DrawFunction(x => x * Mathf.Pow(Mathf.Max(0, x - minLuminance) / (x + 1e-1f), kneeStrength + 1), 0.1f);
-			var curveParams = (serializedObject.targetObject as CatColorGrading).settings.GetCurveParams();
+			var curveParams = settings.GetCurveParams();
 			graph.DrawFunction(
 				x => {
 					x = (x - black) / (white - black);

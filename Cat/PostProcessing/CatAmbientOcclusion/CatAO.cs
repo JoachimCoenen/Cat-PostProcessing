@@ -8,49 +8,7 @@ using Cat.Common;
 //using UnityEditorInternal;
 
 namespace Cat.PostProcessing {
-	[RequireComponent(typeof(Camera))]
-	[ExecuteInEditMode]
-	[ImageEffectAllowedInSceneView]
-	[AddComponentMenu("Cat/PostProcessing/Ambient Occlusion")]
-	public class CatAO : PostProcessingBaseCommandBuffer {
-
-		[Serializable]
-		public struct Settings {
-			[Range(0, 1)]
-			public float		intensity;
-
-			[Range(3, 16)]
-			public int			sampleCount;
-
-			[Range(1e-4f, 2)]
-			public float		radius;
-
-			//[Space(15)]
-			public bool			debugOn;
-
-			public static Settings defaultSettings { 
-				get {
-					return new Settings {
-						intensity = 0.5f,
-						sampleCount = 10,
-						radius = 0.3f,
-						debugOn = false,
-						
-					};
-				}
-			}
-		}
-
-		[SerializeField]
-		[Inlined]
-		private Settings m_Settings = Settings.defaultSettings;
-		public Settings settings {
-			get { return m_Settings; }
-			set { 
-				m_Settings = value;
-				OnValidate();
-			}
-		}
+	public class CatAORenderer : PostProcessingBaseCommandBuffer<CatAO> {
 
 		private RenderingPath m_currentRenderingPath;
 		private CameraEvent GetAppropriateCameraEvent(bool isDebugModeOn, RenderingPath renderingPath) {
@@ -70,9 +28,6 @@ namespace Cat.PostProcessing {
 		}
 		override internal DepthTextureMode requiredDepthTextureMode { 
 			get { return DepthTextureMode.Depth | DepthTextureMode.MotionVectors; } 
-		}
-		override public bool isActive { 
-			get { return true; } 
 		}
 
 		static class PropertyIDs {
@@ -142,6 +97,38 @@ namespace Cat.PostProcessing {
 	
 		public void OnValidate () {
 			setMaterialDirty();
+		}
+	}
+
+	[Serializable]
+	[SettingsForPostProcessingEffect(typeof(CatAORenderer))]
+	public class CatAO : PostProcessingSettingsBase {
+		override public bool enabled { get { return intensity > 0; } }
+
+		override public string effectName { 
+			get { return "Ambient Occlusion"; } 
+		}
+		override public int queueingPosition {
+			get { return 1050; } 
+		}
+
+		[Range(0, 2)]
+		public FloatProperty intensity = new FloatProperty();
+
+		[Range(3, 16)]
+		public IntProperty sampleCount = new IntProperty();
+
+		[Range(1e-4f, 2)]
+		public FloatProperty radius = new FloatProperty();
+
+		//[Space(15)]
+		public BoolProperty debugOn = new BoolProperty();
+
+		public override void Reset() {
+			intensity.rawValue = 0f;
+			sampleCount.rawValue = 10;
+			radius.rawValue = 0.3f;
+			debugOn.rawValue = false;
 		}
 	}
 

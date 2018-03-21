@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 using System.Linq;
@@ -9,22 +10,12 @@ using Cat.CommonEditor;
 namespace Cat.PostProcessingEditor {
 
 
-	using Settings = CatSSR.Settings;
+	using Settings = CatSSR;
 
-	[CustomEditor(typeof(CatSSR))]
-	//[CanEditMultipleObjects]
-	public class CatSSREditor : Editor {
-		public SerializedProperty settings;
-
-		public void OnEnable() {
-			settings = serializedObject.FindProperty("m_Settings");
-		}
-
-		public override void OnInspectorGUI() {
-
-			bool hasMixedValues = settings.hasMultipleDifferentValues;
-
-
+	[CatPostProcessingEditorAttribute(typeof(CatSSR))]
+	public class CatSSREditor : CatPostProcessingEditorBase {
+		public override void OnInspectorGUI(IEnumerable<AttributedProperty> properties) {
+			bool hasMixedValues = properties.First().serializedProperty.hasMultipleDifferentValues;
 
 			//int num = Array.IndexOf<Enum>(nonObsoleteEnumData.values, selected);
 
@@ -41,7 +32,7 @@ namespace Cat.PostProcessingEditor {
 			displayedOptions = displayedOptions.Concat(from name in allowedPresets
 				select ObjectNames.NicifyVariableName(name)).ToArray<string>();
 			
-			var catSSR = (target as CatSSR);
+			//var catSSR = (target as CatSSR);
 
 			var selectedIndex = -1; // allowedValues.Length-1;
 			// while (selectedIndex >= 0 && Settings.GetPreset(allowedValues[selectedIndex]) == catSSR.settings) {
@@ -55,16 +46,21 @@ namespace Cat.PostProcessingEditor {
 			}
 			if (EditorGUI.EndChangeCheck()) {
 				if (selectedIndex >= 0) {
-					(target as CatSSR).settings = Settings.GetPreset(allowedValues[selectedIndex]);
+					var template = Settings.GetPreset(allowedValues[selectedIndex]);
+					target.InterpolateTo(template, 1);
+				//	target = Settings.GetPreset(allowedValues[selectedIndex]);
 				}
 			}
 			EditorGUI.showMixedValue = oldShowMixedValue;
 
 
 			serializedObject.Update();
-			EditorGUILayout.PropertyField(settings);
+			foreach (var property in properties) {
+				PropertyField(property);
+			}
 			serializedObject.ApplyModifiedProperties();
 		}
 			
 	}
+
 }

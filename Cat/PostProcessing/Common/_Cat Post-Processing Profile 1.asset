@@ -1,0 +1,263 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 59fc877289eebc4498be170384339dcb, type: 3}
+  m_Name: _Cat Post-Processing Profile 1
+  m_EditorClassIdentifier: 
+  m_settings:
+  - {fileID: 114722847099374500}
+  - {fileID: 114625164204168074}
+  - {fileID: 114428496976125524}
+  - {fileID: 114813197643523172}
+  - {fileID: 114605782163178876}
+  - {fileID: 114831901126372088}
+--- !u!114 &114428496976125524
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 41041b03803b943beb7f5ac3e497eff0, type: 3}
+  m_Name: CatSSR
+  m_EditorClassIdentifier: 
+  isOverriding: 0
+  intensity:
+    isOverriding: 1
+    m_RawValue: 1
+  rayTraceResol:
+    isOverriding: 1
+    m_RawValue: 1
+  stepCount:
+    isOverriding: 1
+    m_RawValue: 96
+  minPixelStride:
+    isOverriding: 1
+    m_RawValue: 3
+  maxPixelStride:
+    isOverriding: 1
+    m_RawValue: 12
+  cullBackFaces:
+    isOverriding: 1
+    m_RawValue: 1
+  maxReflectionDistance:
+    isOverriding: 1
+    m_RawValue: 100
+  reflectionResolution:
+    isOverriding: 1
+    m_RawValue: 1
+  reflectionDistanceFade:
+    isOverriding: 1
+    m_RawValue: 0.5
+  rayLengthFade:
+    isOverriding: 1
+    m_RawValue: 0.25
+  edgeFade:
+    isOverriding: 1
+    m_RawValue: 0.125
+  useRetroReflections:
+    isOverriding: 1
+    m_RawValue: 0
+  resolveSampleCount:
+    isOverriding: 1
+    m_RawValue: 4
+  importanceSampleBias:
+    isOverriding: 1
+    m_RawValue: 0.75
+  useCameraMipMap:
+    isOverriding: 1
+    m_RawValue: 1
+  useTemporalSampling:
+    isOverriding: 1
+    m_RawValue: 1
+  response:
+    isOverriding: 1
+    m_RawValue: 0.05
+  toleranceMargin:
+    isOverriding: 1
+    m_RawValue: 2
+  debugOn:
+    isOverriding: 1
+    m_RawValue: 0
+  debugMode:
+    isOverriding: 1
+    m_RawValue: 6
+  mipLevelForDebug:
+    isOverriding: 1
+    m_RawValue: 0
+--- !u!114 &114605782163178876
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d32b6368db1078448a822388135e3de2, type: 3}
+  m_Name: CatChromaticAberration
+  m_EditorClassIdentifier: 
+  isOverriding: 1
+  strength:
+    isOverriding: 1
+    m_RawValue: 0.36
+--- !u!114 &114625164204168074
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d91da77419a08534181a8b9745acd933, type: 3}
+  m_Name: CatBloom
+  m_EditorClassIdentifier: 
+  isOverriding: 1
+  intensity:
+    isOverriding: 1
+    m_RawValue: 1
+  dirtIntensity:
+    isOverriding: 1
+    m_RawValue: 1
+  dirtTexture:
+    isOverriding: 1
+    m_RawValue: {fileID: 2800000, guid: a506b49dea95da449be7d0cbd62dd312, type: 3}
+  minLuminance:
+    isOverriding: 1
+    m_RawValue: 0.5
+  kneeStrength:
+    isOverriding: 1
+    m_RawValue: 1
+  debugOn:
+    isOverriding: 1
+    m_RawValue: 0
+--- !u!114 &114722847099374500
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1cb1c853f63ba7c4b82db1e81deda4c3, type: 3}
+  m_Name: CatAO
+  m_EditorClassIdentifier: 
+  isOverriding: 1
+  intensity:
+    isOverriding: 1
+    m_RawValue: 1
+  sampleCount:
+    isOverriding: 1
+    m_RawValue: 10
+  radius:
+    isOverriding: 1
+    m_RawValue: 0.3
+  debugOn:
+    isOverriding: 1
+    m_RawValue: 0
+--- !u!114 &114813197643523172
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5e28affa801e26a4cb0f9ca731caa5ec, type: 3}
+  m_Name: CatAA
+  m_EditorClassIdentifier: 
+  isOverriding: 0
+  m_isEnabled:
+    isOverriding: 1
+    m_RawValue: 1
+  sharpness:
+    isOverriding: 1
+    m_RawValue: 0.075
+  velocityWeightScale:
+    isOverriding: 1
+    m_RawValue: 40
+  response:
+    isOverriding: 1
+    m_RawValue: 0.075
+  toleranceMargin:
+    isOverriding: 1
+    m_RawValue: 1
+  jitterMatrix:
+    isOverriding: 1
+    m_RawValue: 3
+  haltonSequenceLength:
+    isOverriding: 1
+    m_RawValue: 8
+--- !u!114 &114831901126372088
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b190397d1d49de74a92288005fd04f07, type: 3}
+  m_Name: CatColorGrading
+  m_EditorClassIdentifier: 
+  isOverriding: 1
+  tonemapper:
+    isOverriding: 1
+    m_RawValue: 2
+  response:
+    isOverriding: 1
+    m_RawValue: 0
+  gain:
+    isOverriding: 1
+    m_RawValue: 0
+  exposure:
+    isOverriding: 1
+    m_RawValue: 0
+  contrast:
+    isOverriding: 1
+    m_RawValue: 0
+  saturation:
+    isOverriding: 1
+    m_RawValue: 0
+  temperature:
+    isOverriding: 1
+    m_RawValue: 0
+  tint:
+    isOverriding: 1
+    m_RawValue: 0
+  colorMixer:
+    isOverriding: 1
+    m_RawValue: 0
+  red:
+    isOverriding: 1
+    m_RawValue: {r: 1, g: 0, b: 0, a: 1}
+  green:
+    isOverriding: 1
+    m_RawValue: {r: 0, g: 1, b: 0, a: 1}
+  blue:
+    isOverriding: 1
+    m_RawValue: {r: 0, g: 0, b: 1, a: 1}
+  isColorMatrixNormalized:
+    isOverriding: 1
+    m_RawValue: 0
+  blackPoint:
+    isOverriding: 1
+    m_RawValue: 0
+  midPoint:
+    isOverriding: 1
+    m_RawValue: 0
+  whitePoint:
+    isOverriding: 1
+    m_RawValue: 0
+  shadows:
+    isOverriding: 1
+    m_RawValue: 0
+  highlights:
+    isOverriding: 1
+    m_RawValue: 0

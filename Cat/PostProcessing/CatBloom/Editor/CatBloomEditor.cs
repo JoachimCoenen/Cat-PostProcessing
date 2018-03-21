@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 using Cat.Common;
@@ -7,18 +8,15 @@ using Cat.CommonEditor;
 
 namespace Cat.PostProcessingEditor {
 
-	[CustomEditor(typeof(CatBloom))]
-	//[CanEditMultipleObjects]
-	public class CatBloomEditor : Editor {
-		public SerializedProperty settings;
+	[CatPostProcessingEditorAttribute(typeof(CatBloom))]
+	public class CatBloomEditor : CatPostProcessingEditorBase {
 
-		public void OnEnable() {
-			settings = serializedObject.FindProperty("m_Settings");
-		}
-
-		public override void OnInspectorGUI() {
+		public override void OnInspectorGUI(IEnumerable<AttributedProperty> properties) {
+			
 			serializedObject.Update();
-			EditorGUILayout.PropertyField(settings);
+			foreach (var property in properties) {
+				PropertyField(property);
+			}
 			serializedObject.ApplyModifiedProperties();
 			EditorGUILayout.Space();
 			DrawResponseFunction();
@@ -26,8 +24,9 @@ namespace Cat.PostProcessingEditor {
 		}
 			
 		void DrawResponseFunction() {
-			var minLuminance = settings.FindPropertyRelative("minLuminance").floatValue;
-			var kneeStrength = settings.FindPropertyRelative("kneeStrength").floatValue;
+			var settings = target as CatBloom;
+			var minLuminance = settings.minLuminance;
+			var kneeStrength = settings.kneeStrength;
 			var range = new Vector2(5f, 2f);
 
 			var rect = GUILayoutUtility.GetRect(128, 80);

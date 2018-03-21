@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Reflection;
+using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -7,11 +10,50 @@ using Cat.Common;
 
 namespace Cat.PostProcessing {
 
+	[AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
+	public sealed class SettingsForPostProcessingEffect : Attribute {
+		//
+		// Fields
+		//
+		public Type m_EffectType;
+
+		//
+		// Constructors
+		//
+		public SettingsForPostProcessingEffect(Type postProcessingEffect) {
+			m_EffectType = postProcessingEffect;
+		}
+	}
+
+
 	[RequireComponent(typeof(Camera))]
 	[ExecuteInEditMode]
 	[ImageEffectAllowedInSceneView]
 	[DisallowMultipleComponent]
+	[AddComponentMenu("Cat/PostProcessing/Post Processing Manager")]
 	public class PostProcessingManager : MonoBehaviour {
+	/*
+		static Dictionary<Type, Type> s_EffectsForSettings;
+
+		private static void FindAllEffectsForSettings() {
+			s_EffectsForSettings = (from t in GetAllAssemblyTypes()
+				where t.IsSubclassOf(typeof(PropertyDrawer))
+				where t.IsDefined(typeof(CustomPropertyDrawer), false)
+				where !t.IsAbstract
+				let drawerType = t
+				let attributes = drawerType.GetCustomAttributes(typeof(CustomPropertyDrawer), false)
+				from a in attributes
+				let attributeType = a.GetType().GetField("m_Type", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic).GetValue(a) as Type
+				select new KeyValuePair<Type, Type>(attributeType, drawerType)
+			).ToDictionary(x => x.Key, x => x.Value);
+		}
+	*/
+		//public CatPostProcessingProfile m_profile;
+		public CatPostProcessingProfile profile;
+
+		private VirtualPostProcessingProfile m_VirtualProfile = new VirtualPostProcessingProfile();
+		public VirtualPostProcessingProfile virtualProfile { get { return m_VirtualProfile; } }
+
 		private Camera m_camera = null;
 		internal new Camera camera {
 			get {
@@ -58,209 +100,181 @@ namespace Cat.PostProcessing {
 			}
 		}
 
-		protected void OnDestroy() {
-			if (m_DepthTexture != null) {
-				m_DepthTexture.Release();
-			}
-			camera.RemoveCommandBuffer(m_DepthCommandBufferCameraEvent, depthCommandBuffer);
-		}
-
-
 		internal void RegisterCommandBuffer(PostProcessingBase effect, CameraEvent cameraEvent, CommandBuffer cb) {
-			var cbs = GetCommandBuffers(camera);
-			if (cbs == null) {
-				cbs = new Dictionary<Tuple<Type, CameraEvent>, CommandBuffer>();
-				m_CameraCommandBuffers.Add(camera, cbs);
-			}
-
 			var key = new Tuple<Type, CameraEvent>(effect.GetType(), cameraEvent);
-			if (cbs.ContainsKey(key)) {
+			if (m_CommandBuffers.ContainsKey(key)) {
 				Debug.LogErrorFormat("Camera '{0}' already contains CommandBuffer for ({1}, {2}). Removing old buffer and adding new one", camera, effect.GetType().Name, cameraEvent);
 				RemoveCommandBuffer(effect, cameraEvent, cb);
 			}
-			cbs[key] = cb;
-			UpdateCameraCommandBuffers();
+			m_CommandBuffers[key] = cb;
+			// UpdateCameraCommandBuffers();
 		}
 
 		internal void RemoveCommandBuffer(PostProcessingBase effect, CameraEvent cameraEvent, CommandBuffer cb) {
 			camera.RemoveCommandBuffer(cameraEvent, cb);
-			var cbs = GetCommandBuffers(camera);
-			if (cbs == null) {
-				Debug.LogWarningFormat("Camera '{0}' was not registered while trying to remove CommandBuffer for ({1}, {2})", camera, effect.GetType().Name, cameraEvent);
-				return;
-			}
 			var key = new Tuple<Type, CameraEvent>(effect.GetType(), cameraEvent);
-			if (!cbs.ContainsKey(key)) {
+			if (!m_CommandBuffers.ContainsKey(key)) {
 				Debug.LogWarningFormat("CommandBuffer for ({1}, {2}) was not registered while trying to remove CommandBuffer from Camera '{0}'", camera, effect.GetType().Name, cameraEvent);
 				return;
 			}
 
-			cbs.Remove(key);
-			if (cbs.Count == 0) {
-				m_CameraCommandBuffers.Remove(camera);
-			}
+			m_CommandBuffers.Remove(key);
 		}
 
 		internal void RemoveAllCommandBuffers(PostProcessingBase effect) {
-			var cbs = GetCommandBuffers(camera);
-			if (cbs == null) {
-				#if UNITY_DEBUG && DEBUG_OUTPUT_VERBIOUS
-				Debug.LogFormat("Camera '{0}' was not registered while trying to remove all CommandBuffers for {1}", camera, effect.GetType().Name);
-				#endif
-				return;
-			}
 
-			foreach ( var s in cbs.Where(kv => kv.Key.item1 == effect.GetType()).ToList() ) {
+			foreach ( var s in m_CommandBuffers.Where(kv => kv.Key.item1 == effect.GetType()).ToList() ) {
 				camera.RemoveCommandBuffer(s.Key.item2, s.Value);
-				cbs.Remove(s.Key);
-			}
-
-			if (cbs.Count == 0) {
-				m_CameraCommandBuffers.Remove(camera);
+				m_CommandBuffers.Remove(s.Key);
 			}
 		}
-
-
-		internal void OnEffectsChanged() {
-			UpdateCameraDepthTextureMode();
-			UpdateEffectsSetup();
-		}
-
-
-
-		delegate RenderFunc MakeRenderDelegate(PostProcessingBaseImageEffect e);
-		delegate SupportFunc MakeSupportDelegate(PostProcessingBase e);
-
-		delegate void RenderFunc(RenderTexture source, RenderTexture destination);
-		delegate void SupportFunc(Camera camera, VectorInt2 cameraSize); // JCO@@@ TODO: find better name
-		// delegate void PreCullFunc();
-		// delegate void PreRenderFunc();
-		// delegate void PostRenderFunc();
-
-
-		private IEnumerable<RenderFunc> m_imageEffectsRenderChain = new List<RenderFunc>();
-		private IEnumerable<SupportFunc> m_preCullChain = new List<SupportFunc>();
-		private IEnumerable<SupportFunc> m_preRenderChain = new List<SupportFunc>();
-//		private IEnumerable<SupportFunc> m_postRenderChain = new List<SupportFunc>();
+			
+		private readonly Dictionary<Type, PostProcessingBase> m_OldEffects_helper = new Dictionary<Type, PostProcessingBase>();
+		private readonly HashSet<PostProcessingBase> m_EffectsToRemove = new HashSet<PostProcessingBase>();
 
 		internal void UpdateEffectsSetup() {
-			var effects = new List<PostProcessingBase>();
-			GetComponents<PostProcessingBase>(effects);
-			var activeEffects = from effect in effects
-				where effect.enabled && effect.isActive
-				select effect;
+			virtualProfile.Reset();
+			if (profile != null) {
+				virtualProfile.InterpolateTo(profile, 1);
+			}
+			PostProcessingVoume.GetActiveProfile(this.transform, virtualProfile);
 
-			MakeRenderDelegate makeRenderDelegate = e => ((s, d) => e.RenderImage(s, d));
-			m_imageEffectsRenderChain = from effect in activeEffects
-				where effect is PostProcessingBaseImageEffect
-				let imgEffect = effect as PostProcessingBaseImageEffect
-				select makeRenderDelegate(imgEffect);
+			m_EffectsToRemove.Clear();
+			foreach(var oldEffect in m_ActiveEffects.Where(ef => !ef.enabled)) {
+				m_EffectsToRemove.Add(oldEffect);
+			}
 
-			MakeSupportDelegate makePreCullDelegate = e => ((cam, size) => e.PreCull(cam, size));
-			m_preCullChain = from effect in activeEffects
-				select makePreCullDelegate(effect);
+			//foreach(var oldEffect in m_OldEffects_helper.Where(ef => !ef.Value.enabled)) {
+			//	m_EffectsToRemove.Add(oldEffect.Value);
+			//}
+
+			var effectsToAdd = from pair in virtualProfile.settings
+			                   let settings = pair.Value
+			                   let settingsType = settings.GetType()
+			                   where settings.enabled
+			                   where !m_OldEffects_helper.ContainsKey(settingsType)
+			                   where settingsType.IsDefined(typeof(SettingsForPostProcessingEffect), false)
+			                   let attributes = settingsType.GetCustomAttributes(typeof(SettingsForPostProcessingEffect), false)
+			                   let attribute = attributes[0] as SettingsForPostProcessingEffect
+			                   let effect = (PostProcessingBase)Activator.CreateInstance(attribute.m_EffectType)
+			                   //let ctor = attribute.m_EffectType.GetConstructor(BindingFlags.NonPublic, null, new[] { typeof(PostProcessingSettingsBase) }, new ParameterModifier[0])
+			                   //let effect = (PostProcessingBase)(ctor.Invoke(new[] { settings }))
+			                   select new {effect, settings};
 			
-			MakeSupportDelegate makePreRenderDelegate = e => ((cam, size) => e.PreRender(cam, size));
-			m_preRenderChain = from effect in activeEffects
-				select makePreRenderDelegate(effect);
-			
-			//MakeSupportDelegate makePostRenderDelegate = e => ((cam, size) => e.PostRender());
-			//m_postRenderChain = from effect in activeEffects
-			//	select makePostRenderDelegate(effect);
+			bool atLeastOneEffectAdded = false;
+			foreach (var newEffect in effectsToAdd) {
+				newEffect.effect.m_Settings = newEffect.settings;
+				AddEffect(newEffect.effect);
+				atLeastOneEffectAdded = true;
+			}
+
+			bool atLeastOneEffectRemoved = false;
+			foreach (var oldEffect in m_EffectsToRemove) {
+				RemoveEffect(oldEffect);
+				atLeastOneEffectRemoved = true;
+			}
+			m_EffectsToRemove.Clear();
+
+			if (atLeastOneEffectAdded) {
+				m_ActiveEffects.Sort((x, y) => x.queueingPosition.CompareTo(y.queueingPosition));
+			}
+
+			if (atLeastOneEffectAdded || atLeastOneEffectRemoved) {
+				UpdateCameraCommandBuffers();
+				UpdateCameraDepthTextureMode();
+			}
 		}
 
 		private bool m_requiresDepthTexture = false;
 		internal void UpdateCameraDepthTextureMode() {
 			var depthTextureMode = DepthTextureMode.None;
-			var effects = GetEffects(camera);
-			if (effects != null && enabled) {
+			if (enabled) {
 				//depthTextureMode = (from pair in effects where pair.Value.enabled select pair.Value.requiredDepthTextureMode).Aggregate((l, r) => l | r);
-				depthTextureMode = effects
-					.Where(pair => pair.Value.enabled)
-					.Select(pair => pair.Value.requiredDepthTextureMode)
+				depthTextureMode = m_ActiveEffects
+					/*.Where(effect => effect.enabled)*/
+					.Select(effect => effect.requiredDepthTextureMode)
 					.Aggregate(depthTextureMode, (l, r) => l | r);
-
+				
 			}
-
 			camera.depthTextureMode = depthTextureMode;
-
 			m_requiresDepthTexture = (depthTextureMode & DepthTextureMode.Depth) == DepthTextureMode.Depth;
+			UpdateCameraDepthBufferCameraEvent();
 		}
 
 		internal void UpdateCameraCommandBuffers() {
-			var effects = new List<PostProcessingBase>();
-			GetComponents<PostProcessingBase>(effects);
-			var activeEffects = from effect in effects
+			//var effects = new List<PostProcessingBase>();
+			//GetComponents<PostProcessingBase>(effects);
+			/*
+			var activeEffects = from pair in m_Effects
+				let effect = pair.Value
 					where effect.enabled && effect.isActive
 				select effect;
+			*/
+			//Debug.Log(activeEffects.Count());
+			var buffers = from effect in m_ActiveEffects
+				join pair in m_CommandBuffers on effect.GetType() equals pair.Key.item1
+				select new { cameraEvent = pair.Key.item2, buffer = pair.Value/*, isActiveAndEnabled = effect.enabled*/ }; //produces flat sequence (hopefully)
 			
-			var commandBuffers = GetCommandBuffers(camera);
-			if (commandBuffers != null) {
-				
-				var buffers = from effect in activeEffects
-					join pair in commandBuffers on effect.GetType() equals pair.Key.item1
-					select new { cameraEvent = pair.Key.item2, buffer = pair.Value }; //produces flat sequence (hopefully)
 
-				foreach (var cb in buffers) {
-					camera.RemoveCommandBuffer(cb.cameraEvent, cb.buffer);
-				}
-				if (this.enabled) {
-					foreach (var cb in buffers) {
-						camera.AddCommandBuffer(cb.cameraEvent, cb.buffer);
-					}
-				}
-
+			//Debug.Log("Buffers: " + activeEffects.Count());
+			foreach (var cb in buffers) {
+				camera.RemoveCommandBuffer(cb.cameraEvent, cb.buffer);
+				//if (cb.isActiveAndEnabled && this.enabled) {
+					camera.AddCommandBuffer(cb.cameraEvent, cb.buffer);
+				//}
 			}
+
 		}
 
-
-		internal void AddEffect(PostProcessingBase effect) {
+		private void AddEffect(PostProcessingBase effect) {
 			// Get Effects of camera
 			// if camera doesn't have this effectType: add it. else throw exception?
 			//
-			var effects = GetEffects(camera);
-			if (effects == null) {
-				effects = new Dictionary<Type, PostProcessingBase>();
-				m_CameraPostProcessingEffects.Add(camera, effects);
-			}
-			if (!effects.ContainsKey(effect.GetType())) {
-				effects.Add(effect.GetType(), effect);
-				OnEffectsChanged();
-			}
-			effect.InitializeEffect();
+			//if (!m_Effects.ContainsKey(effect.GetType())) {
+				m_OldEffects_helper.Add(effect.m_Settings.GetType(), effect);
+				m_ActiveEffects.Add(effect);
+			//}
+			effect.InitializeEffectInternal(this);
 		}
 
-		internal bool TryRemoveEffect(PostProcessingBase effect) {
+		private bool TryRemoveEffect(PostProcessingBase effect) {
 			RemoveAllCommandBuffers(effect);
-			var effects = GetEffects(camera);
-			if (effects != null) {
-				if (effects.ContainsKey(effect.GetType())) {
-					var wasSuccessfull = effects.Remove(effect.GetType());
-					OnEffectsChanged();
-				}
-				if (effects.Count == 0) {
-					m_CameraPostProcessingEffects.Remove(camera);
-				}
+			m_OldEffects_helper.Remove(effect.m_Settings.GetType());
+			effect.OnDestroy();
+			bool wasSuccessfull = m_ActiveEffects.Remove(effect);
+
+			if (m_ActiveEffects.Contains(effect)) {
+				Debug.LogErrorFormat("Effect removed ffrom list, but was still found there??? ({0}, {1})", effect.effectName, wasSuccessfull);
 			}
-			return true; // JCO@@@ TODO: TryRemoveEffectFromCamera return value!!! TUT
+
+			return wasSuccessfull;
 		}
 
-		internal void RemoveEffect(PostProcessingBase effect) {
+		private void RemoveEffect(PostProcessingBase effect) {
 			if (!TryRemoveEffect(effect)) {
 				Debug.LogErrorFormat("PostProcessingBase.TryRemoveEffectFromCamera({0}, {1}) failed", camera.name, effect.effectName);
 			}
 		}
 
+		private void RemoveAllEffects() {
+			var tempEffects = (from effect in m_ActiveEffects select effect).ToList();
+			foreach (var effect in tempEffects) {
+				RemoveEffect(effect);
+			}
+			//m_ActiveEffects.Clear();
+		}
+
 		//[ImageEffectTransformsToLDR]
 		void OnRenderImage(RenderTexture source, RenderTexture destination) {
 			if (!enabled) {
-				Debug.LogFormat("WTF Unity? {0}.OnRenderImage() on {1} called, even though {0} is NOT enabled.", GetType().Name, name);
+				Debug.LogFormat("WTF Unity?! {0}.OnRenderImage() on {1} called, even though {0} is NOT enabled.", GetType().Name, name);
 				Graphics.Blit(source, destination);
 			}
 			var last = source;
-			foreach (RenderFunc renderFunc in m_imageEffectsRenderChain) {
+
+			foreach (var effect in m_ActiveEffects.OfType<PostProcessingBaseImageEffectBasis>()/*.Where(x => x.enabled)*/) {
 				var current = RenderTexture.GetTemporary(last.width, last.height, 0, last.format);
-				renderFunc(last, current);
+				effect.RenderImage(last, current);
 				if (last != source) { RenderTexture.ReleaseTemporary(last); }
 				last = current;
 			}
@@ -272,7 +286,8 @@ namespace Cat.PostProcessing {
 			}
 		}
 
-		private void OnPreCull(){
+		private void OnPreCull() {
+			UpdateEffectsSetup(); // TODO: This is a potential performance killer!! remove it
 			var cam = this.camera;
 
 			this.cameraSize = new VectorInt2(camera.pixelWidth, camera.pixelHeight);
@@ -283,30 +298,44 @@ namespace Cat.PostProcessing {
 				UpdateDepthTexture();
 				m_lastCameraSize = cameraSize;
 			}
-			UpdateCameraDepthBufferCameraEvent(cam.actualRenderingPath);
 
-			foreach (var preCullFunc in m_preCullChain) {
-				preCullFunc(cam, size);
+			foreach (var effect in m_ActiveEffects/*.Where(x => x.enabled )*/) {
+				effect.PreCull(cam, size);
 			}
 		}
 
 		private void OnPreRender(){
 			var cam = this.camera;
 			var size = this.cameraSize;
-			foreach (var preRenderFunc in m_preRenderChain) {
-				preRenderFunc(cam, size);
+			foreach (var effect in m_ActiveEffects/*.Where(x => x.enabled)*/) {
+				effect.PreRender(cam, size);
 			}
 		}
 
 		private void OnEnable(){
-			UpdateCameraCommandBuffers();
-			UpdateCameraDepthTextureMode();
+			UpdateEffectsSetup();
+			//UpdateCameraCommandBuffers();
+			//UpdateCameraDepthTextureMode();
 		}
 
 		private void OnDisable(){
-			UpdateCameraCommandBuffers();
+			RemoveAllEffects();
 			UpdateCameraDepthTextureMode();
 		}
+
+		private void OnDestroy() {
+			RemoveAllEffects();
+
+			if (m_DepthTexture != null) {
+				m_DepthTexture.Release();
+			}
+			camera.RemoveCommandBuffer(m_DepthCommandBufferCameraEvent, depthCommandBuffer);
+		}
+
+		void OnValidate() {
+			// UpdateEffectsSetup();
+		}
+
 
 
 
@@ -353,11 +382,11 @@ namespace Cat.PostProcessing {
 			 	: CameraEvent.BeforeLighting;
 		}
 
-		internal void UpdateCameraDepthBufferCameraEvent(RenderingPath renderingPath) {
+		internal void UpdateCameraDepthBufferCameraEvent() {
 			camera.RemoveCommandBuffer(m_DepthCommandBufferCameraEvent, depthCommandBuffer);
 
 			if (m_requiresDepthTexture ) {
-				m_DepthCommandBufferCameraEvent = GetAppropriateDepthBufferCameraEvent(renderingPath);
+				m_DepthCommandBufferCameraEvent = GetAppropriateDepthBufferCameraEvent(camera.actualRenderingPath);
 				camera.AddCommandBuffer(m_DepthCommandBufferCameraEvent, depthCommandBuffer);
 			}
 		}
@@ -438,36 +467,14 @@ namespace Cat.PostProcessing {
 				item3 = i3;
 			}
 		}
-		static readonly Dictionary<Camera, Dictionary<Type, PostProcessingBase>> m_CameraPostProcessingEffects = 
-			new Dictionary<Camera, Dictionary<Type, PostProcessingBase>>();
-		static readonly Dictionary<Camera, Dictionary<Tuple<Type, CameraEvent>, CommandBuffer>> m_CameraCommandBuffers = 
-			new Dictionary<Camera, Dictionary<Tuple<Type, CameraEvent>, CommandBuffer>>();
-
-		static Dictionary<Type, PostProcessingBase> GetEffects(Camera aCamera) {
-			// Get Effects of camera
-			// if camera doesn't have this effectType: return null;
-			//
-			Dictionary<Type, PostProcessingBase> effects = null;
-			m_CameraPostProcessingEffects.TryGetValue(aCamera, out effects);
-			return effects;
-		}
-
-		static Dictionary<Tuple<Type, CameraEvent>, CommandBuffer> GetCommandBuffers(Camera aCamera) {
-			Dictionary<Tuple<Type, CameraEvent>, CommandBuffer> cbs = null;
-			m_CameraCommandBuffers.TryGetValue(aCamera, out cbs);
-			return cbs;
-		}
 
 
+		// private readonly Dictionary<Type, PostProcessingBase> m_Effects = 
+		// 	new Dictionary<Type, PostProcessingBase>();
+		private readonly List<PostProcessingBase> m_ActiveEffects = new List<PostProcessingBase>();
+		private readonly Dictionary<Tuple<Type, CameraEvent>, CommandBuffer> m_CommandBuffers = new Dictionary<Tuple<Type, CameraEvent>, CommandBuffer>();
 
-
-
-		//static readonly Dictionary<Light, Dictionary<Type, PostProcessingBase>> m_LightPostProcessingEffects = 
-		//	new Dictionary<Light, Dictionary<Type, PostProcessingBase>>();
-		//static readonly Dictionary<Light, Dictionary<Tuple<Type, LightEvent>, CommandBuffer>> m_LightCommandBuffers = 
-		//	new Dictionary<Light, Dictionary<Tuple<Type, LightEvent>, CommandBuffer>>();
-
-}
+	}
 
 
 }

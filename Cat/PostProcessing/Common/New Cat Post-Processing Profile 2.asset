@@ -1,0 +1,162 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 59fc877289eebc4498be170384339dcb, type: 3}
+  m_Name: New Cat Post-Processing Profile 2
+  m_EditorClassIdentifier: 
+  m_settings:
+  - {fileID: 114617959953460526}
+  - {fileID: 114827523087132132}
+  - {fileID: 114748728300689144}
+  - {fileID: 114997782242706180}
+  - {fileID: 114557531517604874}
+  - {fileID: 114755504818312360}
+  - {fileID: 114760624742780284}
+--- !u!114 &114557531517604874
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 41041b03803b943beb7f5ac3e497eff0, type: 3}
+  m_Name: CatSSR
+  m_EditorClassIdentifier: 
+  isActive: 1
+  m_Settings:
+    rayTraceResol: 1
+    stepCount: 160
+    minPixelStride: 3
+    maxPixelStride: 12
+    cullBackFaces: 0
+    maxReflectionDistance: 100
+    reflectionResolution: 1
+    intensity: 1
+    reflectionDistanceFade: 0.5
+    rayLengthFade: 0.25
+    edgeFade: 0.125
+    useRetroReflections: 0
+    resolveSampleCount: 4
+    importanceSampleBias: 0.75
+    useCameraMipMap: 1
+    useTemporalSampling: 1
+    response: 0.05
+    toleranceMargin: 2
+    debugOn: 0
+    debugMode: 6
+    mipLevelForDebug: 0
+--- !u!114 &114617959953460526
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d91da77419a08534181a8b9745acd933, type: 3}
+  m_Name: CatBloom
+  m_EditorClassIdentifier: 
+  isActive: 1
+  intensity: 0.25
+  dirtIntensity: 0.5
+  dirtTexture: {fileID: 2800000, guid: a506b49dea95da449be7d0cbd62dd312, type: 3}
+  minLuminance: 0.5
+  kneeStrength: 1
+  debugOn: 0
+--- !u!114 &114748728300689144
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5e28affa801e26a4cb0f9ca731caa5ec, type: 3}
+  m_Name: CatAA
+  m_EditorClassIdentifier: 
+  isActive: 1
+  sharpness: 0.075
+  velocityWeightScale: 40
+  response: 0.075
+  toleranceMargin: 1
+  jitterMatrix: 3
+  haltonSequenceLength: 8
+--- !u!114 &114755504818312360
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7fb2cd8c7d59c4f45a63a9b0bfd5253d, type: 3}
+  m_Name: CatDeferredFog
+  m_EditorClassIdentifier: 
+  isActive: 0
+--- !u!114 &114760624742780284
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b190397d1d49de74a92288005fd04f07, type: 3}
+  m_Name: CatColorGrading
+  m_EditorClassIdentifier: 
+  isActive: 1
+  tonemapper: 1
+  response: 0
+  gain: 0
+  exposure: 0.33333
+  contrast: 0
+  saturation: 0.05
+  temperature: -0.05
+  tint: 0.04
+  colorMixer: 0
+  red: {r: 1, g: 0, b: 0, a: 1}
+  green: {r: 0, g: 1, b: 0, a: 1}
+  blue: {r: 0, g: 0, b: 1, a: 1}
+  isColorMatrixNormalized: 0
+  blackPoint: 0
+  midPoint: -0.18
+  whitePoint: 0
+  shadows: 0.4
+  highlights: -0.25
+--- !u!114 &114827523087132132
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1cb1c853f63ba7c4b82db1e81deda4c3, type: 3}
+  m_Name: CatAO
+  m_EditorClassIdentifier: 
+  isActive: 1
+  intensity: 0.5
+  sampleCount: 10
+  radius: 0.3
+  debugOn: 0
+--- !u!114 &114997782242706180
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d32b6368db1078448a822388135e3de2, type: 3}
+  m_Name: CatChromaticAberration
+  m_EditorClassIdentifier: 
+  isActive: 1
+  strength: 0.19

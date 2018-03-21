@@ -3,75 +3,15 @@ using UnityEngine;
 using Cat.Common;
 
 namespace Cat.PostProcessing {
-	[RequireComponent(typeof(Camera))]
-	[ExecuteInEditMode]
-	[ImageEffectAllowedInSceneView]
-	[AddComponentMenu("Cat/PostProcessing/Tempral Anti-Alialising")]
-	public class CatAA : PostProcessingBaseImageEffect {
+	public class CatAARenderer : PostProcessingBaseImageEffect<CatAA> {
 		private const bool disableTAAInSceneView = true;
-
-		[Serializable]
-		public struct Settings {
-
-			//[Range(0.0f, 2.0f)]
-			public const float jitterStrength = 1f;
-
-			[Range(0.0f, 2.0f)]
-			public float sharpness;
-
-			public const bool enableVelocityPrediction = true;
-
-			[CustomLabelRange(0.0f, 80.0f, "Velocity Scale")]
-			public float velocityWeightScale;
-
-			[Range(1e-3f, 1)]
-			public float response;
-
-			[Range(0, 5)]
-			public float toleranceMargin;
-
-			public JitterMatrixType jitterMatrix;
-
-			[CustomLabelRange(4, 16, "Halton Seq. Length")]
-			public int haltonSequenceLength;
-
-			public static Settings defaultSettings { 
-				get {
-					return new Settings {
-					//	jitterStrength = 1f,
-						sharpness = 0.075f,
-					//	enableVelocityPrediction = true,
-						velocityWeightScale = 40,
-						response			= 0.075f,
-						toleranceMargin		= 1,
-						jitterMatrix = JitterMatrixType.HaltonSequence,
-						haltonSequenceLength = 8
-					};
-				}
-			}
-		}
-
-		[SerializeField]
-		[Inlined]
-		private Settings m_Settings = Settings.defaultSettings;
-		public Settings settings {
-			get { return m_Settings; }
-			set { 
-				m_Settings = value;
-				OnValidate();
-			}
-		}
-
-		public enum JitterMatrixType {
-			ps0, ps, psy, HaltonSequence, psx, ps4
-		}
 
 		private readonly RenderTextureContainer lastFrame1 = new RenderTextureContainer();
 
 		override protected string shaderName { get { return "Hidden/CatAA"; } }
 		override public string effectName { get { return "Cat Temporal Antialialising"; } }
 		override internal DepthTextureMode requiredDepthTextureMode { get { return DepthTextureMode.MotionVectors | DepthTextureMode.Depth; } }
-		override public bool isActive { get { return true; } }
+
 
 		static class PropertyIDs {
 			// jitterStrength
@@ -106,7 +46,6 @@ namespace Cat.PostProcessing {
 		int TMSAACounter = 0;
 
 		override protected void UpdateCameraMatricesPerFrame(Camera camera, VectorInt2 cameraSize) {
-			var settings = this.settings;
 			var isSceneView = postProcessingManager.isSceneView;
 			if (isSceneView && disableTAAInSceneView) {
 				return;
@@ -116,7 +55,7 @@ namespace Cat.PostProcessing {
 				Vector2.zero, Vector2.zero,
 				Vector2.zero, Vector2.zero
 			};
-			switch (settings.jitterMatrix) {
+			switch (settings.jitterMatrix.rawValue) {
 			case JitterMatrixType.ps0:
 				jitterVectors = ps0; break;
 			case JitterMatrixType.ps:
@@ -143,7 +82,7 @@ namespace Cat.PostProcessing {
 				newP = newP - new Vector2(0.5f, 0.5f);
 			}
 
-			newP *= Settings.jitterStrength;
+			newP *= CatAA.jitterStrength;
 
 
 			newP.x /= (float)cameraSize.x;
@@ -155,6 +94,7 @@ namespace Cat.PostProcessing {
 			} else {
 				camera.projectionMatrix = GetPerspectiveProjectionMatrix(newP, camera);
 			}
+			camera.useJitteredProjectionMatrixForTransparentRendering = false;
 			
 			Shader.SetGlobalVector(PropertyIDs.TAAJitterVelocity_v, isSceneView ? Vector2.zero : newP);
 		}
@@ -166,7 +106,7 @@ namespace Cat.PostProcessing {
 
 		override protected void UpdateMaterial(Material material, Camera camera, VectorInt2 cameraSize) {
 			var isSceneView = postProcessingManager.isSceneView;
-			var allowVelocityPrediction = Settings.enableVelocityPrediction && !isSceneView;
+			var allowVelocityPrediction = CatAA.enableVelocityPrediction && !isSceneView;
 			material.SetFloat(PropertyIDs.Sharpness_f, settings.sharpness);
 			material.SetInt(PropertyIDs.IsVelocityPredictionEnabled_b, allowVelocityPrediction ? 1 : 0);
 			material.SetFloat(PropertyIDs.VelocityWeightScale_f, settings.velocityWeightScale);
@@ -189,6 +129,7 @@ namespace Cat.PostProcessing {
 
 			Blit(source, destination, material, 0);
 			Blit(destination, lastFrame1);
+			postProcessingManager.camera.ResetProjectionMatrix();
 		}
 
 
@@ -342,4 +283,58 @@ namespace Cat.PostProcessing {
 		};
 	}
 
+	public enum JitterMatrixType {
+		ps0, ps, psy, HaltonSequence, psx, ps4
+	}
+
+	[Serializable]
+	public class JitterMatrixTypeProperty : PropertyOverride<JitterMatrixType> {}
+
+	[Serializable]
+	[SettingsForPostProcessingEffect(typeof(CatAARenderer))]
+	public class CatAA : PostProcessingSettingsBase {
+		override public bool enabled { get { return m_isEnabled.rawValue; } }
+
+		override public string effectName { 
+			get { return "Temporal Antialialising"; } 
+		}
+		override public int queueingPosition {
+			get { return 2850; } 
+		}
+
+		public BoolProperty m_isEnabled = new BoolProperty();
+		//[Range(0.0f, 2.0f)]
+		public const float jitterStrength = 1f;
+
+		[Range(0.0f, 2.0f)]
+		public FloatProperty sharpness = new FloatProperty();
+
+		public const bool enableVelocityPrediction = true;
+
+		[CustomLabelRange(0.0f, 80.0f, "Velocity Scale")]
+		public FloatProperty velocityWeightScale = new FloatProperty();
+
+		[Range(1e-3f, 1)]
+		public FloatProperty response = new FloatProperty();
+
+		[Range(0, 5)]
+		public FloatProperty toleranceMargin = new FloatProperty();
+
+		public JitterMatrixTypeProperty jitterMatrix = new JitterMatrixTypeProperty();
+
+		[CustomLabelRange(4, 16, "Halton Seq. Length")]
+		public IntProperty haltonSequenceLength = new IntProperty();
+
+		public override void Reset() {
+			m_isEnabled.rawValue = false;
+			//	jitterStrength.rawValue = 1f,
+			sharpness.rawValue = 0.075f;
+			//	enableVelocityPrediction.rawValue = true,
+			velocityWeightScale.rawValue = 40;
+			response.rawValue = 0.075f;
+			toleranceMargin.rawValue = 1;
+			jitterMatrix.rawValue = JitterMatrixType.HaltonSequence;
+			haltonSequenceLength.rawValue = 8;
+		}
+	}
 }

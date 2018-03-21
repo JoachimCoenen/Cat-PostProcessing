@@ -1,0 +1,120 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 59fc877289eebc4498be170384339dcb, type: 3}
+  m_Name: New Cat Post-Processing Profile 1
+  m_EditorClassIdentifier: 
+  m_settings:
+  - {fileID: 114468766043152532}
+--- !u!114 &114468766043152532
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 41041b03803b943beb7f5ac3e497eff0, type: 3}
+  m_Name: CatSSR
+  m_EditorClassIdentifier: 
+  isActive: 1
+  rayTraceResol:
+    isActive: 1
+    m_RawValue: 1
+  stepCount:
+    isActive: 1
+    m_RawValue: 96
+  minPixelStride:
+    isActive: 1
+    m_RawValue: 3
+  maxPixelStride:
+    isActive: 1
+    m_RawValue: 12
+  cullBackFaces:
+    isActive: 1
+    m_RawValue: 1
+  maxReflectionDistance:
+    isActive: 1
+    m_RawValue: 100
+  reflectionResolution:
+    isActive: 1
+    m_RawValue: 1
+  intensity:
+    isActive: 1
+    m_RawValue: 1
+  reflectionDistanceFade:
+    isActive: 1
+    m_RawValue: 0.5
+  rayLengthFade:
+    isActive: 1
+    m_RawValue: 0.25
+  edgeFade:
+    isActive: 1
+    m_RawValue: 0.125
+  useRetroReflections:
+    isActive: 1
+    m_RawValue: 0
+  resolveSampleCount:
+    isActive: 1
+    m_RawValue: 4
+  importanceSampleBias:
+    isActive: 1
+    m_RawValue: 0.75
+  useCameraMipMap:
+    isActive: 1
+    m_RawValue: 1
+  useTemporalSampling:
+    isActive: 1
+    m_RawValue: 1
+  response:
+    isActive: 1
+    m_RawValue: 0.05
+  toleranceMargin:
+    isActive: 1
+    m_RawValue: 2
+  debugOn:
+    isActive: 1
+    m_RawValue: 0
+  debugMode:
+    isActive: 1
+    m_RawValue: 3
+  mipLevelForDebug:
+    isActive: 1
+    m_RawValue: 0
+--- !u!114 &114946800389222610
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d91da77419a08534181a8b9745acd933, type: 3}
+  m_Name: CatBloom
+  m_EditorClassIdentifier: 
+  isActive: 1
+  intensity:
+    isActive: 1
+    m_RawValue: 0.25
+  dirtIntensity:
+    isActive: 1
+    m_RawValue: 0.5
+  dirtTexture:
+    isActive: 1
+    m_RawValue: {fileID: 0}
+  minLuminance:
+    isActive: 1
+    m_RawValue: 0.5
+  kneeStrength:
+    isActive: 1
+    m_RawValue: 1
+  debugOn:
+    isActive: 1
+    m_RawValue: 0

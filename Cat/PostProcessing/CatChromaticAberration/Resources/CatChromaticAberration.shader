@@ -43,15 +43,17 @@ Shader "Hidden/Cat Chromatic Aberration" {
 			float2 shift = ssPos * _MainTex_TexelSize.zw / length(_MainTex_TexelSize.zw) * strength;
 			
 			float amount = length(ssPos * _MainTex_TexelSize.zw) / length(_MainTex_TexelSize.zw);
+			amount = length(ssPos) / sqrt(2);
 			amount = Pow2(amount);
 			amount *= strength;
-			shift = -normalize(ssPos) * amount;
+			shift = -(ssPos) * amount;
 			
 			
 			half3 sumColor = 0;
 			half3 sumWeight = 0;
 			int samples = clamp(int(length(_MainTex_TexelSize.zw * shift / 2)), 3, 16);
 			float3 stepSize = float3(shift, 1) / float3(samples.xx, samples-1);
+
 			float3 uvTap = float3(uv, 0);
 			float P = 1.33333;
 			
@@ -71,7 +73,7 @@ Shader "Hidden/Cat Chromatic Aberration" {
 		half4 chromaticAberration2(VertexOutput i) : SV_Target {
 			float2 uv = i.uv;
 			float2 uvX = i.uv * 2 - 1;
-			float strength = 0.03125 * _Strength;
+			float strength = 0.03125 * _Strength * 0.5;
 			
 			float2 aspect = _MainTex_TexelSize.zw * MinC(_MainTex_TexelSize.xy);
 			float2 uvY = uvX * aspect; 

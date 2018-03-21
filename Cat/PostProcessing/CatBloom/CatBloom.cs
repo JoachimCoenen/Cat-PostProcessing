@@ -10,58 +10,7 @@ namespace Cat.PostProcessing {
 	[ExecuteInEditMode]
 	[ImageEffectAllowedInSceneView]
 	[AddComponentMenu("Cat/PostProcessing/Bloom")]
-	public class CatBloom : PostProcessingBaseImageEffect {
-
-		[Serializable]
-		public struct Settings {
-			[Header("Primary Settings")]
-			[Range(0, 1)]
-			public float				intensity;
-
-			[Range(0, 1)]
-			public float				dirtIntensity;
-
-			public Texture				dirtTexture;
-
-
-			[Header("Secondary Settings")]
-			[Range(0, 1)]
-			public float				minLuminance;
-
-			[Range(0, 4)]
-			public float				kneeStrength;
-
-
-			[Header("Debugging")]
-			public bool					debugOn;
-
-			public static Settings defaultSettings { 
-				get {
-					return new Settings {
-						intensity				= 0.25f,
-						dirtIntensity			= 0.5f,
-						dirtTexture				= null,
-
-						minLuminance			= 0.5f,
-						kneeStrength			= 1,
-						
-						debugOn					= false,
-					};
-				}
-			}
-
-		}
-
-		[SerializeField]
-		[Inlined]
-		private Settings m_Settings = Settings.defaultSettings;
-		public Settings settings {
-			get { return m_Settings; }
-			set { 
-				m_Settings = value;
-				OnValidate();
-			}
-		}
+	public class CatBloomRenderer : PostProcessingBaseImageEffect<CatBloom> {
 
 		override protected string shaderName { 
 			get { return "Hidden/Cat Bloom"; } 
@@ -72,9 +21,7 @@ namespace Cat.PostProcessing {
 		override internal DepthTextureMode requiredDepthTextureMode { 
 			get { return DepthTextureMode.None; } 
 		}
-		override public bool isActive { 
-			get { return true; } 
-		}
+
 
 		static class PropertyIDs {
 			internal static readonly int Intensity_f		= Shader.PropertyToID("_Intensity");
@@ -181,6 +128,52 @@ namespace Cat.PostProcessing {
 		public void OnValidate () {
 			setMaterialDirty();
 		}
+	}
+
+	[Serializable]
+	[SettingsForPostProcessingEffect(typeof(CatBloomRenderer))]
+	public class CatBloom : PostProcessingSettingsBase {
+		override public bool enabled { get { return intensity > 0 || (dirtIntensity > 0 && dirtTexture.rawValue != null); } }
+
+		override public string effectName { 
+			get { return "Bloom"; } 
+		}
+		override public int queueingPosition {
+			get { return 2950; } 
+		}
+
+		[Header("Primary Settings")]
+		[Range(0, 4)]
+		public FloatProperty intensity = new FloatProperty();
+
+		[Range(0, 2)]
+		public FloatProperty dirtIntensity = new FloatProperty();
+
+		public TextureProperty dirtTexture = new TextureProperty();
+
+
+		[Header("Secondary Settings")]
+		[Range(0, 1)]
+		public FloatProperty minLuminance = new FloatProperty();
+
+		[Range(0, 4)]
+		public FloatProperty kneeStrength = new FloatProperty();
+
+
+		[Header("Debugging")]
+		public BoolProperty debugOn = new BoolProperty();
+
+		public override void Reset() {
+			intensity.rawValue		= 0.0f;
+			dirtIntensity.rawValue	= 0.0f;
+			dirtTexture.rawValue	= null;
+
+			minLuminance.rawValue	= 0.5f;
+			kneeStrength.rawValue	= 1;
+
+			debugOn.rawValue		= false;
+		}
+
 	}
 
 }
