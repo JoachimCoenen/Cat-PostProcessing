@@ -37,13 +37,16 @@ namespace Cat.PostProcessing {
 			}
 		}
 
-		internal void InterpolateTo(PostProcessingSettingsBase other, float otherFactor) {
-			for (int i = 0; i < properties.Count; i++) {
-				otherFactor = properties[i].isOverriding ? otherFactor : 1f;
+		internal void TurnAllOverridesOn() {
+			foreach (var property in properties) {
+				property.isOverriding = true;
+			}
+		}
 
-				if (other.properties[i].isOverriding || !properties[i].isOverriding) {
-					properties[i].InterpolateTo(other.properties[i], otherFactor);
-					properties[i].isOverriding = other.properties[i].isOverriding;
+		public void InterpolateTo(PostProcessingSettingsBase other, float otherFactor) {
+			for (int i = 0; i < properties.Count; i++) {
+				if (other.properties[i].isOverriding) {
+					this.properties[i].InterpolateTo(other.properties[i], otherFactor);
 				}
 			}
 		}

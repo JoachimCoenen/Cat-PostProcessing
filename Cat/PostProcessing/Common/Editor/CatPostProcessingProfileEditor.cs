@@ -103,10 +103,12 @@ namespace Cat.PostProcessingEditor {
 
 			foreach (var editor in m_Editors) {
 				CatEditorGUILayout.BeginBox();
-				;
 
-				if(DrawEffectHeader(editor)) {
-					editor.OnInspectorGUIInternal();
+				var isEditable = true;
+				if(DrawEffectHeader(editor, out isEditable)) {
+					using (new EditorGUI.DisabledScope(!isEditable)) {
+						editor.OnInspectorGUIInternal();
+					}
 				}
 				CatEditorGUILayout.EndBox();
 				EditorGUILayout.Space();
@@ -123,7 +125,7 @@ namespace Cat.PostProcessingEditor {
 			EditorGUILayout.Space();
 		}
 
-		private bool DrawEffectHeader(CatPostProcessingEditorBase editor) {
+		private bool DrawEffectHeader(CatPostProcessingEditorBase editor, out bool isEditable) {
 			var target = editor.target;
 			var index = m_profile.settings.IndexOf(target);
 			var serializedProperty = m_SettingsProperty.GetArrayElementAtIndex(index);
@@ -133,10 +135,31 @@ namespace Cat.PostProcessingEditor {
 				//serializedProperty.isExpanded = CatEditorGUILayout.ToggledFoldout(serializedProperty.isExpanded, target.isActive, b => target.isActive = b, target.effectName);
 
 				serializedProperty.isExpanded = CatEditorGUILayout.FoldoutToggle(serializedProperty.isExpanded);
-				target.isOverriding = EditorGUILayout.ToggleLeft(target.effectName, target.isOverriding, EditorStyles.boldLabel);
-				//target.isActive = CatEditorGUILayout.PureToggle(target.isActive);
-				//EditorGUILayout.PrefixLabel(target.effectName, CatEditorGUILayout.Styles.ContextButtonSkin, EditorStyles.boldLabel);
-				//serializedProperty.isExpanded = CatEditorGUILayout.Foldout(serializedProperty.isExpanded, target.effectName);
+
+				var isOverridingProperty = editor.serializedObject.FindProperty("isOverriding");
+
+				editor.serializedObject.Update();
+				var isOverriding = CatEditorGUILayout.ActivationToggle(isOverridingProperty.boolValue, false);
+				isOverridingProperty.boolValue = isOverriding;
+				isEditable = isOverriding;
+
+				var rect = GUILayoutUtility.GetRect(new GUIContent(target.effectName), EditorStyles.boldLabel);
+				var labelRect = new Rect(
+					rect.x, 
+					rect.y - 5, 
+					rect.width, 
+					rect.height
+				);
+				using (new EditorGUI.DisabledScope(!isOverriding)) {
+					EditorGUI.LabelField(labelRect, target.effectName, EditorStyles.boldLabel);
+				}
+				var e = Event.current;
+				if (e.type == EventType.MouseDown && labelRect.Contains(e.mousePosition)) {   
+					e.Use();
+					serializedProperty.isExpanded = !serializedProperty.isExpanded;
+				}
+
+				editor.serializedObject.ApplyModifiedProperties();
 
 				if (CatEditorGUILayout.ContextButton()) {
 					var menu = new GenericMenu();
@@ -253,7 +276,8 @@ namespace Cat.PostProcessingEditor {
 			var index = m_profile.settings.IndexOf(target);
 
 			serializedObject.Update();
-
+			target.Reset();
+			/*
 			var serializedProperty = m_SettingsProperty.GetArrayElementAtIndex(index);
 			serializedProperty.objectReferenceValue = null;
 
@@ -262,9 +286,9 @@ namespace Cat.PostProcessingEditor {
 			Undo.RegisterCreatedObjectUndo(newEffect, "Reset Effect Override");
 			AssetDatabase.AddObjectToAsset(newEffect, m_profile);
 			serializedProperty.objectReferenceValue = newEffect;
-
+			*/
 			serializedObject.ApplyModifiedProperties();
-
+			/*
 			// Same as RemoveEffectOverride, destroy at the end so it's recreated first on Undo to
 			// make sure the GUID exists before undoing the list state
 			Undo.DestroyObjectImmediate(target);
@@ -274,6 +298,7 @@ namespace Cat.PostProcessingEditor {
 			AssetDatabase.SaveAssets();
 
 			UpdateAllEditors();
+			*/
 		}
 
 		PostProcessingSettingsBase CreateEffect(Type type) {
@@ -284,22 +309,6 @@ namespace Cat.PostProcessingEditor {
 			effect.Reset();
 			return effect;
 		}
-
-		bool DrawPropertyField(SerializedProperty prop, ref bool isFirst, bool includeChildren = false) {
-			var hasNext = prop.Next(isFirst);
-			isFirst = false;
-			if (hasNext) {
-				EditorGUILayout.PropertyField(prop, includeChildren);
-			}
-			return hasNext;
-		}
-
-		bool SkipPropertyField(SerializedProperty prop, ref bool isFirst) {
-			var hasNext = prop.Next(isFirst);
-			isFirst = false;
-			return hasNext;
-		}
-
 
 	}
 }

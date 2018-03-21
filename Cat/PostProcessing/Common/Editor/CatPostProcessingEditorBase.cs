@@ -124,7 +124,7 @@ namespace Cat.PostProcessingEditor {
 				using (new EditorGUILayout.HorizontalScope()) {
 					var isOverriding = overrideProperties.First(p => p.serializedProperty.name == "isOverriding").serializedProperty;
 					var rawValue = overrideProperties.First(p => p.serializedProperty.name == "m_RawValue");
-					var showAsActive = CatEditorGUILayout.FoldoutToggle(isOverriding.boolValue);
+					var showAsActive = CatEditorGUILayout.ActivationToggle(isOverriding.boolValue);
 					isOverriding.boolValue = showAsActive;
 					using (new EditorGUI.DisabledScope(!showAsActive)) {
 						PropertyField(rawValue, propertyDrawer, title);

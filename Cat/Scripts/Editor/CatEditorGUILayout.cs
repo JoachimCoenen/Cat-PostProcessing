@@ -13,10 +13,6 @@ namespace Cat.CommonEditor
 			private static GUIStyle s_FoldoutButtonSkin = null;
 			// private static GUIStyle s_PureToggleSkin = null;
 
-			private static Texture2D s_ContextButtonIcon = null;
-
-			private static Texture2D s_FoldoutIcon = null;
-			private static Texture2D s_FoldoutActIcon = null;
 
 			public static GUIStyle BoxSkin {
 				get {
@@ -85,6 +81,7 @@ namespace Cat.CommonEditor
 			// 	}
 			// }
 
+			private static Texture2D s_ContextButtonIcon = null;
 			public static Texture2D ContextButtonIcon {
 				get {
 					if (s_ContextButtonIcon == null) {
@@ -92,12 +89,14 @@ namespace Cat.CommonEditor
 							s_ContextButtonIcon = (Texture2D)EditorGUIUtility.Load("Builtin Skins/DarkSkin/Images/pane options.png");
 						} else {
 							s_ContextButtonIcon = (Texture2D)EditorGUIUtility.Load("Builtin Skins/LightSkin/Images/pane options.png");
+							//s_ContextButtonIcon = (Texture2D)EditorGUIUtility.Load("Builtin Skins/LightSkin/Images/listicon.png");
 						}
 					}
 					return s_ContextButtonIcon;
 				}
 			}
 
+			private static Texture2D s_FoldoutIcon = null;
 			public static Texture2D FoldoutIcon {
 				get {
 					if (s_FoldoutIcon == null) {
@@ -110,6 +109,7 @@ namespace Cat.CommonEditor
 					return s_FoldoutIcon;
 				}
 			}
+			private static Texture2D s_FoldoutActIcon = null;
 			public static Texture2D FoldoutActIcon {
 				get {
 					if (s_FoldoutActIcon == null) {
@@ -120,6 +120,38 @@ namespace Cat.CommonEditor
 						}
 					}
 					return s_FoldoutActIcon;
+				}
+			}
+
+			private const string s_ToggleOffIconName = "shurikencheckmarknormal";
+			private const string s_ToggleOnIconName = s_ToggleOffIconName + "on";
+			// "shurikencheckmarknormalon"
+			// "shurikentogglenormalon"
+			// "ol toggle on"
+			private static Texture2D s_ToggleOnIcon = null;
+			public static Texture2D ToggleOnIcon {
+				get {
+					if (s_ToggleOnIcon == null) {
+						if (EditorGUIUtility.isProSkin) {
+							s_ToggleOnIcon = (Texture2D)EditorGUIUtility.Load("Builtin Skins/DarkSkin/Images/" + s_ToggleOnIconName + ".png");
+						} else {
+							s_ToggleOnIcon = (Texture2D)EditorGUIUtility.Load("Builtin Skins/LightSkin/Images/" + s_ToggleOnIconName + ".png");
+						}
+					}
+					return s_ToggleOnIcon;
+				}
+			}
+			private static Texture2D s_ToggleOffIcon = null;
+			public static Texture2D ToggleOffIcon {
+				get {
+					if (s_ToggleOffIcon == null) {
+						if (EditorGUIUtility.isProSkin) {
+							s_ToggleOffIcon = (Texture2D)EditorGUIUtility.Load("Builtin Skins/DarkSkin/Images/" + s_ToggleOffIconName + ".png");
+						} else {
+							s_ToggleOffIcon = (Texture2D)EditorGUIUtility.Load("Builtin Skins/LightSkin/Images/" + s_ToggleOffIconName + ".png");
+						}
+					}
+					return s_ToggleOffIcon;
 				}
 			}
 
@@ -195,6 +227,29 @@ namespace Cat.CommonEditor
 
 			var e = Event.current;
 			if (e.type == EventType.MouseDown && contextRect.Contains(e.mousePosition)) {   
+				e.Use();
+				value = !value;
+			}
+			return value;
+			//return GUILayout.Button(Styles.ContextButtonIcon, Styles.ContextButtonSkin);
+		}
+
+		public static bool ActivationToggle(bool value, bool isLeftMost = true) { // TODO: find better name for 'bool ActivationToggle(bool)'
+			var toggleIcon = value ? Styles.ToggleOnIcon : Styles.ToggleOffIcon;
+			var rect = GUILayoutUtility.GetRect(
+				           toggleIcon.width - (isLeftMost ? 12 : 0), 
+				           toggleIcon.height, Styles.FoldoutButtonSkin
+			           );
+			var toggleRect = new Rect(
+				                 rect.x - (isLeftMost ? 11 : 0), 
+				                 rect.y + 1, 
+				                 toggleIcon.width, 
+				                 toggleIcon.height
+			                 );
+			GUI.DrawTexture(toggleRect, toggleIcon);
+
+			var e = Event.current;
+			if (e.type == EventType.MouseDown && toggleRect.Contains(e.mousePosition)) {   
 				e.Use();
 				value = !value;
 			}

@@ -46,6 +46,8 @@ namespace Cat.PostProcessingEditor {
 			}
 			if (EditorGUI.EndChangeCheck()) {
 				if (selectedIndex >= 0) {
+					var template = Settings.GetPreset(allowedValues[selectedIndex]);
+					target.InterpolateTo(template, 1);
 				//	target = Settings.GetPreset(allowedValues[selectedIndex]);
 				}
 			}

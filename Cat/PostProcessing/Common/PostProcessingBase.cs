@@ -44,7 +44,7 @@ namespace Cat.PostProcessing {
 		}
 	}
 		
-	public abstract class PostProcessingBase : UnityEngine.Object {
+	public abstract class PostProcessingBase {
 		abstract protected string shaderName { get; }
 		abstract public string effectName { get; }
 		abstract internal DepthTextureMode requiredDepthTextureMode { get; }
@@ -91,6 +91,13 @@ namespace Cat.PostProcessing {
 		}
 
 		internal PostProcessingSettingsBase m_Settings;
+
+		internal PostProcessingBase() {
+		}
+
+		internal PostProcessingBase(PostProcessingSettingsBase settings) : this() {
+			m_Settings = settings;
+		}
 
 	//	private Camera m_camera = null;
 	//	protected new Camera camera {
