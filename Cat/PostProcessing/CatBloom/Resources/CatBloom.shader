@@ -46,6 +46,8 @@ Shader "Hidden/Cat Bloom" {
 		float4	_BlurDir;
 		float	_MipLevel;
 		float	_Weight;
+		
+		sampler2D	_BaseTex;
 
 				// debugOn
 		int		_DebugMode;
@@ -114,7 +116,9 @@ Shader "Hidden/Cat Bloom" {
 			sumColor += Tex2Dlod(_MainTex, i.uv + d.zy, 0);
 			sumColor += Tex2Dlod(_MainTex, i.uv + d.xw, 0);
 			sumColor += Tex2Dlod(_MainTex, i.uv + d.zw, 0);
-			return sumColor * (0.25 * _Weight);
+			sumColor *= (0.25 * _Weight);
+			sumColor += Tex2Dlod(_BaseTex, i.uv, 0);
+			return sumColor;
 		}
 		
 		//----------------------------------------------------------------------------------------------------------------------
@@ -230,7 +234,7 @@ Shader "Hidden/Cat Bloom" {
 
 		//Pass 2 Upsample
 		Pass {
-			Blend One One, One One
+			Blend One Zero //One, One One
 			
 			CGPROGRAM
 			#pragma target 3.0

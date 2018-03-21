@@ -36,6 +36,8 @@ namespace Cat.PostProcessing {
 			internal static readonly int BlurDir_v			= Shader.PropertyToID("_BlurDir");
 			internal static readonly int MipLevel_f			= Shader.PropertyToID("_MipLevel");
 			internal static readonly int Weight_f			= Shader.PropertyToID("_Weight");
+
+			internal static readonly int BaseTex_t			= Shader.PropertyToID("_BaseTex");
 		
 
 			internal static readonly int tempBuffer0_t		= Shader.PropertyToID("_TempTexture_This_texture_is_never_going_to_be_directly_referenced0x");
@@ -50,6 +52,16 @@ namespace Cat.PostProcessing {
 				Shader.PropertyToID("_TempTexture_This_texture_is_never_going_to_be_directly_referenced7"),
 				Shader.PropertyToID("_TempTexture_This_texture_is_never_going_to_be_directly_referenced8"),
 			};
+			internal static readonly int[] tempBuffers2_t	= new int[] {
+				Shader.PropertyToID("_TempTexture_This_texture_is_never_going_to_be_directly_referenced1x1"),
+				Shader.PropertyToID("_TempTexture_This_texture_is_never_going_to_be_directly_referenced1x2"),
+				Shader.PropertyToID("_TempTexture_This_texture_is_never_going_to_be_directly_referenced1x3"),
+				Shader.PropertyToID("_TempTexture_This_texture_is_never_going_to_be_directly_referenced1x4"),
+				Shader.PropertyToID("_TempTexture_This_texture_is_never_going_to_be_directly_referenced1x5"),
+				Shader.PropertyToID("_TempTexture_This_texture_is_never_going_to_be_directly_referenced1x6"),
+				Shader.PropertyToID("_TempTexture_This_texture_is_never_going_to_be_directly_referenced1x7"),
+				Shader.PropertyToID("_TempTexture_This_texture_is_never_going_to_be_directly_referenced1x8"),
+			};
 		}
 			
 		override protected void UpdateMaterialPerFrame(Material material, Camera camera, VectorInt2 cameraSize) {
@@ -60,7 +72,7 @@ namespace Cat.PostProcessing {
 			var settings = this.settings;
 			material.SetFloat(PropertyIDs.MinLuminance_f, settings.minLuminance);
 			material.SetFloat(PropertyIDs.KneeStrength_f, settings.kneeStrength);
-			material.SetFloat(PropertyIDs.Intensity_f, settings.intensity);
+			material.SetFloat(PropertyIDs.Intensity_f, settings.intensity * 0.75f);
 			material.SetTexture(PropertyIDs.DirtTexture_t, settings.dirtTexture);
 			material.SetFloat(PropertyIDs.DirtIntensity_f, settings.dirtIntensity);
 			// debugOn
@@ -79,19 +91,32 @@ namespace Cat.PostProcessing {
 			const int maxMipLvl = 7;
 
 			const int maxUpsample = 1;
-			var mipLevelFloat = Mathf.Clamp(Mathf.Log(Mathf.Max(source.width, source.height) / 32.0f + 1, 2), maxUpsample, maxMipLvl);
+			var mipLevelFloat = Mathf.Clamp(Mathf.Log(Mathf.Max(source.width, source.height) / 48.0f + 1, 2), maxUpsample, maxMipLvl);
 			material.SetFloat(PropertyIDs.MipLevel_f, mipLevelFloat);
 			var mipLevel = (int)mipLevelFloat;
-			var tempBuffers = new RenderTexture[mipLevel+1];
+
+			var tempBuffersDown = new RenderTexture[mipLevel+1];
+			var tempBuffersUp = new RenderTexture[mipLevel+1];
+
+
+			// Negative anamorphic ratio values distort vertically - positive is horizontal
+			//float ratio = 0.5f * Mathf.Clamp(settings.anisotropicRatio, -1, 1);
+			//float rw = ratio > 0 ? 1-ratio : 1f;
+			//float rh = ratio > 0 ? 1+ratio : 1f;
+
+			// keeps the area equal:
+			float ratio = Mathf.Sqrt(1-Mathf.Abs(settings.anisotropicRatio)*0.75f);
+			float rw = settings.anisotropicRatio > 0 ? 1*ratio : 1/ratio;
+			float rh = settings.anisotropicRatio > 0 ? 1/ratio : 1*ratio;
 
 			#region Downsample
 			RenderTexture last = source;
-			var size = new VectorInt2(last.width, last.height);
+			var size = new VectorInt2(Mathf.FloorToInt(last.width*rw*0.5f), Mathf.FloorToInt(last.height*rh*0.5f));
 			for (int i = 0; i <= mipLevel; i++) {
 				var pass = i == 0 ? BloomPass.BloomIntensity : BloomPass.Downsample;
 				var current = GetTemporaryRT(PropertyIDs.tempBuffers_t[i], size, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
 				Blit(last, current, material, (int)pass);
-				tempBuffers[i] = current;
+				tempBuffersDown[i] = current;
 				last = current;
 				size /= 2;
 			}
@@ -99,27 +124,35 @@ namespace Cat.PostProcessing {
 
 			#region Upsample
 			for (int i = mipLevel; i > maxUpsample; i--) {
-				var current = tempBuffers[i-1];
+				var current = tempBuffersDown[i];
+				var next = tempBuffersDown[i-1];
+				last = i == mipLevel ? current : last;
+				var target = GetTemporaryRT(PropertyIDs.tempBuffers2_t[i], new VectorInt2(next.width, next.height), RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
 				material.SetFloat(PropertyIDs.Weight_f, Mathf.Clamp01(mipLevelFloat - i));
-				Blit(last, current, material, (int)BloomPass.Upsample);
-				ReleaseTemporaryRT(last);	// release temporary RT
-				last = current;
+				material.SetTexture(PropertyIDs.BaseTex_t, current);
+				Blit(last, target, material, (int)BloomPass.Upsample);
+				tempBuffersUp[i-1] = target;
+				last = target;
+
 			}
 			#endregion
 
 			#region Apply
 			Blit(source, destination);
-			Blit(tempBuffers[maxUpsample], destination, material, (int)BloomPass.ApplyBloom);
+			Blit(tempBuffersUp[maxUpsample], destination, material, (int)BloomPass.ApplyBloom);
 			#endregion
 
 			#region Debug
 			if (settings.debugOn) {
-				Blit(tempBuffers[maxUpsample], destination, material, (int)BloomPass.Debug);
+				Blit(tempBuffersUp[maxUpsample], destination, material, (int)BloomPass.Debug);
 			}
 			#endregion
 
-			for (int i = 0; i <= maxUpsample; i++) {
-				ReleaseTemporaryRT(tempBuffers[i]);	// release temporary RT
+			for (int i = 0; i <= mipLevel; i++) {
+				ReleaseTemporaryRT(tempBuffersDown[i]);	// release temporary RT
+			}
+			for (int i = maxUpsample; i <= mipLevel-1; i++) {
+				ReleaseTemporaryRT(tempBuffersUp[i]);	// release temporary RT
 			}
 
 		}
@@ -151,6 +184,8 @@ namespace Cat.PostProcessing {
 
 		public TextureProperty dirtTexture = new TextureProperty();
 
+		[Range(-1, 1)]
+		public FloatProperty anisotropicRatio = new FloatProperty();
 
 		[Header("Secondary Settings")]
 		[Range(0, 1)]
@@ -164,14 +199,15 @@ namespace Cat.PostProcessing {
 		public BoolProperty debugOn = new BoolProperty();
 
 		public override void Reset() {
-			intensity.rawValue		= 0.0f;
-			dirtIntensity.rawValue	= 0.0f;
-			dirtTexture.rawValue	= null;
+			intensity.rawValue			= 0.0f;
+			dirtIntensity.rawValue		= 0.0f;
+			dirtTexture.rawValue		= null;
+			anisotropicRatio.rawValue	= 0.0f;
 
-			minLuminance.rawValue	= 0.5f;
-			kneeStrength.rawValue	= 1;
+			minLuminance.rawValue		= 0.5f;
+			kneeStrength.rawValue		= 1;
 
-			debugOn.rawValue		= false;
+			debugOn.rawValue			= false;
 		}
 
 	}

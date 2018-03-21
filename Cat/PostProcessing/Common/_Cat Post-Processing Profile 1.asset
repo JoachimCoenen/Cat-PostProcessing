@@ -13,11 +13,45 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_settings:
   - {fileID: 114722847099374500}
-  - {fileID: 114625164204168074}
   - {fileID: 114428496976125524}
   - {fileID: 114813197643523172}
   - {fileID: 114605782163178876}
   - {fileID: 114831901126372088}
+  - {fileID: 114101811248201934}
+  - {fileID: 114981299450082362}
+--- !u!114 &114101811248201934
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d91da77419a08534181a8b9745acd933, type: 3}
+  m_Name: CatBloom
+  m_EditorClassIdentifier: 
+  isOverriding: 1
+  intensity:
+    isOverriding: 1
+    m_RawValue: 1
+  dirtIntensity:
+    isOverriding: 1
+    m_RawValue: 1
+  dirtTexture:
+    isOverriding: 1
+    m_RawValue: {fileID: 2800000, guid: a506b49dea95da449be7d0cbd62dd312, type: 3}
+  anisotropicRatio:
+    isOverriding: 1
+    m_RawValue: 0.46
+  minLuminance:
+    isOverriding: 1
+    m_RawValue: 0.5
+  kneeStrength:
+    isOverriding: 1
+    m_RawValue: 1
+  debugOn:
+    isOverriding: 1
+    m_RawValue: 0
 --- !u!114 &114428496976125524
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -29,7 +63,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 41041b03803b943beb7f5ac3e497eff0, type: 3}
   m_Name: CatSSR
   m_EditorClassIdentifier: 
-  isOverriding: 0
+  isOverriding: 1
   intensity:
     isOverriding: 1
     m_RawValue: 1
@@ -108,36 +142,6 @@ MonoBehaviour:
   strength:
     isOverriding: 1
     m_RawValue: 0.36
---- !u!114 &114625164204168074
-MonoBehaviour:
-  m_ObjectHideFlags: 3
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d91da77419a08534181a8b9745acd933, type: 3}
-  m_Name: CatBloom
-  m_EditorClassIdentifier: 
-  isOverriding: 1
-  intensity:
-    isOverriding: 1
-    m_RawValue: 1
-  dirtIntensity:
-    isOverriding: 1
-    m_RawValue: 1
-  dirtTexture:
-    isOverriding: 1
-    m_RawValue: {fileID: 2800000, guid: a506b49dea95da449be7d0cbd62dd312, type: 3}
-  minLuminance:
-    isOverriding: 1
-    m_RawValue: 0.5
-  kneeStrength:
-    isOverriding: 1
-    m_RawValue: 1
-  debugOn:
-    isOverriding: 1
-    m_RawValue: 0
 --- !u!114 &114722847099374500
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -173,7 +177,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5e28affa801e26a4cb0f9ca731caa5ec, type: 3}
   m_Name: CatAA
   m_EditorClassIdentifier: 
-  isOverriding: 0
+  isOverriding: 1
   m_isEnabled:
     isOverriding: 1
     m_RawValue: 1
@@ -259,5 +263,32 @@ MonoBehaviour:
     isOverriding: 1
     m_RawValue: 0
   highlights:
+    isOverriding: 1
+    m_RawValue: 0
+--- !u!114 &114981299450082362
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6217fa940bfd10a4f8ee107e9a64e7bd, type: 3}
+  m_Name: CatDepthOfField
+  m_EditorClassIdentifier: 
+  isOverriding: 0
+  intensity:
+    isOverriding: 1
+    m_RawValue: 0.47
+  fStop:
+    isOverriding: 1
+    m_RawValue: 2
+  focusDistance:
+    isOverriding: 1
+    m_RawValue: 1.6
+  radius:
+    isOverriding: 1
+    m_RawValue: 3
+  debugOn:
     isOverriding: 1
     m_RawValue: 0
