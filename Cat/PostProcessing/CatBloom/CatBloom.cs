@@ -1,5 +1,6 @@
 ﻿using System;
 using UnityEngine;
+using UnityEngine.Rendering;
 using Cat.Common;
 
 // Inspired By: Kino/Bloom v2 - Bloom filter for Unity:
@@ -10,7 +11,7 @@ namespace Cat.PostProcessing {
 	[ExecuteInEditMode]
 	[ImageEffectAllowedInSceneView]
 	[AddComponentMenu("Cat/PostProcessing/Bloom")]
-	public class CatBloomRenderer : PostProcessingBaseImageEffect<CatBloom> {
+	public class CatBloomRenderer : PostProcessingBaseCommandBuffer<CatBloom> {
 
 		override protected string shaderName { 
 			get { return "Hidden/Cat Bloom"; } 
@@ -20,6 +21,9 @@ namespace Cat.PostProcessing {
 		}
 		override internal DepthTextureMode requiredDepthTextureMode { 
 			get { return DepthTextureMode.None; } 
+		}
+		override protected CameraEvent cameraEvent { 
+			get { return CameraEvent.BeforeImageEffects; }
 		}
 
 
@@ -66,13 +70,14 @@ namespace Cat.PostProcessing {
 			
 		override protected void UpdateMaterialPerFrame(Material material, Camera camera, VectorInt2 cameraSize) {
 			setMaterialDirty();
+			setBufferDirty();
 		}
 
 		override protected void UpdateMaterial(Material material, Camera camera, VectorInt2 cameraSize) {
 			var settings = this.settings;
 			material.SetFloat(PropertyIDs.MinLuminance_f, settings.minLuminance);
 			material.SetFloat(PropertyIDs.KneeStrength_f, settings.kneeStrength);
-			material.SetFloat(PropertyIDs.Intensity_f, settings.intensity * 0.75f);
+			material.SetFloat(PropertyIDs.Intensity_f, settings.intensity);
 			material.SetTexture(PropertyIDs.DirtTexture_t, settings.dirtTexture);
 			material.SetFloat(PropertyIDs.DirtIntensity_f, settings.dirtIntensity);
 			// debugOn
@@ -86,17 +91,15 @@ namespace Cat.PostProcessing {
 			Debug,
 			//BloomBlur,
 		}
-
-		internal override void RenderImage(RenderTexture source, RenderTexture destination) {
+		override protected void PopulateCommandBuffer(CommandBuffer buffer, Material material, VectorInt2 cameraSize) {
 			const int maxMipLvl = 7;
 
-			const int maxUpsample = 1;
-			var mipLevelFloat = Mathf.Clamp(Mathf.Log(Mathf.Max(source.width, source.height) / 48.0f + 1, 2), maxUpsample, maxMipLvl);
+			const int maxUpsample = 0;
+			var mipLevelFloat = Mathf.Clamp(Mathf.Log(Mathf.Max(cameraSize.x, cameraSize.y) / 48.0f + 1, 2), maxUpsample, maxMipLvl);
 			material.SetFloat(PropertyIDs.MipLevel_f, mipLevelFloat);
 			var mipLevel = (int)mipLevelFloat;
-
-			var tempBuffersDown = new RenderTexture[mipLevel+1];
-			var tempBuffersUp = new RenderTexture[mipLevel+1];
+			var pyramidDownSize = mipLevel + 1;
+			var pyramidUpSize = mipLevel;
 
 
 			// Negative anamorphic ratio values distort vertically - positive is horizontal
@@ -108,56 +111,68 @@ namespace Cat.PostProcessing {
 			float ratio = Mathf.Sqrt(1-Mathf.Abs(settings.anisotropicRatio)*0.75f);
 			float rw = settings.anisotropicRatio > 0 ? 1*ratio : 1/ratio;
 			float rh = settings.anisotropicRatio > 0 ? 1/ratio : 1*ratio;
+			var size = new VectorInt2(Mathf.FloorToInt(cameraSize.x*rw*0.5f), Mathf.FloorToInt(cameraSize.y*rh*0.5f));
+
+			var tempBuffersDown = new int[pyramidDownSize];
+			var tempBuffersUp = new int[pyramidUpSize];
+
+			for (var i = 0; i < pyramidDownSize; i++) {
+				tempBuffersDown[i] = PropertyIDs.tempBuffers_t[i];
+			}
+			for (var i = 0; i < pyramidUpSize; i++) {
+				tempBuffersUp[i] = PropertyIDs.tempBuffers2_t[i];
+			}
 
 			#region Downsample
-			RenderTexture last = source;
-			var size = new VectorInt2(Mathf.FloorToInt(last.width*rw*0.5f), Mathf.FloorToInt(last.height*rh*0.5f));
-			for (int i = 0; i <= mipLevel; i++) {
+			RenderTargetIdentifier last = BuiltinRenderTextureType.CameraTarget;
+
+			for (int i = 0; i < pyramidDownSize; i++) {
 				var pass = i == 0 ? BloomPass.BloomIntensity : BloomPass.Downsample;
-				var current = GetTemporaryRT(PropertyIDs.tempBuffers_t[i], size, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
-				Blit(last, current, material, (int)pass);
-				tempBuffersDown[i] = current;
+
+				var current = tempBuffersDown[i];
+				GetTemporaryRT(buffer, current, size / (1 << i), RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
+				Blit(buffer, last, current, material, (int)pass);
 				last = current;
-				size /= 2;
+				//size /= 2;
 			}
 			#endregion
 
 			#region Upsample
-			for (int i = mipLevel; i > maxUpsample; i--) {
-				var current = tempBuffersDown[i];
-				var next = tempBuffersDown[i-1];
-				last = i == mipLevel ? current : last;
-				var target = GetTemporaryRT(PropertyIDs.tempBuffers2_t[i], new VectorInt2(next.width, next.height), RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
-				material.SetFloat(PropertyIDs.Weight_f, Mathf.Clamp01(mipLevelFloat - i));
-				material.SetTexture(PropertyIDs.BaseTex_t, current);
-				Blit(last, target, material, (int)BloomPass.Upsample);
-				tempBuffersUp[i-1] = target;
-				last = target;
+			for (int i = pyramidUpSize-1; i >= maxUpsample; i--) {
+				buffer.SetGlobalFloat(PropertyIDs.Weight_f, Mathf.Clamp01(mipLevelFloat - i - 1));
+				buffer.SetGlobalTexture(PropertyIDs.BaseTex_t, tempBuffersDown[i]);
 
+				var current = tempBuffersUp[i];
+				GetTemporaryRT(buffer, current, size / (1 << i), RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
+
+				Blit(buffer, last, current, material, (int)BloomPass.Upsample); 
+				last = current;
 			}
 			#endregion
 
 			#region Apply
-			Blit(source, destination);
-			Blit(tempBuffersUp[maxUpsample], destination, material, (int)BloomPass.ApplyBloom);
+			GetTemporaryRT(buffer, PropertyIDs.BaseTex_t, cameraSize, RenderTextureFormat.ARGBHalf, FilterMode.Point, RenderTextureReadWrite.Linear);
+			Blit(buffer, BuiltinRenderTextureType.CameraTarget, PropertyIDs.BaseTex_t);
+			//buffer.SetGlobalTexture(PropertyIDs.BaseTex_t, BuiltinRenderTextureType.CameraTarget);
+			Blit(buffer, last, BuiltinRenderTextureType.CameraTarget, material, (int)BloomPass.ApplyBloom);
+			ReleaseTemporaryRT(buffer, PropertyIDs.BaseTex_t);	// release temporary RT
 			#endregion
 
 			#region Debug
 			if (settings.debugOn) {
-				Blit(tempBuffersUp[maxUpsample], destination, material, (int)BloomPass.Debug);
+				Blit(buffer, last, BuiltinRenderTextureType.CameraTarget, material, (int)BloomPass.Debug);
+				//Blit(buffer, tempBuffersDown[0], BuiltinRenderTextureType.CameraTarget);
 			}
 			#endregion
 
-			for (int i = 0; i <= mipLevel; i++) {
-				ReleaseTemporaryRT(tempBuffersDown[i]);	// release temporary RT
+			for (int i = 0; i < pyramidDownSize; i++) {
+				ReleaseTemporaryRT(buffer, tempBuffersDown[i]);	// release temporary RT
 			}
-			for (int i = maxUpsample; i <= mipLevel-1; i++) {
-				ReleaseTemporaryRT(tempBuffersUp[i]);	// release temporary RT
+			for (int i = maxUpsample; i < pyramidUpSize; i++) {
+				ReleaseTemporaryRT(buffer, tempBuffersUp[i]);	// release temporary RT
 			}
-
 		}
 
-	
 		public void OnValidate () {
 			setMaterialDirty();
 		}

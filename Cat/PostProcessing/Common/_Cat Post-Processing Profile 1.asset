@@ -42,10 +42,10 @@ MonoBehaviour:
     m_RawValue: {fileID: 2800000, guid: a506b49dea95da449be7d0cbd62dd312, type: 3}
   anisotropicRatio:
     isOverriding: 1
-    m_RawValue: 0.46
+    m_RawValue: 0
   minLuminance:
     isOverriding: 1
-    m_RawValue: 0.5
+    m_RawValue: 1
   kneeStrength:
     isOverriding: 1
     m_RawValue: 1
@@ -63,7 +63,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 41041b03803b943beb7f5ac3e497eff0, type: 3}
   m_Name: CatSSR
   m_EditorClassIdentifier: 
-  isOverriding: 1
+  isOverriding: 0
   intensity:
     isOverriding: 1
     m_RawValue: 1
@@ -153,7 +153,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1cb1c853f63ba7c4b82db1e81deda4c3, type: 3}
   m_Name: CatAO
   m_EditorClassIdentifier: 
-  isOverriding: 1
+  isOverriding: 0
   intensity:
     isOverriding: 1
     m_RawValue: 1
@@ -210,7 +210,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b190397d1d49de74a92288005fd04f07, type: 3}
   m_Name: CatColorGrading
   m_EditorClassIdentifier: 
-  isOverriding: 1
+  isOverriding: 0
   tonemapper:
     isOverriding: 1
     m_RawValue: 2
@@ -276,19 +276,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6217fa940bfd10a4f8ee107e9a64e7bd, type: 3}
   m_Name: CatDepthOfField
   m_EditorClassIdentifier: 
-  isOverriding: 0
+  isOverriding: 1
   intensity:
     isOverriding: 1
-    m_RawValue: 0.47
+    m_RawValue: 1
   fStop:
     isOverriding: 1
-    m_RawValue: 2
+    m_RawValue: 0.7
   focusDistance:
     isOverriding: 1
-    m_RawValue: 1.6
+    m_RawValue: 1
   radius:
     isOverriding: 1
-    m_RawValue: 3
+    m_RawValue: 9.5
   debugOn:
     isOverriding: 1
     m_RawValue: 0

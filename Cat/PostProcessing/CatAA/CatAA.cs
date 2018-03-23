@@ -1,16 +1,20 @@
 ﻿using System;
 using UnityEngine;
+using UnityEngine.Rendering;
 using Cat.Common;
 
 namespace Cat.PostProcessing {
-	public class CatAARenderer : PostProcessingBaseImageEffect<CatAA> {
+	public class CatAARenderer : PostProcessingBaseCommandBuffer<CatAA> {
 		private const bool disableTAAInSceneView = true;
 
-		private readonly RenderTextureContainer lastFrame1 = new RenderTextureContainer();
+		private readonly RenderTextureContainer[] history = new[] {new RenderTextureContainer(), new RenderTextureContainer()};
 
 		override protected string shaderName { get { return "Hidden/CatAA"; } }
 		override public string effectName { get { return "Cat Temporal Antialialising"; } }
 		override internal DepthTextureMode requiredDepthTextureMode { get { return DepthTextureMode.MotionVectors | DepthTextureMode.Depth; } }
+		override protected CameraEvent cameraEvent { 
+			get { return CameraEvent.BeforeImageEffects; }
+		}
 
 
 		static class PropertyIDs {
@@ -33,19 +37,15 @@ namespace Cat.PostProcessing {
 		}
 
 		override protected void UpdateRenderTextures(Camera camera, VectorInt2 cameraSize) {
-			CreateCopyRT(lastFrame1, cameraSize, RenderTextureFormat.DefaultHDR, FilterMode.Bilinear);
-			material.SetTexture(PropertyIDs.History1_t, lastFrame1);
-			setMaterialDirty();
-
-			//	CreateRT(ref lastFrame2, cameraSize, RenderTextureFormat.DefaultHDR, FilterMode.Bilinear);
-			//	material.SetTexture(PropertyIDs.History2_t, lastFrame2);
-			//	CreateRT(ref lastFrame3, cameraSize, RenderTextureFormat.DefaultHDR, FilterMode.Bilinear);
-			//	Smaterial.SetTexture(PropertyIDs.History3_t, lastFrame3);
+			CreateCopyRT(history[0], cameraSize, RenderTextureFormat.DefaultHDR, FilterMode.Bilinear);
+			CreateCopyRT(history[1], cameraSize, RenderTextureFormat.DefaultHDR, FilterMode.Bilinear);
+			setBufferDirty();
 		}
 
 		int TMSAACounter = 0;
 
 		override protected void UpdateCameraMatricesPerFrame(Camera camera, VectorInt2 cameraSize) {
+			setBufferDirty();
 			var isSceneView = postProcessingManager.isSceneView;
 			if (isSceneView && disableTAAInSceneView) {
 				return;
@@ -112,24 +112,34 @@ namespace Cat.PostProcessing {
 			material.SetFloat(PropertyIDs.VelocityWeightScale_f, settings.velocityWeightScale);
 			material.SetFloat(PropertyIDs.Response_f, settings.response);
 			material.SetFloat(PropertyIDs.ToleranceMargin_f, settings.toleranceMargin);
-			material.SetTexture(PropertyIDs.History1_t, lastFrame1);
 		}
 
-		private void OnPostRender() {
+		internal override void PostRender() {
 			postProcessingManager.camera.ResetProjectionMatrix();
 		}
 
 		//[ImageEffectTransformsToLDR]
-		internal override void RenderImage(RenderTexture source, RenderTexture destination) {
+		override protected void PopulateCommandBuffer(CommandBuffer buffer, Material material, VectorInt2 cameraSize) {
 			var isSceneView = postProcessingManager.isSceneView;
 			if (false || isSceneView && disableTAAInSceneView) {
-				Blit(source, destination);
+				//Blit(source, destination);
 				return;
 			}
 
-			Blit(source, destination, material, 0);
-			Blit(destination, lastFrame1);
-			postProcessingManager.camera.ResetProjectionMatrix();
+			// GetTemporaryRT(buffer, PropertyIDs.Temp_t, cameraSize, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
+			// Blit(buffer, BuiltinRenderTextureType.CameraTarget, PropertyIDs.Temp_t, material, 0);
+			//var rts = new[] { BuiltinRenderTextureType.CameraTarget, lastFrame1 };
+
+			buffer.SetGlobalTexture(PropertyIDs.History1_t, history[0]);
+			Blit(buffer, BuiltinRenderTextureType.CameraTarget, history[1], material, 0);
+			Blit(buffer, history[1], BuiltinRenderTextureType.CameraTarget);
+
+			var tmp = history[0];
+			history[0] = history[1];
+			history[1] = tmp;
+			// ReleaseTemporaryRT(buffer, PropertyIDs.Temp_t);
+
+			//postProcessingManager.camera.ResetProjectionMatrix();
 		}
 
 
@@ -299,7 +309,7 @@ namespace Cat.PostProcessing {
 			get { return "Temporal Antialialising"; } 
 		}
 		override public int queueingPosition {
-			get { return 2850; } 
+			get { return 2800; } 
 		}
 
 		public BoolProperty m_isEnabled = new BoolProperty();

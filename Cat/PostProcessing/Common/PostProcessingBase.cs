@@ -251,6 +251,8 @@ namespace Cat.PostProcessing {
 			}
 		}
 
+		virtual internal void PostRender() { }
+
 		virtual protected void OnEnable() {
 			//postProcessingManager.AddEffect(this);
 			setMaterialDirty();
@@ -376,7 +378,7 @@ namespace Cat.PostProcessing {
 		protected void ReleaseTemporaryRT(CommandBuffer cb, int ID_t) {
 			cb.ReleaseTemporaryRT(ID_t);
 		}
-
+			
 		protected void Blit(CommandBuffer cb, RenderTargetIdentifier mainTex, RenderTargetIdentifier renderTarget) {
 			cb.Blit(mainTex, renderTarget);
 		}

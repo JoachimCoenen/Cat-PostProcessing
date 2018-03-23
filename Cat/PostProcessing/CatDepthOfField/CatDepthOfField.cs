@@ -1,5 +1,6 @@
 ﻿using System;
 using UnityEngine;
+using UnityEngine.Rendering;
 using Cat.Common;
 
 // Inspired By: Kino/Bloom v2 - Bloom filter for Unity:
@@ -10,7 +11,7 @@ namespace Cat.PostProcessing {
 	[ExecuteInEditMode]
 	[ImageEffectAllowedInSceneView]
 	[AddComponentMenu("Cat/PostProcessing/DepthOfField")]
-	public class CatDepthOfFieldRenderer : PostProcessingBaseImageEffect<CatDepthOfField> {
+	public class CatDepthOfFieldRenderer : PostProcessingBaseCommandBuffer<CatDepthOfField> {
 
 		override protected string shaderName { 
 			get { return "Hidden/Cat DepthOfField"; } 
@@ -21,9 +22,9 @@ namespace Cat.PostProcessing {
 		override internal DepthTextureMode requiredDepthTextureMode { 
 			get { return DepthTextureMode.Depth; } 
 		}
-
-
-		private readonly RenderTextureContainer blurTex = new RenderTextureContainer();
+		override protected CameraEvent cameraEvent { 
+			get { return CameraEvent.BeforeImageEffects; }
+		}
 
 		static class PropertyIDs {
 			internal static readonly int Intensity_f		= Shader.PropertyToID("_Intensity");
@@ -36,7 +37,8 @@ namespace Cat.PostProcessing {
 			internal static readonly int BlurDir_v			= Shader.PropertyToID("_BlurDir");
 			internal static readonly int MipLevel_f			= Shader.PropertyToID("_MipLevel");
 			internal static readonly int Weight_f			= Shader.PropertyToID("_Weight");
-		
+
+			internal static readonly int BlurTex_t			= Shader.PropertyToID("_BlurTex");
 
 			internal static readonly int tempBuffer0_t		= Shader.PropertyToID("_TempTexture_This_texture_is_never_going_to_be_directly_referenced0x");
 			internal static readonly int tempBuffer1_t		= Shader.PropertyToID("_TempTexture_This_texture_is_never_going_to_be_directly_referenced1x");
@@ -53,10 +55,6 @@ namespace Cat.PostProcessing {
 			};
 		}
 
-		override protected void UpdateRenderTextures(Camera camera, VectorInt2 cameraSize) {
-			CreateRT(blurTex, cameraSize, 0, true, RenderTextureFormat.DefaultHDR, FilterMode.Bilinear, RenderTextureReadWrite.Default, TextureWrapMode.Clamp, "blurTex");
-		}
-
 		override protected void UpdateMaterialPerFrame(Material material, Camera camera, VectorInt2 cameraSize) {
 			setMaterialDirty();
 		}
@@ -67,8 +65,7 @@ namespace Cat.PostProcessing {
 			material.SetFloat(PropertyIDs.fStop_f, settings.fStop);
 			material.SetFloat(PropertyIDs.FocusDistance_f, settings.focusDistance);
 			material.SetFloat(PropertyIDs.Radius_f, settings.radius);
-
-			// debugOn
+			setBufferDirty();
 		}
 
 		private enum DOFPass {
@@ -76,69 +73,33 @@ namespace Cat.PostProcessing {
 			Blur,
 			Apply,
 			Debug,
-			Blit,
 		}
 
-		internal override void RenderImage(RenderTexture source, RenderTexture destination) {
-			//var mipLevelFloat = Mathf.Clamp(Mathf.Log(Mathf.Max(source.width, source.height) / 32.0f + 1, 2), maxUpsample, maxMipLvl);
-			material.SetFloat(PropertyIDs.MipLevel_f, 0);
+		override protected void PopulateCommandBuffer(CommandBuffer buffer, Material material, VectorInt2 cameraSize) {
+			GetTemporaryRT(buffer, PropertyIDs.tempBuffers_t[0], cameraSize, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
 
-			var mipLevels = 3+1;
-			var tempBuffers = new RenderTexture[mipLevels];
+			Blit(buffer, BuiltinRenderTextureType.CameraTarget, PropertyIDs.tempBuffers_t[0], material, (int)DOFPass.PreFilter);
 
+			GetTemporaryRT(buffer, PropertyIDs.BlurTex_t, cameraSize / 2, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
+			Blit(buffer, PropertyIDs.tempBuffers_t[0], PropertyIDs.BlurTex_t, material, (int)DOFPass.Blur);
 
-			var size = new VectorInt2(source.width, source.height);
-			tempBuffers[0] = GetTemporaryRT(PropertyIDs.tempBuffers_t[0], size, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
-			Blit(source, tempBuffers[0], material, (int)DOFPass.PreFilter);
-			Blit(tempBuffers[0], blurTex, material, (int)DOFPass.Blur);
-			#region CameraMipLevels
-			for (int i = 1; i < mipLevels; i++) {
-				tempBuffers[i] = GetTemporaryRT(PropertyIDs.tempBuffers_t[i], size, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
-				material.SetFloat(PropertyIDs.MipLevel_f, i);
-				Blit(blurTex, tempBuffers[i], material, (int)DOFPass.Blur);
+			ReleaseTemporaryRT(buffer, PropertyIDs.tempBuffers_t[0]);
 
-				Shader.SetGlobalTexture("_MainTex", tempBuffers[i]);
-				Graphics.SetRenderTarget(blurTex, i);
-				Graphics.Blit(tempBuffers[i], material, (int)DOFPass.Blit);
-				size.Set((int)(size.x / 2), (int)(size.y / 2));
-
-			//	ReleaseTemporaryRT(buffer, PropertyIDs.tempBuffers_t[i]);	// release temporary RT
-			}
-			#endregion
-
-
-		//	#region Downsample
-		//	RenderTexture last = source;
-		//	var size = new VectorInt2(last.width, last.height);
-		//	for (int i = 0; i < mipLevels; i++) {
-		//		var current = GetTemporaryRT(PropertyIDs.tempBuffers_t[i], size, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
-		//		var pass = i == 0 ? DOFPass.PreFilter : DOFPass.Blur;
-		//		Blit(last, current, material, (int)pass);
-		//		material.SetFloat(PropertyIDs.MipLevel_f, i);
-		//		tempBuffers[i] = current;
-		//		last = current;
-		//		size /= i > 1 ? 2 : 1;
-		//	}
-		//	#endregion
-
-			Blit(source, destination);
-			Blit(blurTex, destination, material, (int)DOFPass.Apply);
+			GetTemporaryRT(buffer, PropertyIDs.tempBuffers_t[1], cameraSize, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
+			Blit(buffer, BuiltinRenderTextureType.CameraTarget, PropertyIDs.tempBuffers_t[1]);
+			Blit(buffer, PropertyIDs.tempBuffers_t[1], BuiltinRenderTextureType.CameraTarget, material, (int)DOFPass.Apply);
+			ReleaseTemporaryRT(buffer, PropertyIDs.BlurTex_t);
 
 			#region Debug
 			if (settings.debugOn) {
 				//material.SetFloat(PropertyIDs.MipLevel_f, 3-1);
-				Blit(source, destination, material, (int)DOFPass.Debug);
+				Blit(buffer, PropertyIDs.tempBuffers_t[1], BuiltinRenderTextureType.CameraTarget, material, (int)DOFPass.Debug);
 			}
 			#endregion
 
-			#region free
-			for (int i = 0; i < mipLevels; i++) {
-				ReleaseTemporaryRT(tempBuffers[i]);	// release temporary RT
-			}
-			#endregion
+			ReleaseTemporaryRT(buffer, PropertyIDs.tempBuffers_t[1]);
 
 		}
-
 	
 		public void OnValidate () {
 			setMaterialDirty();
@@ -154,7 +115,7 @@ namespace Cat.PostProcessing {
 			get { return "Depth Of Field"; } 
 		}
 		override public int queueingPosition {
-			get { return 2800; } 
+			get { return 2850; } 
 		}
 
 		[Range(0, 1)]
@@ -166,7 +127,7 @@ namespace Cat.PostProcessing {
 		[Range(0.185f, 100f)]
 		public FloatProperty focusDistance = new FloatProperty();
 
-		[Range(1, 7)]
+		[Range(1, 15)]
 		public FloatProperty radius = new FloatProperty();
 
 		[Header("Debugging")]

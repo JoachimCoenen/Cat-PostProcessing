@@ -1,6 +1,6 @@
 Shader "Hidden/CatAA" {
 	Properties {
-		_MainTex ("Base (RGB)", 2D) = "black" {}
+		//_MainTex ("Base (RGB)", 2D) = "black" {}
 		_Intensity("Intensity", FLOAT) = 1
 		_ObjectThickness("Object Thickness", FLOAT) = 00.5
 		_isBackFaceCullingEnabled("is BackFace Culling Enabled", FLOAT) = 1
@@ -230,17 +230,16 @@ Shader "Hidden/CatAA" {
 		
 		
 		float2 uvPrev = uv - velocity.xy;
-		float confidence = all(uvPrev == saturate(uvPrev));
+		//float confidence = all(uvPrev == saturate(uvPrev));
 		
 		float2 tx = currentTex_TexelSize.xy;
-		float2 ty = currentTex_TexelSize.xy * float2(-1, 1);
 		float4 history = tex2D(historyTex, uvPrev);
-		confidence *= any(history);
+		//confidence *= any(history);
 		float4 mainTex = tex2D(currentTex, uv);
-		float4 corner1 = tex2D(currentTex, uv + tx*float2( 0.5, -1.0));
-		float4 corner2 = tex2D(currentTex, uv + tx*float2( 1.0,  0.5));
-		float4 corner3 = tex2D(currentTex, uv + tx*float2(-0.5,  1.0));
-		float4 corner4 = tex2D(currentTex, uv + tx*float2(-1.0, -0.5));
+		float3 corner1 = tex2D(currentTex, uv + tx*float2( 0.5, -1.0));
+		float3 corner3 = tex2D(currentTex, uv + tx*float2( 1.0,  0.5));
+		float3 corner2 = tex2D(currentTex, uv + tx*float2(-0.5,  1.0));
+		float3 corner4 = tex2D(currentTex, uv + tx*float2(-1.0, -0.5));
 		
 		//corner1 = tex2D(currentTex, uv - tx);
 		//corner2 = tex2D(currentTex, uv + tx);
@@ -262,8 +261,11 @@ Shader "Hidden/CatAA" {
 		corner4.rgb /= 1 + DisneyLuminance(corner4.rgb);
 		
 		half3 maxCorners = max(corner1, max(corner2, max(corner3, corner4))).rgb;
-		half3 minCorners = min(corner1, min(corner2, min(corner3, corner4))).rgb;
+		//half3 maxCorners = max(corner1, corner2).rgb;
 		half3 maxOverAll = max(maxCorners,  mainTex).rgb;
+		
+		half3 minCorners = min(corner1, min(corner2, min(corner3, corner4))).rgb;
+		//half3 minCorners = min(corner1, corner2).rgb;
 		half3 minOverAll = min(minCorners,  mainTex).rgb;
 		
 		float delta = abs(mainTex.a - history.a);
@@ -274,7 +276,7 @@ Shader "Hidden/CatAA" {
 		
 		//float weight = (1-lerp(0.25, _Response, nudge)) * confidence;
 		//float4 result = lerp(mainTex, history, weight);
-		float weight = (0.75 - nudge * (_Response - 0.25)) * confidence;
+		float weight = (0.75 - nudge * (_Response - 0.25)) * any(history);
 		float4 result = weight * (history - mainTex) + mainTex;
 		result.a = lerp(mainTex.a, history.a, 0.5);
 		
@@ -315,22 +317,6 @@ Shader "Hidden/CatAA" {
 			#pragma fragment fragCombineTemporal
 			ENDCG
 		}
-        
-		// 1 removeSpeed
-		Pass {
-		//	Blend One Zero, One Zero //SrcAlpha OneMinusSrcAlpha
-			CGPROGRAM
-			#pragma target 3.0
-			
-			
-			#pragma fragmentoption ARB_precision_hint_fastest
-			#pragma vertex vert
-			#pragma fragment removeSpeed
-			ENDCG
-		}
-        
-		
-		
 		
 	}
 	Fallback Off

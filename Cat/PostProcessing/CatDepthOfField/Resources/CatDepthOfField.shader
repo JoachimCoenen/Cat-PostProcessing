@@ -46,6 +46,9 @@ Shader "Hidden/Cat DepthOfField" {
 		float	_MipLevel;
 		float	_Weight;
 		
+		sampler2D	_BlurTex;
+		float4		_BlurTex_TexelSize;
+		
 				// debugOn
 		int		_DebugMode;
 		
@@ -124,7 +127,21 @@ Shader "Hidden/Cat DepthOfField" {
 		
 		float getBlurRadius(float2 uv) {
 			half coc = get_coc(uv);
-			return abs(coc);
+			
+			//float radius = _Intensity * abs(coc)*2 * _MainTex_TexelSize.w;
+			//float maxRadius = (_Radius+2);
+			//float a = 0.5;
+			//float x = radius / maxRadius;
+			//radius = ((x + a*0.25 - 1) - sqrt(a + Pow2(x + a*0.25 - 1)))*0.5 + 1;
+			//radius *= maxRadius;
+			//return radius;
+			
+			float radius = _Intensity * abs(coc) * _MainTex_TexelSize.w;
+			float maxRadius = (_Radius+2);
+			float x = radius / maxRadius - 0.4375;
+			radius = x - sqrt(0.125 + Pow2(x)) + 1;
+			radius *= maxRadius;
+			return radius;
 		}
 		//----------------------------------------------------------------------------------------------------------------------
 		//----------------------------------------------------------------------------------------------------------------------
@@ -132,7 +149,7 @@ Shader "Hidden/Cat DepthOfField" {
 		float getMipLevel(float blurRadius) {
 			//    totalRadius = 2^(mip) * (1 + _Radius) - _Radius
 			// => mip = log2((_Radius + totalRadius) / (_Radius + 1))
-			return log2(_Intensity * (_Radius + max(1, blurRadius * _MainTex_TexelSize.w)) / (_Radius + 1));
+			return log2((_Radius + max(1, blurRadius)) / (_Radius + 1));
 		}
 		
 		float getMipLevel(float2 uv) {
@@ -254,41 +271,17 @@ static const float2 kDiskKernel[kSampleCount] = {
 		
 		float4 fragBlur(VertexOutput i) : SV_Target {
 			//float radiusFull = Tex2Dlod(_MainTex, i.uv, _MipLevel-1).a * _MainTex_TexelSize.w;
-			float radiusFull = Tex2Dlod(_MainTex, i.uv, min(0, _MipLevel-1)).a;
-			float mip = getMipLevel(radiusFull);//log2(max(0,radiusFull-0)+1);
-			
-			float midMip = max(0, mip - _MipLevel);
-			midMip = midMip > 1 ? 0 : midMip;
-			
-		//	midMip = ((_MipLevel < 1) && (mip <= 1)) ? max(-1, mip - _MipLevel-1) : midMip;
-			
-			midMip = min(1, mip - _MipLevel);
-			midMip = midMip < -0.1 ? 1 : midMip;
-			midMip = saturate(midMip);
-			
-			midMip = min(1, mip - _MipLevel);
-			midMip = midMip < -0.75 ? 1 : midMip;
-			midMip = clamp(midMip, 0, 1);
-			//midMip = saturate(midMip);
-			
-			//midMip -= 1;
-			midMip = lerp(midMip, midMip+midMip*Pow3(1-midMip), 1);// + 0.875*midMip;
-		//	midMip = _MipLevel==1 ? midMip : midMip+1;
-			
-			//midMip = Pow3(midMip);
-			float radius = lerp(_Radius*0, _Radius*1, midMip);
-			
-			//radius = radius > 0.00001 ? radius : _Radius;
-			//radius = clamp(radiusFull - radius * _MipLevel, 0, radius);
+			float radiusFull = tex2D(_MainTex, i.uv).a;
+
+			float radius = clamp(radiusFull-2, 0, _Radius);
 			
 			float4 sumColor = 0;
 			float sumWeights = 0;
-			UNITY_UNROLL
-			int sampleCount = midMip < 0.01 ? 1 : kSampleCount;
+			int sampleCount = kSampleCount;
 			for (int k = 0; k < sampleCount; k++) {
-				float2 uvTap    = i.uv + kDiskKernel[k] * _MainTex_TexelSize.xy * radius * exp2(_MipLevel)*1;
+				float2 uvTap    = i.uv + kDiskKernel[k] * _MainTex_TexelSize.xy * radius;// * exp2(_MipLevel)*1;
 				
-				float4 color = Tex2Dlod(_MainTex, uvTap, _MipLevel-1);
+				float4 color = tex2D(_MainTex, uvTap);
 				float weight = color.a * 100;
 	
 				sumColor += color * weight;
@@ -299,25 +292,36 @@ static const float2 kDiskKernel[kSampleCount] = {
 			return sumColor / max(EPSILON, sumWeights);
 		}
 
+		float4 fragSmooth(VertexOutput i) : SV_Target {
+			float4 d = _MainTex_TexelSize.xyxy * float4(-1.0, -1.0, 1.0, 1.0) * 0.5;
+			float4 sumColor = 0;
+			sumColor += Tex2Dlod(_MainTex, i.uv + d.xy, 0);
+			sumColor += Tex2Dlod(_MainTex, i.uv + d.zy, 0);
+			sumColor += Tex2Dlod(_MainTex, i.uv + d.xw, 0);
+			sumColor += Tex2Dlod(_MainTex, i.uv + d.zw, 0);
+			sumColor *= (0.25 * 1);
+			//sumColor = Tex2Dlod(_MainTex, i.uv, 0);
+			return sumColor;
+		}
+
 		//----------------------------------------------------------------------------------------------------------------------
 		//----------------------------------------------------------------------------------------------------------------------
 		
 		float4 fragApply(VertexOutput i) : SV_Target {
-			float radiusFull = Tex2Dlod(_MainTex, i.uv, 0).a;
-			//radiusFull = min(radiusFull, Tex2Dlod(_MainTex, i.uv, 1).a);
-			float mip = getMipLevel(i.uv);//log2(max(0,radiusFull-0)+1);
-			float mipMin = clamp(floor(mip), 0, _MipLevel);
-			float mipMax = clamp(ceil(mip), 0, _MipLevel);
+			float4 d = _BlurTex_TexelSize.xyxy * float4(-1.0, -1.0, 1.0, 1.0) * 0.5;
+			float4 color2 = 0;
+			color2 += Tex2Dlod(_BlurTex, i.uv + d.xy, 0);
+			color2 += Tex2Dlod(_BlurTex, i.uv + d.zy, 0);
+			color2 += Tex2Dlod(_BlurTex, i.uv + d.xw, 0);
+			color2 += Tex2Dlod(_BlurTex, i.uv + d.zw, 0);
+			color2 *= (0.25 * 1);
+			float4 color1 = tex2D(_MainTex, i.uv);
 			
-			float4 color1 = Tex2Dlod(_MainTex, i.uv, mipMin);
-			float4 color2 = Tex2Dlod(_MainTex, i.uv, mipMax);
-				
-			float4 color = Tex2Dlod(_MainTex, i.uv, mipMin);
-			float selector = InvLerpSat(0.75, 1, mip - mipMin);
-			color = lerp(color1, color2, selector);
+			float radiusFull = color2.a;
+			float selector = InvLerpSat(0, 2, radiusFull);
+			float4 color = lerp(color1, color2, selector);
 			
-			return float4(color.rgb, color.a);
-			return mipMin / 7.0;//lerp(color1, color2, 1+0*saturate(mip-mipMin));
+			return float4(color.rgb, color1.a);
 		}
 
 		//----------------------------------------------------------------------------------------------------------------------
@@ -329,11 +333,11 @@ static const float2 kDiskKernel[kSampleCount] = {
 		}
 		
 		#define ANTI_FLICKER 1
-		float4 fragPreFilter(VertexOutput i) : SV_Target {
+		float4 fragPreFilterX(VertexOutput i) : SV_Target {
 			float blurRadius = getBlurRadius(i.uv+_TAAJitterVelocity);
 			float mip = getMipLevel(blurRadius);
 		#if ANTI_FLICKER
-			float4 d = _MainTex_TexelSize.xyxy * float4(+0.5, -1.5, +1.5, +0.5) * InvLerpSat(0, 3, blurRadius * _MainTex_TexelSize.w);
+			float4 d = _MainTex_TexelSize.xyxy * float4(+0.5, -1.5, +1.5, +0.5);// * InvLerpSat(0, 3, blurRadius * _MainTex_TexelSize.w);
 			half4 color = Tex2Dlod(_MainTex, i.uv, 0);
 			half3 color1 = Tex2Dlod(_MainTex, i.uv + d.xy, 0).rgb;
 			half3 color2 = Tex2Dlod(_MainTex, i.uv - d.xy, 0).rgb;
@@ -349,37 +353,61 @@ static const float2 kDiskKernel[kSampleCount] = {
 			return color;
 		}
 		
+		float4 fragPreFilter(VertexOutput i) : SV_Target {
+			float blurRadius = getBlurRadius(i.uv+_TAAJitterVelocity);
+			float4 d = _MainTex_TexelSize.xyxy * float4(+0.5, -1.5, +1.5, +0.5) * Clamp11(blurRadius);//float4(-1.0, -1.0, 1.0, 1.0);
+			float3 sumColor = 0;
+			sumColor += Tex2Dlod(_MainTex, i.uv + d.xy, 0).rgb;
+			sumColor += Tex2Dlod(_MainTex, i.uv - d.xy, 0).rgb;
+			sumColor += Tex2Dlod(_MainTex, i.uv + d.zw, 0).rgb;
+			sumColor += Tex2Dlod(_MainTex, i.uv - d.zw, 0).rgb;
+			sumColor += Tex2Dlod(_MainTex, i.uv, 0).rgb;
+			sumColor *= (0.20 * 1);
+			return float4(sumColor, blurRadius);
+		}
+		
+		float4 fragPreFilterZ(VertexOutput i) : SV_Target {
+			float blurRadius = getBlurRadius(i.uv+_TAAJitterVelocity);
+			float4 d = _MainTex_TexelSize.xyxy * float4(-1.0, -1.0, 1.0, 1.0);
+			float4 sumColor = 0;
+			sumColor += Tex2Dlod(_MainTex, i.uv + d.xy, 0);
+			sumColor += Tex2Dlod(_MainTex, i.uv + d.zy, 0);
+			sumColor += Tex2Dlod(_MainTex, i.uv + d.xw, 0);
+			sumColor += Tex2Dlod(_MainTex, i.uv + d.zw, 0);
+			sumColor += Tex2Dlod(_MainTex, i.uv, 0);
+			sumColor *= (0.20 * 1);
+			sumColor.a = blurRadius;
+			return sumColor;
+		}
+		
+		float4 fragPreFilterY(VertexOutput i) : SV_Target {
+			float blurRadius = getBlurRadius(i.uv+_TAAJitterVelocity);
+			float4 s = { 0, +2, -2, +2 };
+			s.yzw *= _MainTex_TexelSize.xxy * 1;
+			
+			float4 color = 0;
+			color += Tex2Dlod(_MainTex, i.uv + s.xx, 0);
+			color += color;
+			color += Tex2Dlod(_MainTex, i.uv + s.xw, 0);
+			color += Tex2Dlod(_MainTex, i.uv - s.xw, 0);
+			color += Tex2Dlod(_MainTex, i.uv + s.yx, 0);
+			color += Tex2Dlod(_MainTex, i.uv - s.yx, 0);
+			color += color;
+			color += Tex2Dlod(_MainTex, i.uv + s.yw, 0);
+			color += Tex2Dlod(_MainTex, i.uv - s.yw, 0);
+			color += Tex2Dlod(_MainTex, i.uv + s.zw, 0);
+			color += Tex2Dlod(_MainTex, i.uv - s.zw, 0);
+			
+			color *= (1.0 / 16.0) * 1;
+			color.a = blurRadius;
+			return color;
+		}
+		
+		
 		//----------------------------------------------------------------------------------------------------------------------
 		//----------------------------------------------------------------------------------------------------------------------
 		
 		half4 fragDebug(VertexOutputFull i ) : SV_Target {
-		//	half coc = get_coc(i.uv);
-		//	coc *= 80;
-		//	
-		//	// Visualize CoC (white -> red -> gray)
-		//	half3 rgb = lerp(half3(1, 0, 0), half3(1.0, 1.0, 1.0), saturate(-coc));
-		//	rgb = lerp(rgb, half3(0.4, 0.4, 0.4), saturate(coc));
-		//	
-		//	// Black and white image overlay
-		//	float3 color = Tex2Dlod(_MainTex, i.uv, 0).rgb;
-		//	//color = DisneyLuminance(color);
-		//	color = dot(color, half3(0.2126, 0.7152, 0.0722));
-		//	
-		//	rgb *= color + 0.5;
-		//	
-		//	
-		//	const float kernelSizeEnum = 0; // 0 = Small, 3 = VeryLarge
-		//	float radiusInPixels = kernelSizeEnum * 4 + 6;
-        //    float _RcpMaxCoC = 1 / min(0.05, radiusInPixels * _MainTex_TexelSize.y);
-		//	float CoC =  saturate(coc * 0.5 * _RcpMaxCoC + 0.5);
-		//	
-		//	float mip = getMipLevel(i.uv);
-				
-			//return half4(pow(saturate(rgb), 2.2), 1);
-			//return half4(pow(abs(CoC*2-1).xxx, 2.2), 1);
-			//return half4(pow(saturate(-mip.xxx*10), 2.2), 1);
-		//	return half4(pow(saturate(getBlurRadius(i.uv).xxx*100), 2.2), 1);
-		//	return half4(Tex2Dlod(_MainTex, i.uv, _MipLevel).rgb, 1);
 			VertexOutput vo = {i.pos, i.uv};
 			float4 bkg = Tex2Dlod(_MainTex, i.uv, 0)*0.875+0.125;
 			bkg.rgb = DisneyLuminance(bkg.rgb)*1.00;
@@ -389,33 +417,15 @@ static const float2 kDiskKernel[kSampleCount] = {
 			half coc = get_coc(i.uv);
 			coc *= 80;
 			
-			float3 data = Lerp3(1, float3(1, 0, 0), 1, Clamp11(coc));
+			float3 white = 1;
+			float3 red = float3(1, 0, 0);
+			float3 data = Lerp3(white, red, white, pow(abs(Clamp11(coc)), 1/2.2));
 			data = pow(data, 2.2);
 			bkg.rgb *= data;
 			
 			
-			return half4(bkg.rgb, bkg.a);;
-			
-			
-			
-			
+			return half4(bkg.rgb, bkg.a);
 		}
-		
-		//----------------------------------------------------------------------------------------------------------------------
-		//----------------------------------------------------------------------------------------------------------------------
-		// Common vertex shader with single pass stereo rendering support
-		VertexOutput vertBlit(VertexInput v) {
-			VertexOutput o;
-			o.pos = UnityObjectToClipPos(v.vertex);
-			o.uv = FlipUVs(v.texcoord.xy);
-			o.uv.y = 1-o.uv.y;
-			return o;
-		}
-		
-		half4 fragBLit(VertexOutput i ) : SV_Target {
-			return tex2D(_MainTex, i.uv);
-		}
-		
 		
 		
 	ENDCG 
@@ -444,7 +454,7 @@ static const float2 kDiskKernel[kSampleCount] = {
 			ENDCG
 		}
 
-		//Pass 2 Apply
+		//Pass 3 Apply
 		Pass {
 			CGPROGRAM
 			#pragma target 3.0
@@ -454,7 +464,7 @@ static const float2 kDiskKernel[kSampleCount] = {
 			ENDCG
 		}
 
-		//Pass 3 debug
+		//Pass 4 debug
 		Pass {
 			CGPROGRAM
 			#pragma target 3.0
@@ -464,15 +474,6 @@ static const float2 kDiskKernel[kSampleCount] = {
 			ENDCG
 		}
 
-		//Pass 4 BLit
-		Pass {
-			CGPROGRAM
-			#pragma target 3.0
-			
-			#pragma vertex vertBlit
-			#pragma fragment fragBLit
-			ENDCG
-		}
 
 	}
 	Fallback Off

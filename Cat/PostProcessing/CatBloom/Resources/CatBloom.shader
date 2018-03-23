@@ -80,7 +80,7 @@ Shader "Hidden/Cat Bloom" {
 			color.a = response;
 	//		color.rgb = CompressBy(color.rgb, MaxC(color.rgb));
 			color.rgb *= color.a;
-			return color;
+			return any(isnan(color)) ? 0 : color;
 		}
 		
 		//----------------------------------------------------------------------------------------------------------------------
@@ -125,13 +125,11 @@ Shader "Hidden/Cat Bloom" {
 		//----------------------------------------------------------------------------------------------------------------------
 		
 		float4 getDirt(float2 uv) {
-			float3 dirt = _Intensity*0.5 + 2 * _DirtIntensity * Tex2Dlod(_DirtTexture, uv, 0).rgb;
+			float3 dirt = _Intensity*0.5 * 0.75 + 2 * _DirtIntensity * Tex2Dlod(_DirtTexture, uv, 0).rgb;
 			return float4(dirt, MaxC(dirt));// * MaxC(dirt);
 		}
 		
-		static const float MAX_MIP_LEVEL = 7;
-
-		float4 applyBloom(float2 uv) {
+		float4 getBloom(float2 uv) {
 			float mip = _MipLevel;
 			float4 color = Tex2Dlod(_MainTex, uv, 0);
 			float4 dirt = getDirt(uv) * 1	;
@@ -139,14 +137,21 @@ Shader "Hidden/Cat Bloom" {
 			
 			color.rgba *= dirt.rgba * invMip * 1;
 			color.a = 1 / (color.a + 1);
-			color.rgb *= color.a;
 			
 			//dirt.rgba *= color.a * invMip;
 			//color.rgb *= dirt.rgb * invMip * 1;
 			//color.a = 1 / (dirt.a + 1);
 			//color.rgb *= color.a;
-			
-			return float4(min(color.rgb, 65504.0), color.a);
+			//return float4(min(color.rgb, 65504.0), color.a);
+			return color;
+		}
+
+		float4 applyBloom(float2 uv) {
+			float4 bloom = getBloom(uv);
+			float4 result = Tex2Dlod(_BaseTex, uv, 0);
+			result.rgb += bloom.rgb;
+			result.rgb *= bloom.a;
+			return result;
 		}
 		
 		float4 fragApplyBloom(VertexOutput i) : SV_Target {
@@ -157,7 +162,7 @@ Shader "Hidden/Cat Bloom" {
 		//----------------------------------------------------------------------------------------------------------------------
 		
 		half4 fragDebug(VertexOutputFull i ) : SV_Target {
-			return half4( applyBloom(i.uv).rgb, 1);
+			return half4( getBloom(i.uv).rgb, 1);
 		}
 		
 		//----------------------------------------------------------------------------------------------------------------------
@@ -247,7 +252,7 @@ Shader "Hidden/Cat Bloom" {
 		//Pass 3 ApplyBloom
 		Pass {
 			//Blend One OneMinusSrcAlpha, Zero One
-			Blend One SrcAlpha, Zero One
+			//Blend One SrcAlpha, Zero One
 			
 			CGPROGRAM
 			#pragma target 3.0

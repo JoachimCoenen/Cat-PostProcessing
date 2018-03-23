@@ -17,6 +17,7 @@ MonoBehaviour:
   - {fileID: 114708236805742492}
   - {fileID: 114367102139067908}
   - {fileID: 114059689253179244}
+  - {fileID: 114771885097368696}
 --- !u!114 &114059689253179244
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -28,7 +29,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: adb84e30e02715445aeb9959894e3b4d, type: 3}
   m_Name: ColorGrading
   m_EditorClassIdentifier: 
-  active: 1
+  active: 0
   enabled:
     overrideState: 1
     value: 1
@@ -298,7 +299,7 @@ MonoBehaviour:
     value: 7.34
   anamorphicRatio:
     overrideState: 1
-    value: 0
+    value: 0.55
   color:
     overrideState: 1
     value: {r: 1, g: 1, b: 1, a: 1}
@@ -406,7 +407,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6050e2d5de785ce4d931e4dbdbf2d755, type: 3}
   m_Name: ChromaticAberration
   m_EditorClassIdentifier: 
-  active: 0
+  active: 1
   enabled:
     overrideState: 1
     value: 1
@@ -419,3 +420,30 @@ MonoBehaviour:
   fastMode:
     overrideState: 0
     value: 0
+--- !u!114 &114771885097368696
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 556797029e73b2347956b6579e77e05b, type: 3}
+  m_Name: DepthOfField
+  m_EditorClassIdentifier: 
+  active: 1
+  enabled:
+    overrideState: 1
+    value: 1
+  focusDistance:
+    overrideState: 1
+    value: 1
+  aperture:
+    overrideState: 1
+    value: 0.7
+  focalLength:
+    overrideState: 0
+    value: 50
+  kernelSize:
+    overrideState: 0
+    value: 1

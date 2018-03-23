@@ -38,9 +38,6 @@ namespace Cat.PostProcessing {
 
 		private bool isFirstFrame = true;
 
-		override protected CameraEvent cameraEvent { 
-			get { return CameraEvent.BeforeImageEffectsOpaque; }
-		}
 		override protected string shaderName { 
 			get { return "Hidden/Cat SSR"; } 
 		}
@@ -49,6 +46,9 @@ namespace Cat.PostProcessing {
 		}
 		override internal DepthTextureMode requiredDepthTextureMode { 
 			get { return DepthTextureMode.Depth | DepthTextureMode.MotionVectors; } 
+		}
+		override protected CameraEvent cameraEvent { 
+			get { return CameraEvent.BeforeImageEffectsOpaque; }
 		}
 
 		static class PropertyIDs {

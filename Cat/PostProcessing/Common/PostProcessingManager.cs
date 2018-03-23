@@ -311,6 +311,13 @@ namespace Cat.PostProcessing {
 				effect.PreRender(cam, size);
 			}
 		}
+		private void OnPostRender(){
+			var cam = this.camera;
+			var size = this.cameraSize;
+			foreach (var effect in m_ActiveEffects/*.Where(x => x.enabled)*/) {
+				effect.PostRender();
+			}
+		}
 
 		private void OnEnable(){
 			UpdateEffectsSetup();

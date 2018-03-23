@@ -17,9 +17,7 @@ namespace Cat.PostProcessing {
 				: CameraEvent.BeforeReflections;
 		}
 		private CameraEvent m_CameraEvent = CameraEvent.BeforeReflections;
-		override protected CameraEvent cameraEvent { 
-			get { return m_CameraEvent; }
-		}
+
 		override protected string shaderName { 
 			get { return "Hidden/Cat Ambient Occlusion"; } 
 		}
@@ -28,6 +26,9 @@ namespace Cat.PostProcessing {
 		}
 		override internal DepthTextureMode requiredDepthTextureMode { 
 			get { return DepthTextureMode.Depth | DepthTextureMode.MotionVectors; } 
+		}
+		override protected CameraEvent cameraEvent { 
+			get { return m_CameraEvent; }
 		}
 
 		static class PropertyIDs {

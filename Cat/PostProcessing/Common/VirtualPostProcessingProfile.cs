@@ -33,7 +33,8 @@ namespace Cat.PostProcessing {
 				var type = otherSetting.GetType();
 				PostProcessingSettingsBase setting;
 				if (!m_Settings.TryGetValue(type, out setting)) {
-					setting = (PostProcessingSettingsBase)Activator.CreateInstance(type);
+					// setting = (PostProcessingSettingsBase)Activator.CreateInstance(type);
+					setting = (PostProcessingSettingsBase)ScriptableObject.CreateInstance(type);
 					m_Settings[type] = setting;
 				}
 				setting.InterpolateTo(otherSetting, otherFactor);
