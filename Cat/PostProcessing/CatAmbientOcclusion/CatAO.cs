@@ -58,7 +58,7 @@ namespace Cat.PostProcessing {
 			setBufferDirty();
 		}
 
-		private enum SSRPass {
+		private enum AOPass {
 			SampleProximity  = 0,
 			Blur			    ,
 			Resolve				,
@@ -67,25 +67,26 @@ namespace Cat.PostProcessing {
 		}
 
 		override protected void PopulateCommandBuffer(CommandBuffer buffer, Material material, VectorInt2 cameraSize) {
-			GetTemporaryRT(buffer, PropertyIDs.OcclusionNormals1_t, cameraSize, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
-			GetTemporaryRT(buffer, PropertyIDs.OcclusionNormals2_t, cameraSize, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
+			var size = settings.quality == AOQuality.High ? cameraSize :cameraSize / 2;
+			GetTemporaryRT(buffer, PropertyIDs.OcclusionNormals1_t, size, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
+			GetTemporaryRT(buffer, PropertyIDs.OcclusionNormals2_t, size, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
 		//	GetTemporaryRT(buffer, PropertyIDs.OcclusionNormals3_t, cameraSize, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
 
-			Blit(buffer, PropertyIDs.OcclusionNormals1_t, material, (int)SSRPass.SampleProximity);
+			Blit(buffer, PropertyIDs.OcclusionNormals1_t, material, (int)AOPass.SampleProximity);
 			buffer.SetGlobalVector(PropertyIDs.BlurDir_v, new Vector2(1, 0));
-			Blit(buffer, PropertyIDs.OcclusionNormals1_t, PropertyIDs.OcclusionNormals2_t, material, (int)SSRPass.Blur);
+			Blit(buffer, PropertyIDs.OcclusionNormals1_t, PropertyIDs.OcclusionNormals2_t, material, (int)AOPass.Blur);
 			buffer.SetGlobalVector(PropertyIDs.BlurDir_v, new Vector2(0, 1));
 		//	Blit(buffer, PropertyIDs.OcclusionNormals2_t, PropertyIDs.OcclusionNormals3_t, material, (int)SSRPass.Blur);
 			if (settings.debugOn) {
-				Blit(buffer, PropertyIDs.OcclusionNormals2_t, BuiltinRenderTextureType.CameraTarget, material, (int)SSRPass.ResolveDebug);
+				Blit(buffer, PropertyIDs.OcclusionNormals2_t, BuiltinRenderTextureType.CameraTarget, material, (int)AOPass.ResolveDebug);
 			} else  {
-				Blit(buffer, PropertyIDs.OcclusionNormals2_t, BuiltinRenderTextureType.CameraTarget, material, (int)SSRPass.Resolve);
+				Blit(buffer, PropertyIDs.OcclusionNormals2_t, BuiltinRenderTextureType.CameraTarget, material, (int)AOPass.Resolve);
 			}
 		//	ReleaseTemporaryRT(buffer, PropertyIDs.OcclusionNormals3_t);
 			ReleaseTemporaryRT(buffer, PropertyIDs.OcclusionNormals2_t);
 			ReleaseTemporaryRT(buffer, PropertyIDs.OcclusionNormals1_t);
 			if (m_currentRenderingPath == RenderingPath.DeferredShading) {
-				Blit(buffer, BuiltinRenderTextureType.CameraTarget, BuiltinRenderTextureType.GBuffer0, material, (int)SSRPass.MultiplyAlpha);
+				Blit(buffer, BuiltinRenderTextureType.CameraTarget, BuiltinRenderTextureType.GBuffer0, material, (int)AOPass.MultiplyAlpha);
 			}
 
 			var appropriateCameraEvent = GetAppropriateCameraEvent(settings.debugOn, m_currentRenderingPath);
@@ -100,6 +101,14 @@ namespace Cat.PostProcessing {
 			setMaterialDirty();
 		}
 	}
+
+	public enum AOQuality {
+		High,
+		Low,
+	}
+
+	[Serializable]
+	public class AOQualityProperty : PropertyOverride<AOQuality> {}
 
 	[Serializable]
 	[SettingsForPostProcessingEffect(typeof(CatAORenderer))]
@@ -116,6 +125,8 @@ namespace Cat.PostProcessing {
 		[Range(0, 2)]
 		public FloatProperty intensity = new FloatProperty();
 
+		public AOQualityProperty quality = new AOQualityProperty();
+
 		[Range(3, 16)]
 		public IntProperty sampleCount = new IntProperty();
 
@@ -127,6 +138,7 @@ namespace Cat.PostProcessing {
 
 		public override void Reset() {
 			intensity.rawValue = 0f;
+			quality.rawValue = AOQuality.Low;
 			sampleCount.rawValue = 10;
 			radius.rawValue = 0.3f;
 			debugOn.rawValue = false;
