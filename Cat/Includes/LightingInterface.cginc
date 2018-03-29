@@ -41,7 +41,7 @@
 		d.specular		= unityD.specularColor;
 		d.smoothness	= unityD.smoothness;
 		d.occlusion		= unityD.occlusion;
-		d.normal		= normalize(unityD.normalWorld);
+		d.normal		= unityD.normalWorld;
 		d.emission		= gbuffer3.rgb;
 		return d;
 	}

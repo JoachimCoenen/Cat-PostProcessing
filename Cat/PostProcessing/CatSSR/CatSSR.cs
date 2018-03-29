@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering;
 using Cat.Common;
@@ -121,22 +122,22 @@ namespace Cat.PostProcessing {
 			HitTextureSize = CatSSR.upSampleHitTexture ? reflRTSize : rayTraceRTSize;
 
 			CreateCopyRT(lastFrame, reflRTSize, 0, settings.useCameraMipMap, RenderTextureFormat.DefaultHDR, FilterMode.Trilinear, RenderTextureReadWrite.Default, TextureWrapMode.Clamp, "lastFrame");
-			CreateRT(    history,   reflRTSize, 0, settings.useReflectionMipMap, RenderTextureFormat.DefaultHDR, FilterMode.Bilinear, RenderTextureReadWrite.Default, TextureWrapMode.Clamp, "history");
+			CreateCopyRT(history,   reflRTSize, 0, settings.useReflectionMipMap, RenderTextureFormat.DefaultHDR, FilterMode.Bilinear, RenderTextureReadWrite.Default, TextureWrapMode.Clamp, "history");
 		//	material.SetTexture(PropertyIDs.History_t, history);
 			material.SetTexture(PropertyIDs.Refl_t, history);
-			isFirstFrame = true;
+			//isFirstFrame = true;
 			setBufferDirty();
 		}
 
-		Vector2 frameCounter = new Vector2(0, 0);
-		Vector2 frameCounterHelper = new Vector2(0.618256431f, +1-Mathf.Sqrt(2));//0.618256431f);
+		Vector3 frameCounter = new Vector3(0, 0, 0);
+		Vector3 frameCounterHelper = new Vector3(0.618256431f, +1-Mathf.Sqrt(2), 1);//0.618256431f);
 		override protected void UpdateMaterialPerFrame(Material material, Camera camera, VectorInt2 cameraSize) {
 			var isSceneView = postProcessingManager.isSceneView;
 			if (!isSceneView) {
 				//frameCounter = (frameCounter + 0.618256431f) % 172.5f;
 				frameCounter = frameCounter + frameCounterHelper;
-				frameCounter.Set(frameCounter.y % 172.5f, frameCounter.x % 172.5f);
-				frameCounterHelper.Set(frameCounterHelper.y, frameCounterHelper.x);
+				frameCounter.Set(frameCounter.y % 172.5f, frameCounter.x % 172.5f, frameCounter.z % 720);
+				frameCounterHelper.Set(frameCounterHelper.y, frameCounterHelper.x, frameCounterHelper.z);
 			}
 			material.SetVector(PropertyIDs.FrameCounter_f, frameCounter);
 
@@ -235,12 +236,40 @@ namespace Cat.PostProcessing {
 			RayTrace            = 0,
 			ResolveAdvanced,
 			CombineTemporal,
+			Median,
 			MipMapBlur,
 			ComposeAndApplyReflections,
 			Debug,
 		}
 
+		readonly Vector4[] sampeOffsets0 = {
+			Vector2.zero,
+			Vector2.zero,
+			Vector2.zero,
+			Vector2.zero,
+		};
+		readonly Vector4[] sampeOffsets1 = {
+			new Vector2(-0.75f, -0.50f),
+			new Vector2( 0.50f, -0.75f),
+			new Vector2( 0.75f,  0.50f),
+			new Vector2(-0.50f,  0.75f),
+		};
+		readonly Vector4[] sampeOffsets2a = {
+			new Vector2(-0.250f, -0.250f),
+			new Vector2( 0.250f, -0.250f),
+			new Vector2( 0.250f,  0.250f),
+			new Vector2(-0.250f,  0.250f),
+		};
+		readonly Vector4[] sampeOffsets2b = {
+			new Vector2( 0.250f,  0.250f),
+			new Vector2(-0.250f, -0.250f),
+			new Vector2(-0.250f,  0.250f),
+			new Vector2( 0.250f, -0.250f),
+		};
+			
+		uint m_FrameCounter = 0;
 		override protected void PopulateCommandBuffer(CommandBuffer buffer, Material material, VectorInt2 cameraSize) {
+			m_FrameCounter++;
 			var isSceneView = postProcessingManager.isSceneView;
 
 			var mipRTSizes = new VectorInt2[8] {
@@ -265,7 +294,11 @@ namespace Cat.PostProcessing {
 			};
 
 			#region RayTrace
-			GetTemporaryRT(buffer, PropertyIDs.Hit_t, HitTextureSize, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
+			var sampeOffset = sampeOffsets2b[m_FrameCounter % 4];
+			buffer.SetGlobalVector("_SampleOffset", sampeOffset);
+			buffer.SetGlobalVectorArray("_SampleOffsets", settings.useJitter ? sampeOffsets2b : sampeOffsets0);
+
+			GetTemporaryRT(buffer, PropertyIDs.Hit_t, rayTraceRTSize, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
 			Blit(buffer, PropertyIDs.Hit_t, material, (int)SSRPass.RayTrace);
 			#endregion
 
@@ -278,6 +311,9 @@ namespace Cat.PostProcessing {
 				}
 			}
 			#endregion
+
+			//GetTemporaryRT(buffer, PropertyIDs.tempBuffers_t[0], mipTempSizes[0], RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
+			//Blit(buffer, lastFrame, PropertyIDs.tempBuffers_t[0], material, (int)SSRPass.Median);
 	
 			#region CameraMipLevels
 			var maxCameraMipLvl = settings.useCameraMipMap ? 8 : 1;
@@ -287,16 +323,18 @@ namespace Cat.PostProcessing {
 				buffer.SetGlobalFloat(PropertyIDs.MipLevel_f, i-1);
 	
 				buffer.SetGlobalVector(PropertyIDs.BlurDir_v, new Vector4(0, 2.25f/mipRTSizes[i-1].y, 0, -2.25f/mipRTSizes[i-1].y));
+				RenderTargetIdentifier source = i == 1 ? (RenderTargetIdentifier)PropertyIDs.tempBuffers_t[0] : lastFrame;
 				Blit(buffer, lastFrame, PropertyIDs.tempBuffers_t[i], material, (int)pass);
 	
 				buffer.SetGlobalVector(PropertyIDs.BlurDir_v, new Vector4(2.25f/mipRTSizes[i-1].x, 0, -2.25f/mipRTSizes[i-1].x, 0));
 				buffer.SetGlobalTexture("_MainTex", PropertyIDs.tempBuffers_t[i]);
 				buffer.SetRenderTarget(lastFrame, i);
-				Blit(buffer, material, (int)pass);
+				Blit(buffer, material, (int)SSRPass.MipMapBlur);
 	
 				ReleaseTemporaryRT(buffer, PropertyIDs.tempBuffers_t[i]);	// release temporary RT
 			}
 			#endregion
+			//ReleaseTemporaryRT(buffer, PropertyIDs.tempBuffers_t[0]);	// release temporary RT
 	
 			#region Resolve / CombineTemporal
 			var useCombineTemporal = settings.useTemporalSampling && !isSceneView;
@@ -313,7 +351,13 @@ namespace Cat.PostProcessing {
 				ReleaseTemporaryRT(buffer, PropertyIDs.tempBuffer1_t);
 			//	Blit(buffer, PropertyIDs.Refl_t, history);
 			} else {
-				Blit(buffer, lastFrame, history, material, (int)SSRPass.ResolveAdvanced);
+				GetTemporaryRT(buffer, PropertyIDs.tempBuffer0_t, reflRTSize, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
+				Blit(buffer, lastFrame, PropertyIDs.tempBuffer0_t, material, (int)SSRPass.ResolveAdvanced);
+
+				Blit(buffer, PropertyIDs.tempBuffer0_t, history, material, (int)SSRPass.Median);
+
+				ReleaseTemporaryRT(buffer, PropertyIDs.tempBuffer0_t);
+
 			}
 			#endregion
 	
@@ -324,7 +368,9 @@ namespace Cat.PostProcessing {
 	
 			#region RetroReflection
 			if (settings.useRetroReflections) {
-				Blit(buffer, BuiltinRenderTextureType.CameraTarget, lastFrame);
+				buffer.SetGlobalTexture("_MainTex", BuiltinRenderTextureType.CameraTarget);
+				buffer.SetRenderTarget(lastFrame, 0);
+				Blit(buffer, material, (int)SSRPass.Median);
 			}                   
 			#endregion
 
@@ -373,6 +419,8 @@ namespace Cat.PostProcessing {
 		[Header("RayTracing")]
 		[CustomLabel("Ray Trace Resol.")]
 		public TextureResolutionProperty rayTraceResol = new TextureResolutionProperty();
+
+		public BoolProperty useJitter = new BoolProperty();
 
 		[CustomLabelRange(16, 256, "Step Count")]
 		public IntProperty stepCount = new IntProperty();
@@ -455,6 +503,7 @@ namespace Cat.PostProcessing {
 			intensity.rawValue              = 0;
 
 			rayTraceResol.rawValue          = TextureResolution.FullResolution;
+			useJitter.rawValue				= true;
 			stepCount.rawValue              = 96;
 		//	isExactPixelStride.rawValue     = false;
 			minPixelStride.rawValue         = 3;

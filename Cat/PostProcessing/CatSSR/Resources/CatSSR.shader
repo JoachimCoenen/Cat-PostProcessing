@@ -59,7 +59,7 @@ Shader "Hidden/Cat SSR" {
 			#pragma target 3.0
 			
 			#pragma fragmentoption ARB_precision_hint_fastest
-			#pragma vertex vertVS
+			#pragma vertex vertVSRaytrace
 			#pragma fragment fragRayTrace
 			#include "CatSSR.cginc"
 			ENDCG
@@ -106,7 +106,18 @@ Shader "Hidden/Cat SSR" {
 			ENDCG
 		}
 		
-		//Pass 3 MipMapBlur
+		//Pass 3 Median
+		Pass {
+			CGPROGRAM
+			#pragma target 3.0
+			
+			#pragma vertex vert
+			#pragma fragment fragMedian
+			#include "CatSSR.cginc"
+			ENDCG
+		}
+		
+		//Pass 4 MipMapBlur
 		Pass {
 			CGPROGRAM
 			#pragma target 3.0
@@ -117,7 +128,7 @@ Shader "Hidden/Cat SSR" {
 			ENDCG
 		}
 		
-		//Pass 4 compose and apply reflections
+		//Pass 5 compose and apply reflections
 		Pass {
 			Blend SrcAlpha One, One Zero
 		//	Blend One One, One Zero
@@ -137,7 +148,7 @@ Shader "Hidden/Cat SSR" {
 			ENDCG
 		}
 		
-		//Pass 5 debug
+		//Pass 6 debug
 		Pass {
 			CGPROGRAM
 			#pragma target 3.0
