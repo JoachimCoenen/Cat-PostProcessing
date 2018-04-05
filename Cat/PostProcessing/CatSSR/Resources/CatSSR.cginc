@@ -32,14 +32,12 @@
 #include "CatRayTraceLib.cginc"
 
 int				_StepCount;
-int				_MinPixelStride;
-int				_MaxPixelStride;
-float			_NoiseStrength;
+int				_PixelStride;
 bool			_CullBackFaces;
 float			_MaxReflectionDistance;
 				// rayTraceResol
 				// upSampleHitTexture
-float4			_SampleOffsets[4];
+float4	_SampleOffsets[4];
 
 float			_Intensity;
 float			_ReflectionDistanceFade;
@@ -50,8 +48,6 @@ bool			_UseReflectionMipMap;
 				// reflectionResolution
 
 				// useImportanceSampling
-int				_ResolveSampleCount;
-float			_ImportanceSampleBias;
 bool			_UseCameraMipMap;
 				// suppressFlickering	
 
@@ -142,7 +138,10 @@ half CullBackHits(half3 hitNormal, half3 rayDir) { // JCO@@@TODO: find a better 
 }
 
 half RayAttenLength(half actualStepCount) {
-	return 1 - Pow2(InvLerpSat(_RayLengthFade * _StepCount, 0, _StepCount - actualStepCount));
+	//return 1 - (InvLerpSat(_RayLengthFade * _StepCount, 0, _StepCount - actualStepCount));
+	half x = _StepCount - actualStepCount;
+	x = saturate((x / _StepCount) / _RayLengthFade);
+	return sqrt((3 - 2*x)*x*x);
 }
 
 half BackgroundFade(float rayHitZ) {
@@ -182,28 +181,34 @@ half RayAttenBorder(half2 uvHit, half2 dir, half value) {
 //	return MinC(pos2);
 }
 
+half3 GetNoise(float2 uv, float4 texelSize) {
+	float2 pos = uv * texelSize.zw;
+	half3 noise2D = Tex2Dlod(_BlueNoise, (pos + _FrameCounter) *_BlueNoise_TexelSize.xy, 0).rgb;
+	return noise2D;
+}
+
 float2 GetRayTraceSampleOffset(float2 uv) {
-	int2 pos = floor(uv *_HitTex_TexelSize.zw);
-	int xComponent = pos.x % 4;
-	int yComponent = 2*(pos.y % 2);
-	int index = xComponent + yComponent;
+	//int2 pos = floor(uv *_HitTex_TexelSize.zw);
+	//int xComponent = pos.x % 4;
+	//int yComponent = 2*(pos.y % 2);
+	//int index = xComponent + yComponent;
 	
 	//int xComponent = 1*(pos.x % 2);
 	//int yComponent = 3*(pos.y % 2);
 	//int index = xComponent * max(1, yComponent) + yComponent;
 	
-	index = (floor(_FrameCounter.z) + 0*index) % 4;
-	return _SampleOffsets[index].xy * _HitTex_TexelSize.xy * 1;
+	int index = floor(_FrameCounter.z) % 4;
+	return _SampleOffsets[index].xy * _HitTex_TexelSize.xy;
 }
 
 VertexOutputVS vertVSRaytrace(VertexInput v) {
-	//v.texcoord.xy += GetRayTraceSampleOffset();
 	VertexOutputVS o = vertVS(v);
+	o.uv += GetRayTraceSampleOffset(o.uv);
 	return o;
 }
 
 float4 fragRayTrace(VertexOutputVS i) : SV_Target {
-	float2 uv = i.uv + GetRayTraceSampleOffset(i.uv);
+	float2 uv = i.uv;
 	
 	CAT_GET_GBUFFER(s, uv)
 //	float3 vsNormal = normalize(WorldToViewDir(s.normal));
@@ -217,20 +222,8 @@ float4 fragRayTrace(VertexOutputVS i) : SV_Target {
 	float invReflectionDistance = rsqrt(dot(vsStartPos, vsStartPos));
 	float reflectionDistance = 1 / invReflectionDistance;
 	if (!AreReflectionsAllowed(vsViewDir, s.normal, reflectionDistance, s.smoothness)) {
-		return float4(uv, 0, +1e5);
+		return float4(uv, +1e5, 0);
 	}
-	
-	
-	float2 pos = uv * _HitTex_TexelSize.zw;
-	half2 noise1D = -round(noiseSimple(0 + (_FrameCounter)) * _HitTex_TexelSize.wz);
-	//noise1D = 4.00 * (m - m * m);
-	half3 noise2D = Tex2Dlod(_BlueNoise, (pos + noise1D) *_BlueNoise_TexelSize.xy, 0).rgb;
-	noise2D.y *= _ImportanceSampleBias;
-	
-	float pdf = 1;
-	//s.normal = rotateVector(s.normal, ImportanceSample(noise2D.xy, (1-s.smoothness)*0.5, /*out*/pdf));
-	pdf = 1;
-	
 	
 	vsStartPos = vsStartPos + s.normal * max(0.005*LinearEyeDepth(depth), 0.001);
 	ssStartPos = ViewToScreenPos(vsStartPos);
@@ -243,13 +236,12 @@ float4 fragRayTrace(VertexOutputVS i) : SV_Target {
 	ssRayDir.z = -sign(ViewToScreenPos(-vsRayDir + vsStartPos).z);
 	ssRayDir = ssRayDir.z * (ViewToScreenPos(ssRayDir.z*vsRayDir + vsStartPos).xyz - ssStartPos);
 	ssRayDir = normalize(ssRayDir);
-	half jitter = Tex2Dlod(_BlueNoise, pos *_BlueNoise_TexelSize.xy, 0).r*1;//_NoiseStrength * (noise2D.z*1-0.5);//noiseSimple(uv + depth);
-	jitter = noise2D.z;
+	
+	half jitter = GetNoise(uv, _HitTex_TexelSize).r;
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	float4 rayHit = RayTrace(
 			_StepCount, 0.5, 
-			_MinPixelStride, 
-			_MaxPixelStride, 
+			_PixelStride, 
 			ssStartPos, ssRayDir, 
 			_ZBufferParams, CAT_PASS_DEPTHT_EXTURE(_DepthTexture), 
 			_GBuffer_TexelSize, jitter
@@ -291,17 +283,17 @@ float4 fragRayTrace(VertexOutputVS i) : SV_Target {
 	}
 	
 	//return float4(uvHit, rayHit.w/_StepCount, pdf);
-	return float4(uvHit, confidence, pdf);
+	return float4(uvHit, rayHit.z, confidence);
 }
 
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 float getConeTangent(float smoothness, float nv) {
 	float roughness = 1-smoothness;
-	return lerp(0.0, roughness * _ImportanceSampleBias, /*pow(saturate(nv), 1.5) * */Pow2(roughness));
+	return lerp(0.0, roughness, /*pow(saturate(nv), 1.5) * */Pow2(roughness));
 }
 
-static const half maxCameraMipLevel = 8.0 - 1.0;
+static const half maxCameraMipLevel = 6.0 - 1.0;
 float getMipLevelResolve(float coneTangent, float2 hitUV, float2 uv, float maxMipLevel) {
 	float intersectionCircleRadius = coneTangent * length(hitUV - uv);
 	return clamp(log2(intersectionCircleRadius * MaxC(_MainTex_TexelSize.zw)), 0, maxMipLevel);
@@ -310,7 +302,7 @@ float getMipLevelResolve(float coneTangent, float2 hitUV, float2 uv, float maxMi
 half getMipLevelResolve(float3 vsHitPos, float rayLength, half smoothness, half maxMipLevel) {
 	half roughness = pow(1 - smoothness, 5.0/3.0);
 	float hitDistance = length(vsHitPos);
-	half area = abs(roughness * (rayLength + Pow2(roughness)) * _PixelsPerMeterAtOneMeter / hitDistance) * _ImportanceSampleBias;
+	half area = abs(roughness * (rayLength + Pow2(roughness)) * _PixelsPerMeterAtOneMeter / hitDistance);
 	
 	half mip = log2(area/16.0 + 15.0/16.0);
 	//return (rayLength*0.01) * maxCameraMipLevel;
@@ -358,66 +350,36 @@ float4 fragResolveAdvanced(VertexOutputVS i) : SV_Target {
 	float depth = sampleDepthLod(_DepthTexture, uvFine, 0);
 	float3 vsPos = i.vsRay * LinearEyeDepth(depth);
 	
-	float2 pos = uv * _MainTex_TexelSize.zw;
-	float2 blueNoise = tex2D(_BlueNoise, pos *_BlueNoise_TexelSize.xy + _FrameCounter).ba * 2.0 - 1.0; // works better with [-1, 1] range
-	float2x2 offsetRotationMatrix = float2x2(blueNoise.x, blueNoise.y, -blueNoise.y, blueNoise.x);
-	
 	//float coneTangent = getConeTangent(smoothness, 1);
 	
 	float maxMipLevel = _UseCameraMipMap ? maxCameraMipLevel : 0;
 	
 	float rayLength = 0; // Its value is used after the loop, so it is declared here.
 	
-	float4 result = 0.0;
-	//float weightSum = 0.0;	
-	int resolveSteps = _ResolveSampleCount;
-	for(int i = 0; i < resolveSteps; i++) {
-		float2 offsetUV = offsets[i] * _MainTex_TexelSize.xy*1;
+	//float weightSum = 0.0;
 		
-		float2 neighborUv = uv + offsetUV;
-		//neighborUv = SnapToPixel(neighborUv, _HitTex_TexelSize);
-	//	neighborUv.x += dot(float2( blueNoise.x, blueNoise.y), offsetUV);
-	//	neighborUv.y += dot(float2(-blueNoise.y, blueNoise.x), offsetUV);
-		
-		// offsetUV = mul(offsetRotationMatrix, offsetUV);
-		// float2 neighborUv = uv + offsetUV;
-		
-		float4 hitPacked = Tex2Dlod(_HitTex, neighborUv, 0);
-		float2 hitUV = hitPacked.xy;
-		if (_UseRetroReflections) {
-			hitUV += -GetVelocity(hitUV);
-		}
-		float hitZ   = sampleDepthLod(_DepthTexture, hitUV, 0);
-		float confidence = hitPacked.z;
-		
-		
-		float3 vsHitPos = ScreenToViewPos(GetScreenPos(hitUV, hitZ));
-		rayLength = length(vsHitPos - vsPos);
-		// We assume that the hit point of the neighbor's ray is also visible for our ray, and we blindly pretend
-		// that the current pixel shot that ray. To do that, we treat the hit point as a tiny light source. To calculate
-		// a lighting contribution from it, we evaluate the BRDF. Finally, we need to account for the probability of getting
-		// this specific position of the "light source", and that is approximately 1/PDF, where PDF comes from the neighbor.
-		// Finally, the weight is BRDF/PDF. BRDF uses the local pixel's normal and roughness, but PDF comes from the neighbor.
-	//	float weight = 1;//CHANGEBRDFWeightUnity(vsViewDir /*V*/, (vsHitPos - vsPos) / rayLength /*L*/, vsNormal /*N*/, max(0.001, s.smoothness)) / max(1e-5, hitPDF);
-	//	weight = 1;
-		
-		float mip = getMipLevelResolve(vsHitPos, rayLength, smoothness, maxMipLevel);
-	//	float mip = getMipLevelResolve(coneTangent, hitUV, uv, maxMipLevel);
-		 
-		float4 sampleColor = float4(Tex2Dlod(_MainTex, hitUV, mip).rgb, 1);
-		
-		sampleColor.a = confidence;
-	//	weight *= confidence;
-
-		result += sampleColor;//CHANGE * weight;
-	//	weightSum += weight;
+	float4 hitPacked = Tex2Dlod(_HitTex, uv, 0);
+	float2 hitUV = hitPacked.xy;
+	if (_UseRetroReflections) {
+		hitUV += -GetVelocity(hitUV);
 	}
-	result /= resolveSteps;//weightSum;
+	float hitZ   = hitPacked.z;
+	float confidence = hitPacked.w;
+	
+	
+	float3 vsHitPos = ScreenToViewPos(GetScreenPos(hitUV, hitZ));
+	rayLength = length(vsHitPos - vsPos);
+	
+	float mip = getMipLevelResolve(vsHitPos, rayLength, smoothness, maxMipLevel);
+//	float mip = getMipLevelResolve(coneTangent, hitUV, uv, maxMipLevel);
+	 
+	float4 result = float4(Tex2Dlod(_MainTex, hitUV, mip).rgb, 1);
+	
+	result.a = confidence;
+	
 	
 	result.rgb = lerp(result.rgb, _FogColor.rgb, getFogDensity(rayLength, _FogParams));
 	result.a = Pow2(result.a);
-	
-	
 	return max(0, result);
 }
 
@@ -429,7 +391,6 @@ float4 combineTemporal(CAT_ARGS_TEX_INFO(currentTex), sampler2D historyTex, floa
 		
 		float2 uvPrev = uv - velocity.xy;
 		//float confidence = all(uvPrev == saturate(uvPrev));
-		float2 uvCoarse = SnapToPixel(uv, _HitTex_TexelSize);
 		
 		float2 tx = currentTex_TexelSize.xy;
 		float4 history = tex2D(historyTex, uvPrev);
@@ -697,7 +658,7 @@ static const half maxReflectionMipLevel = 2.0 - 1.0;
 half getMipLvl(float3 vsRay, half smoothness, float2 uv) {
 	float4 hitPacked = Tex2Dlod(_HitTex, SnapToPixel(uv, _HitTex_TexelSize), 0);
 	float2 hitUV = hitPacked.xy;
-	float hitZ   = sampleDepthLod(_DepthTexture, hitUV, 0);
+	float hitZ   = hitPacked.z;
 	
 	float3 vsHitPos = ScreenToViewPos(GetScreenPos(hitUV, hitZ));
 	float3 vsPos = vsRay * sampleEyeDepthLod(_DepthTexture, uv, 0);
@@ -754,7 +715,7 @@ half4 fragDebug(VertexOutputFull i ) : SV_Target {
 	
 	float4 hitPacked = Tex2Dlod(_HitTex, SnapToPixel(i.uv, _HitTex_TexelSize), 0);
 	float2 hitUV = hitPacked.xy;
-	float hitZ   = sampleDepthLod(_DepthTexture, hitUV, 0);
+	float hitZ   = hitPacked.z;
 	float3 vsHitPos = ScreenToViewPos(GetScreenPos(hitUV, hitZ));
 	float rayLength = length(vsHitPos - vsPos);
 	
@@ -772,8 +733,8 @@ half4 fragDebug(VertexOutputFull i ) : SV_Target {
 /*7*/	half3(reflections.rgb)*reflections.a + reflProbes,
 /*6*/	half3(reflections.rgb + reflProbes)*reflections.a,
 /*1*/	half3(pureRefl.rgb),
-/*5*/	half3(hitPacked.zzz),
-/*3*/	half3(Pow5(Compress(hitPacked.w)).xxx),
+/*5*/	half3(hitPacked.www),
+/*3*/	half3(HSVtoRGB(half3(GetNoise(i.uv, _HitTex_TexelSize).r, 1, 1))),
 /*2*/	half3(Tex2Dlod(_MainTex, i.uv, _UseCameraMipMap ? _MipLevelForDebug : 0).rgb),
 /*4*/	half3(getMipLevelResolve(vsHitPos, rayLength, s.smoothness, maxCameraMipLevel).xxx / maxCameraMipLevel),
 /*7*/	half3(AreReflectionsAllowed(vsViewDir, vsNormal, 1/invReflectionDistance, s.smoothness).xxx),

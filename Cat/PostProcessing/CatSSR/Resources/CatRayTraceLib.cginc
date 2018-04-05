@@ -24,7 +24,6 @@
 #define CAT_RAYTRACE_LIB_INCLUDED
 
 #include "../../../Includes/CatCommon.cginc"
-#define CHANGE_ACTIVE
 
 // returns sMaxOld
 float sortDepths(inout float sMin, inout float sMax) {
@@ -81,9 +80,8 @@ void doBinaryStep(float diff, float3 rayStep, inout float3 samplePos) {
 }
 
 
-float4 RayTrace(int stepCount, float objectThickness, float minPixelStride, float maxPixelStride, float3 ssStartPos, float3 ssRay, float4 zBufferParams, CAT_ARGS_DEPTHT_EXTURE(depthTexture), float4 texelSize, half jitter) {
+float4 RayTrace(int stepCount, float objectThickness, float pixelStride, float3 ssStartPos, float3 ssRay, float4 zBufferParams, CAT_ARGS_DEPTHT_EXTURE(depthTexture), float4 texelSize, half jitter) {
 	
-	#if defined(CHANGE_ACTIVE)
 		float invStepCount = 1 / float(stepCount);
 		
 		//float newLength = maxPixelStride;
@@ -96,40 +94,15 @@ float4 RayTrace(int stepCount, float objectThickness, float minPixelStride, floa
 		float3 fullRayStep = ssRay.xyz;// / float(stepCount);
 		fullRayStep.xy *= 0.5;
 		float rayLengthInPixels = MaxC(abs(fullRayStep.xy * texelSize.zw)); // number of pixels, the ray covers.
-		float pixelStride = maxPixelStride*2; // number of pixels, on step should cover.
-		fullRayStep = fullRayStep.xyz / rayLengthInPixels * pixelStride;
+		float pixelStrideTimesTwo = pixelStride*2; // number of pixels, on step should cover.
+		fullRayStep = fullRayStep.xyz / rayLengthInPixels * pixelStrideTimesTwo;
 		
 		
 		//fullRayStep = fullRayStep + fullRayStep * jitter;
 		float3 rayStart = float3(ssStartPos.xy*0.5+0.5, ssStartPos.z);
 
 		int clampedStepCount = stepCount;
-	#else
-		float2 rayBorder = ssRay.xy > 0 ? 1 : -1;
-		ssRay *= MinC(abs((rayBorder - ssStartPos.xy) / ssRay.xy));
-		
-		float invStepCount = 1 / float(stepCount);
-		float3 fullRayStep  = ssRay * invStepCount * 1;
-		fullRayStep.xy *= 0.5;
-		
-		float2 rayStepPixels = fullRayStep.xy * texelSize.zw;
-		
-		float pixelStride = MaxC(abs(rayStepPixels)); // number of pixels, the step covers.
-		float3 normRayStep = fullRayStep / pixelStride; 				 // normRayStep covers only one pixel.
-		pixelStride = clamp(pixelStride, minPixelStride, maxPixelStride); // clamp pixelsStride to min-max
-		fullRayStep = normRayStep * pixelStride;
-		//fullRayStep = fullRayStep + fullRayStep * jitter;
-	
-		float3 rayStart = float3(ssStartPos.xy*0.5+0.5, ssStartPos.z);
-		
-		#if UNITY_REVERSED_Z
-			float3 rBorder = fullRayStep.xyz > 0 ? float3(1, 1, 10+0*ssStartPos.z*1.5) : float3(0, 0, 1e-7);
-		#else
-			// Not tested:
-			float3 rBorder = fullRayStep.xyz > 0 ? float3(1, 1, 0.875) : float3(0, 0, 1e-2);
-		#endif
-		int clampedStepCount = min(stepCount, MinC(abs((rBorder.xyz - rayStart.xyz) / fullRayStep.xyz)));
-	#endif
+
 	
 	float3 samplePos = rayStart;
 	samplePos.z += fullRayStep.z * 0.5;
@@ -214,7 +187,7 @@ float4 RayTrace(int stepCount, float objectThickness, float minPixelStride, floa
 	//return float4(samplePos.xyz, k / 6.0);
 	//return float4(samplePos.xyz, i / float(stepCount));
 	//return float4(samplePos.xyz, float(i) / float(stepCount));
-	return float4(samplePos.xyz, (hasHitObject) ? i * pixelStride / maxPixelStride : stepCount);
+	return float4(samplePos.xyz, (hasHitObject) ? i: stepCount);
 }
 
 #endif // CAT_RAYTRACE_LIB_INCLUDED

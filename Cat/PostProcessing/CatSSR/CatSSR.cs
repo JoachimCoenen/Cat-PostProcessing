@@ -54,9 +54,7 @@ namespace Cat.PostProcessing {
 
 		static class PropertyIDs {
 			internal static readonly int StepCount_i					= Shader.PropertyToID("_StepCount");
-			internal static readonly int MinPixelStride_i				= Shader.PropertyToID("_MinPixelStride");
-			internal static readonly int MaxPixelStride_i				= Shader.PropertyToID("_MaxPixelStride");
-			internal static readonly int NoiseStrength_f				= Shader.PropertyToID("_NoiseStrength");
+			internal static readonly int PixelStride_i					= Shader.PropertyToID("_PixelStride");
 			internal static readonly int CullBackFaces_b				= Shader.PropertyToID("_CullBackFaces");
 			internal static readonly int MaxReflectionDistance_f		= Shader.PropertyToID("_MaxReflectionDistance");
 			// rayTraceResol
@@ -71,8 +69,6 @@ namespace Cat.PostProcessing {
 			// reflectionResolution
 
 			// useImportanceSampling
-			internal static readonly int ResolveSampleCount_i			= Shader.PropertyToID("_ResolveSampleCount");
-			internal static readonly int ImportanceSampleBias_f			= Shader.PropertyToID("_ImportanceSampleBias");
 			internal static readonly int UseCameraMipMap_b				= Shader.PropertyToID("_UseCameraMipMap");
 			// suppressFlickering	
 
@@ -172,14 +168,8 @@ namespace Cat.PostProcessing {
 			material.SetTexture(PropertyIDs.Refl_t, history);
 
 			material.SetFloat(PropertyIDs.MaxReflectionDistance_f, settings.maxReflectionDistance);
-			material.SetInt(PropertyIDs.StepCount_i, settings.stepCount);
-			// isExactPixelStride
-			var maxStride = CatSSR.isExactPixelStride ? settings.minPixelStride : settings.maxPixelStride;
-			var minPixelStride = Math.Min(settings.minPixelStride, maxStride);
-			var maxPixelStride = Math.Max(settings.minPixelStride, maxStride);
-			material.SetFloat(PropertyIDs.MinPixelStride_i, minPixelStride);
-			material.SetFloat(PropertyIDs.MaxPixelStride_i, maxPixelStride);
-			material.SetFloat(PropertyIDs.NoiseStrength_f, CatSSR.noiseStrength);
+			material.SetInt(PropertyIDs.StepCount_i, settings.maxStepCount);
+			material.SetFloat(PropertyIDs.PixelStride_i, settings.pixelStride);
 			material.SetFloat(PropertyIDs.CullBackFaces_b, settings.cullBackFaces ? 1 : 0);
 			// rayTraceResol
 			// upSampleHitTexture
@@ -194,8 +184,6 @@ namespace Cat.PostProcessing {
 			// reflectionResolution
 
 			// useImportanceSampling
-			material.SetInt(PropertyIDs.ResolveSampleCount_i, settings.resolveSampleCount);
-			material.SetFloat(PropertyIDs.ImportanceSampleBias_f, settings.importanceSampleBias);
 			material.SetFloat(PropertyIDs.UseCameraMipMap_b, settings.useCameraMipMap ? 1 : 0);
 			// suppressFlickering
 
@@ -267,9 +255,7 @@ namespace Cat.PostProcessing {
 			new Vector2( 0.250f, -0.250f),
 		};
 			
-		uint m_FrameCounter = 0;
 		override protected void PopulateCommandBuffer(CommandBuffer buffer, Material material, VectorInt2 cameraSize) {
-			m_FrameCounter++;
 			var isSceneView = postProcessingManager.isSceneView;
 
 			var mipRTSizes = new VectorInt2[8] {
@@ -294,10 +280,7 @@ namespace Cat.PostProcessing {
 			};
 
 			#region RayTrace
-			var sampeOffset = sampeOffsets2b[m_FrameCounter % 4];
-			buffer.SetGlobalVector("_SampleOffset", sampeOffset);
-			buffer.SetGlobalVectorArray("_SampleOffsets", settings.useJitter ? sampeOffsets2b : sampeOffsets0);
-
+			buffer.SetGlobalVectorArray("_SampleOffsets", settings.removeBanding ? sampeOffsets2b : sampeOffsets0);
 			GetTemporaryRT(buffer, PropertyIDs.Hit_t, rayTraceRTSize, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
 			Blit(buffer, PropertyIDs.Hit_t, material, (int)SSRPass.RayTrace);
 			#endregion
@@ -316,17 +299,18 @@ namespace Cat.PostProcessing {
 			//Blit(buffer, lastFrame, PropertyIDs.tempBuffers_t[0], material, (int)SSRPass.Median);
 	
 			#region CameraMipLevels
-			var maxCameraMipLvl = settings.useCameraMipMap ? 8 : 1;
+			var maxCameraMipLvl = settings.useCameraMipMap ? 6 : 1;
 			for (int i = 1; i < maxCameraMipLvl; ++i) {
-				GetTemporaryRT(buffer, PropertyIDs.tempBuffers_t[i], mipTempSizes[i], RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
+				var size = new VectorInt2(reflRTSize.x >> i-1, reflRTSize.y >> i);
+				GetTemporaryRT(buffer, PropertyIDs.tempBuffers_t[i], size, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
 				var pass = SSRPass.MipMapBlur;//settings.suppressFlickering && i == 1 ? SSRPass.MipMapBlurComressor : SSRPass.MipMapBlurVanilla;
 				buffer.SetGlobalFloat(PropertyIDs.MipLevel_f, i-1);
-	
-				buffer.SetGlobalVector(PropertyIDs.BlurDir_v, new Vector4(0, 2.25f/mipRTSizes[i-1].y, 0, -2.25f/mipRTSizes[i-1].y));
-				RenderTargetIdentifier source = i == 1 ? (RenderTargetIdentifier)PropertyIDs.tempBuffers_t[0] : lastFrame;
+
+
+				buffer.SetGlobalVector(PropertyIDs.BlurDir_v, new Vector4(0, 1.125f/(reflRTSize.y >> i), 0, -1.125f/(reflRTSize.y >> i)));
 				Blit(buffer, lastFrame, PropertyIDs.tempBuffers_t[i], material, (int)pass);
 	
-				buffer.SetGlobalVector(PropertyIDs.BlurDir_v, new Vector4(2.25f/mipRTSizes[i-1].x, 0, -2.25f/mipRTSizes[i-1].x, 0));
+				buffer.SetGlobalVector(PropertyIDs.BlurDir_v, new Vector4(1.125f/(reflRTSize.x >> i), 0, -1.125f/(reflRTSize.x >> i), 0));
 				buffer.SetGlobalTexture("_MainTex", PropertyIDs.tempBuffers_t[i]);
 				buffer.SetRenderTarget(lastFrame, i);
 				Blit(buffer, material, (int)SSRPass.MipMapBlur);
@@ -420,21 +404,13 @@ namespace Cat.PostProcessing {
 		[CustomLabel("Ray Trace Resol.")]
 		public TextureResolutionProperty rayTraceResol = new TextureResolutionProperty();
 
-		public BoolProperty useJitter = new BoolProperty();
+		public BoolProperty removeBanding = new BoolProperty();
 
-		[CustomLabelRange(16, 256, "Step Count")]
-		public IntProperty stepCount = new IntProperty();
-
-		public const bool			isExactPixelStride = false;
+		[CustomLabelRange(16, 256, "Max. Step Count")]
+		public IntProperty maxStepCount = new IntProperty();
 
 		[Range(1, 64)]
-		public IntProperty minPixelStride = new IntProperty();
-
-		[Range(1, 64)]
-		public IntProperty maxPixelStride = new IntProperty();
-
-		//[Range(0, 1)]
-		public const float			noiseStrength = 0.5f;
+		public IntProperty pixelStride = new IntProperty();
 
 		public BoolProperty cullBackFaces = new BoolProperty();
 
@@ -468,16 +444,11 @@ namespace Cat.PostProcessing {
 		public const bool		useImportanceSampling = true;
 
 		[Header("Importance sampling")]
-		[CustomLabelRange(1, 7, "Sample Count")]
-		public IntProperty resolveSampleCount = new IntProperty();
-
-		[CustomLabelRange(0, 1, "Bias (Spread)")]
-		public FloatProperty importanceSampleBias = new FloatProperty();
 
 		[CustomLabel("Use Mip Map")]
 		public BoolProperty useCameraMipMap = new BoolProperty();
 
-		public const bool			suppressFlickering = true;
+		//public const bool			suppressFlickering = true;
 
 
 		[Header("Temporal")]
@@ -503,12 +474,10 @@ namespace Cat.PostProcessing {
 			intensity.rawValue              = 0;
 
 			rayTraceResol.rawValue          = TextureResolution.FullResolution;
-			useJitter.rawValue				= true;
-			stepCount.rawValue              = 96;
+			removeBanding.rawValue 			= false;
+			maxStepCount.rawValue           = 96;
 		//	isExactPixelStride.rawValue     = false;
-			minPixelStride.rawValue         = 3;
-			maxPixelStride.rawValue         = 12;
-		//	noiseStrength.rawValue          = newSettings.0.5f;
+			pixelStride.rawValue            = 12;
 			cullBackFaces.rawValue          = true;
 			maxReflectionDistance.rawValue  = 100;
 		//	upSampleHitTexture.rawValue     = false;
@@ -523,8 +492,6 @@ namespace Cat.PostProcessing {
 
 
 		//	useImportanceSampling.rawValue  = true;
-			resolveSampleCount.rawValue     = 4;
-			importanceSampleBias.rawValue   = 0.75f;
 			useCameraMipMap.rawValue        = true;
 		//	suppressFlickering.rawValue     = true;
 
@@ -557,10 +524,9 @@ namespace Cat.PostProcessing {
 				switch (preset) {
 					case Preset.HighQuality: {
 							newSettings.rayTraceResol.rawValue           = TextureResolution.FullResolution;
-							newSettings.stepCount.rawValue               = 160;
+							newSettings.maxStepCount.rawValue            = 160;
 						//	newSettings.isExactPixelStride.rawValue      = false;
-							newSettings.minPixelStride.rawValue          = 3;
-							newSettings.maxPixelStride.rawValue          = 12;
+							newSettings.pixelStride.rawValue             = 8;
 						//	newSettings.noiseStrength.rawValue           = 0.5f;
 							newSettings.cullBackFaces.rawValue           = true;
 							newSettings.maxReflectionDistance.rawValue   = 100;
@@ -575,8 +541,6 @@ namespace Cat.PostProcessing {
 						//	newSettings.useReflectionMipMap.rawValue     = false;
 
 						//	newSettings.useImportanceSampling= true;
-							newSettings.resolveSampleCount.rawValue      = 4;
-							newSettings.importanceSampleBias.rawValue    = 0.75f;
 							newSettings.useCameraMipMap.rawValue         = true;
 						//	newSettings.suppressFlickering.rawValue      = true;
 
@@ -587,10 +551,10 @@ namespace Cat.PostProcessing {
 						break;
 					case Preset.MediumuQality: {
 							newSettings.rayTraceResol.rawValue           = TextureResolution.HalfResolution;
-							newSettings.stepCount.rawValue               = 128;
+							newSettings.removeBanding.rawValue           = true;
+							newSettings.maxStepCount.rawValue            = 96;
 						//	newSettings.isExactPixelStride.rawValue      = false;
-							newSettings.minPixelStride.rawValue          = 3;
-							newSettings.maxPixelStride.rawValue          = 12;
+							newSettings.pixelStride.rawValue             = 12;
 						//	newSettings.noiseStrength.rawValue           = 0.5f;
 							newSettings.cullBackFaces.rawValue           = true;
 							newSettings.maxReflectionDistance.rawValue   = 100;
@@ -605,8 +569,6 @@ namespace Cat.PostProcessing {
 						//	newSettings.useReflectionMipMap.rawValue     = false;
 
 						//	newSettings.useImportanceSampling= true;
-							newSettings.resolveSampleCount.rawValue      = 4;
-							newSettings.importanceSampleBias.rawValue    = 0.75f;
 							newSettings.useCameraMipMap.rawValue         = true;
 						//	newSettings.suppressFlickering.rawValue      = true;
 
@@ -616,11 +578,11 @@ namespace Cat.PostProcessing {
 						};
 						break;
 					case Preset.LowQuality: {
-							newSettings.rayTraceResol.rawValue          = TextureResolution.FullResolution;
-							newSettings.stepCount.rawValue              = 96;
+							newSettings.rayTraceResol.rawValue          = TextureResolution.HalfResolution;
+							newSettings.removeBanding.rawValue          = true;
+							newSettings.maxStepCount.rawValue           = 16;
 						//	newSettings.isExactPixelStride.rawValue     = false;
-							newSettings.minPixelStride.rawValue         = 3;
-							newSettings.maxPixelStride.rawValue         = 12;
+							newSettings.pixelStride.rawValue            = 16;
 						//	newSettings.noiseStrength.rawValue          = newSettings.0.5f;
 							newSettings.cullBackFaces.rawValue          = true;
 							newSettings.maxReflectionDistance.rawValue  = 100;
@@ -630,15 +592,13 @@ namespace Cat.PostProcessing {
 							newSettings.reflectionResolution.rawValue   = TextureResolution.FullResolution;
 							newSettings.intensity.rawValue              = 1;
 							newSettings.reflectionDistanceFade.rawValue = 0.5f;
-							newSettings.rayLengthFade.rawValue          = 0.25f;
+							newSettings.rayLengthFade.rawValue          = 0.5f;
 							newSettings.edgeFade.rawValue               = 0.125f;
 							newSettings.useRetroReflections.rawValue    = false;
 						//	newSettings.useReflectionMipMap.rawValue    = false;
 
 
 						//	newSettings.useImportanceSampling.rawValue  = true;
-							newSettings.resolveSampleCount.rawValue     = 4;
-							newSettings.importanceSampleBias.rawValue   = 0.75f;
 							newSettings.useCameraMipMap.rawValue        = true;
 						//	newSettings.suppressFlickering.rawValue     = true;
 
@@ -656,10 +616,9 @@ namespace Cat.PostProcessing {
 					default: {
 							Debug.LogFormat("UnknownPresetmode '{0}'! using standard preset", preset);
 							newSettings.rayTraceResol.rawValue           = TextureResolution.FullResolution;
-							newSettings.stepCount.rawValue               = 96;
+							newSettings.maxStepCount.rawValue            = 96;
 						//	newSettings.isExactPixelStride.rawValue      = false;
-							newSettings.minPixelStride.rawValue          = 3;
-							newSettings.maxPixelStride.rawValue          = 12;
+							newSettings.pixelStride.rawValue             = 12;
 						//	newSettings.noiseStrength.rawValue           = 0.5f;
 							newSettings.cullBackFaces.rawValue           = true;
 							newSettings.maxReflectionDistance.rawValue   = 100;
@@ -674,8 +633,6 @@ namespace Cat.PostProcessing {
 						//	newSettings.useReflectionMipMap.rawValue     = false;
 
 						//	newSettings.useImportanceSampling= true;
-							newSettings.resolveSampleCount.rawValue      = 4;
-							newSettings.importanceSampleBias.rawValue    = 0.75f;
 							newSettings.useCameraMipMap.rawValue         = true;
 						//	newSettings.suppressFlickering.rawValue      = true;
 
