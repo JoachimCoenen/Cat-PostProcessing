@@ -41,5 +41,13 @@ namespace Cat.PostProcessing {
 			}
 		}
 
+		public void OnDestroy() {
+			foreach (var pair in m_Settings) {
+				//UnityEngine.Object.Destroy();
+				UnityEngine.Object.DestroyImmediate(pair.Value);
+			}
+			m_Settings.Clear();
+		}
+
 	}
 }

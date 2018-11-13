@@ -27,6 +27,7 @@ namespace Cat.PostProcessing {
 
 		internal void setRT(RenderTexture aRt) {
 			if (this.rt != null) {
+				Debug.Log("RenderTextureContainer::setRT(): new RT added;");
 				this.rt.Release();
 			}
 			this.rt = aRt;
@@ -55,6 +56,7 @@ namespace Cat.PostProcessing {
 		} 
 
 		protected bool isValid = true;
+		internal bool isDestroyed { get; private set; }
 
 		virtual internal void InitializeEffect() {}
 		virtual protected void UpdateMaterial(Material material, Camera camera, VectorInt2 cameraSize) {}
@@ -121,19 +123,23 @@ namespace Cat.PostProcessing {
 		private readonly HashSet<RenderTextureContainer> m_OldRenderTextures = new HashSet<RenderTextureContainer>();
 		private readonly HashSet<RenderTextureContainer> m_RenderTextures = new HashSet<RenderTextureContainer>();
 
+		private bool isCurrentRTSetting(RenderTexture rt, VectorInt2 rtSize, int rtDepth, bool rtUseMipMap, RenderTextureFormat rtFormat, FilterMode rtFilterMode, RenderTextureReadWrite rtReadWrite, TextureWrapMode rtWrapMode, string rtName) {
+			return !(rt == null// if at least one difference, release old texture and create a new one:
+					|| rtSize       != new VectorInt2(rt.width, rt.height)
+					|| rtDepth      != rt.depth
+					|| rtUseMipMap  != rt.useMipMap
+					|| rtFormat     != rt.format
+					|| rtFilterMode != rt.filterMode
+					//	|| rtReadWrite  != (rt.sRGB ? RenderTextureReadWrite.sRGB : RenderTextureReadWrite.Linear)
+					|| rtWrapMode   != rt.wrapMode
+					|| rtName       != rt.name
+					|| false
+					);
+		}
+
 		protected void CreateRT(RenderTextureContainer rtc, VectorInt2 rtSize, int rtDepth, bool rtUseMipMap, RenderTextureFormat rtFormat, FilterMode rtFilterMode = FilterMode.Point, RenderTextureReadWrite rtReadWrite = RenderTextureReadWrite.Default, TextureWrapMode rtWrapMode = TextureWrapMode.Clamp, string rtName = "RenderTexture") {
 			RenderTexture rt = rtc;
-			if (rt == null // if at least one difference, release old texture and create a new one:
-				|| rtSize       != new VectorInt2(rt.width, rt.height)
-				|| rtDepth      != rt.depth
-				|| rtUseMipMap  != rt.useMipMap
-				|| rtFormat     != rt.format
-				|| rtFilterMode != rt.filterMode
-			//	|| rtReadWrite  != (rt.sRGB ? RenderTextureReadWrite.sRGB : RenderTextureReadWrite.Linear)
-				|| rtWrapMode   != rt.wrapMode
-				|| rtName       != rt.name
-				|| false
-			)  { 
+			if (!isCurrentRTSetting(rt, rtSize, rtDepth, rtUseMipMap, rtFormat, rtFilterMode, rtReadWrite, rtWrapMode, rtName))  { 
 				// if at least one difference, release old texture and create a new one:
 			//	if (rt != null && rt.IsCreated()) {
 			//		rt.Release();
@@ -163,8 +169,9 @@ namespace Cat.PostProcessing {
 			RenderTexture tempRT = null;
 			try {
 				RenderTexture rt = rtc;
+				bool needsToCopyRT = !isCurrentRTSetting(rt, rtSize, rtDepth, rtUseMipMap, rtFormat, rtFilterMode, rtReadWrite, rtWrapMode, rtName);
 				var hasPreviousRT = rt != null && rt.IsCreated();
-				if (hasPreviousRT) {
+				if (hasPreviousRT && needsToCopyRT) {
 					var tempRTReadWrite = rt.sRGB ? RenderTextureReadWrite.sRGB : RenderTextureReadWrite.Linear;
 					tempRT = RenderTexture.GetTemporary(rt.width, rt.height, rt.depth, rt.format, tempRTReadWrite, rt.antiAliasing);
 					tempRT.filterMode = rt.filterMode;
@@ -173,7 +180,7 @@ namespace Cat.PostProcessing {
 
 				CreateRT(rtc, rtSize, rtDepth, rtUseMipMap, rtFormat, rtFilterMode, rtReadWrite, rtWrapMode, rtName);
 
-				if (hasPreviousRT) {
+				if (hasPreviousRT && needsToCopyRT) {
 					Graphics.Blit(tempRT, rtc);
 				}
 			} finally {
@@ -194,6 +201,7 @@ namespace Cat.PostProcessing {
 
 		protected void ReleaseAllOldRTs() {
 			foreach (var rtc in m_OldRenderTextures) {
+				Debug.Log("ReleaseAllOldRTs: RenderTexture Relesed");
 				if (rtc != null) {
 					rtc.setRT(null);
 				}
@@ -203,6 +211,7 @@ namespace Cat.PostProcessing {
 
 		protected void ReleaseAllRTs() {
 			foreach (var rtc in m_RenderTextures) {
+				Debug.Log("ReleaseAllRTs: RenderTexture Relesed");
 				if (rtc != null) {
 					rtc.setRT(null);
 				}
@@ -274,6 +283,7 @@ namespace Cat.PostProcessing {
 			UnityEngine.Object.DestroyImmediate(m_Material);
 			m_Material = null;
 			ReleaseAllRTs();
+			isDestroyed = true;
 		}
 
 		static Mesh s_BlitQuad;

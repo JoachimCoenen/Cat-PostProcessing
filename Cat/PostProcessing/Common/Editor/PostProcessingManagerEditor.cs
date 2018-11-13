@@ -34,9 +34,27 @@ namespace Cat.PostProcessingEditor {
 			serializedObject.Update();
 			EditorGUILayout.PropertyField(m_ProfileProperty);
 			CatEditorGUILayout.Splitter();
-			EditorGUILayout.Space();
+			//EditorGUILayout.Space();
+			CatEditorGUILayout.Header("Tracked Settings:");
 
 			foreach (var pair in m_VirtualProfile.settings) {
+				var effect = pair.Value;
+				using (new EditorGUI.DisabledScope(!effect.enabled)) {
+					EditorGUILayout.LabelField(effect.effectName);
+				}
+			}
+
+			CatEditorGUILayout.Splitter();
+			CatEditorGUILayout.Header("Active Effects:");
+			foreach (var effect in m_Manager.m_ActiveEffects) {
+				using (new EditorGUI.DisabledScope(!effect.enabled)) {
+					EditorGUILayout.LabelField(effect.effectName);
+				}
+			}
+
+			CatEditorGUILayout.Splitter();
+			CatEditorGUILayout.Header("OldEffects_helper:");
+			foreach (var pair in m_Manager.m_OldEffects_helper) {
 				var effect = pair.Value;
 				using (new EditorGUI.DisabledScope(!effect.enabled)) {
 					EditorGUILayout.LabelField(effect.effectName);

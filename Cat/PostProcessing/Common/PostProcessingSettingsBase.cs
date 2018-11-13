@@ -6,6 +6,8 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using UnityEngine;
 using Cat.Common;
+using System.Text;
+
 namespace Cat.PostProcessing {
 	
 	[Serializable]
@@ -50,5 +52,7 @@ namespace Cat.PostProcessing {
 				}
 			}
 		}
+			
 	}
+
 }

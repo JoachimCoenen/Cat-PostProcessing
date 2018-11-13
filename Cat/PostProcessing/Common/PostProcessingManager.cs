@@ -107,7 +107,7 @@ namespace Cat.PostProcessing {
 				RemoveCommandBuffer(effect, cameraEvent, cb);
 			}
 			m_CommandBuffers[key] = cb;
-			// UpdateCameraCommandBuffers();
+			setCommandBufferChainDirty();
 		}
 
 		internal void RemoveCommandBuffer(PostProcessingBase effect, CameraEvent cameraEvent, CommandBuffer cb) {
@@ -119,17 +119,20 @@ namespace Cat.PostProcessing {
 			}
 
 			m_CommandBuffers.Remove(key);
+
 		}
 
 		internal void RemoveAllCommandBuffers(PostProcessingBase effect) {
-
+//			Debug.Log("RemoveAllCommandBuffers DEBUG");
 			foreach ( var s in m_CommandBuffers.Where(kv => kv.Key.item1 == effect.GetType()).ToList() ) {
+//				Debug.Log("RemoveAllCommandBuffers foreach DEBUG");
 				camera.RemoveCommandBuffer(s.Key.item2, s.Value);
 				m_CommandBuffers.Remove(s.Key);
 			}
+			setCommandBufferChainDirty();
 		}
 			
-		private readonly Dictionary<Type, PostProcessingBase> m_OldEffects_helper = new Dictionary<Type, PostProcessingBase>();
+		public readonly Dictionary<Type, PostProcessingBase> m_OldEffects_helper = new Dictionary<Type, PostProcessingBase>();
 		private readonly HashSet<PostProcessingBase> m_EffectsToRemove = new HashSet<PostProcessingBase>();
 
 		internal void UpdateEffectsSetup() {
@@ -179,8 +182,9 @@ namespace Cat.PostProcessing {
 				m_ActiveEffects.Sort((x, y) => x.queueingPosition.CompareTo(y.queueingPosition));
 			}
 
-			if (atLeastOneEffectAdded || atLeastOneEffectRemoved) {
+			if (atLeastOneEffectAdded || atLeastOneEffectRemoved || isCommandBufferChainDirty) {
 				UpdateCameraCommandBuffers();
+				isCommandBufferChainDirty = false;
 				UpdateCameraDepthTextureMode();
 			}
 		}
@@ -238,25 +242,28 @@ namespace Cat.PostProcessing {
 		}
 
 		private bool TryRemoveEffect(PostProcessingBase effect) {
+//			Debug.Log("TryRemoveEffect DEBUG");
 			RemoveAllCommandBuffers(effect);
 			m_OldEffects_helper.Remove(effect.m_Settings.GetType());
 			effect.OnDestroy();
 			bool wasSuccessfull = m_ActiveEffects.Remove(effect);
 
 			if (m_ActiveEffects.Contains(effect)) {
-				Debug.LogErrorFormat("Effect removed ffrom list, but was still found there??? ({0}, {1})", effect.effectName, wasSuccessfull);
+				Debug.LogErrorFormat("Effect removed from list, but was still found there??? ({0}, {1})", effect.effectName, wasSuccessfull);
 			}
 
 			return wasSuccessfull;
 		}
 
 		private void RemoveEffect(PostProcessingBase effect) {
+//			Debug.Log("RemoveEffect DEBUG");
 			if (!TryRemoveEffect(effect)) {
 				Debug.LogErrorFormat("PostProcessingBase.TryRemoveEffectFromCamera({0}, {1}) failed", camera.name, effect.effectName);
 			}
 		}
 
 		private void RemoveAllEffects() {
+//			Debug.Log("RemoveAllEffects DEBUG");
 			var tempEffects = (from effect in m_ActiveEffects select effect).ToList();
 			foreach (var effect in tempEffects) {
 				RemoveEffect(effect);
@@ -331,12 +338,29 @@ namespace Cat.PostProcessing {
 		}
 
 		private void OnDestroy() {
+//			Debug.Log("OnDestroy invocation DEBUG");
+
 			RemoveAllEffects();
+			/*
+			foreach (var effect in m_OldEffects_helper.Select(p => p.Value).Where(e => !e.isDestroyed)) {
+				effect.OnDestroy();
+			}
+			m_OldEffects_helper.Clear();
+
+			foreach (var effect in m_EffectsToRemove.Where(e => !e.isDestroyed)) {
+				effect.OnDestroy();
+			}
+			m_EffectsToRemove.Clear();
+			*/
 
 			if (m_DepthTexture != null) {
 				m_DepthTexture.Release();
 			}
-			camera.RemoveCommandBuffer(m_DepthCommandBufferCameraEvent, depthCommandBuffer);
+			if (m_DepthCommandBuffer != null) {
+				camera.RemoveCommandBuffer(m_DepthCommandBufferCameraEvent, m_DepthCommandBuffer); 
+			}
+			m_VirtualProfile.OnDestroy();
+//			Debug.Log("OnDestroy exit DEBUG");
 		}
 
 		void OnValidate() {
@@ -478,8 +502,13 @@ namespace Cat.PostProcessing {
 
 		// private readonly Dictionary<Type, PostProcessingBase> m_Effects = 
 		// 	new Dictionary<Type, PostProcessingBase>();
-		private readonly List<PostProcessingBase> m_ActiveEffects = new List<PostProcessingBase>();
+		public readonly List<PostProcessingBase> m_ActiveEffects = new List<PostProcessingBase>();
 		private readonly Dictionary<Tuple<Type, CameraEvent>, CommandBuffer> m_CommandBuffers = new Dictionary<Tuple<Type, CameraEvent>, CommandBuffer>();
+		private bool isCommandBufferChainDirty = true;
+		internal void setCommandBufferChainDirty() {
+			isCommandBufferChainDirty = true;
+		}
+
 
 	}
 

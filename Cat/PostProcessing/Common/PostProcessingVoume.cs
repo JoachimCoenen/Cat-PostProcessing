@@ -83,10 +83,13 @@ namespace Cat.PostProcessing {
 
 			foreach (var volumeGroup in filteredVolumes) {
 				foreach (var volume in volumeGroup) {
-					if (volume.volume.m_sharedProfile != null) {
-						var t1 = 1f - Mathf.Clamp01(volume.collision.sqrDistance / volume.volume.BlendDistance);
-						virtualProfile.InterpolateTo(volume.volume.m_sharedProfile, t1);
-					}
+					if (volume.volume.m_sharedProfile == null)
+						continue;
+					var t1 = 1f - Mathf.Clamp01(volume.collision.sqrDistance / volume.volume.BlendDistance);
+					if (t1 <= Mathf.Epsilon)
+						continue;
+					virtualProfile.InterpolateTo(volume.volume.m_sharedProfile, t1);
+					
 				}
 			}
 
