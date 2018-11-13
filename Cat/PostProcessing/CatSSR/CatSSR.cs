@@ -120,11 +120,12 @@ namespace Cat.PostProcessing {
 			reflRTSize = cameraSize * settings.reflectionResolution;
 			HitTextureSize = CatSSR.upSampleHitTexture ? reflRTSize : rayTraceRTSize;
 
+			isFirstFrame = (RenderTexture)lastFrame == null;
 			CreateCopyRT(lastFrame, reflRTSize, 0, settings.useCameraMipMap, RenderTextureFormat.DefaultHDR, FilterMode.Trilinear, RenderTextureReadWrite.Default, TextureWrapMode.Clamp, "lastFrame");
+
 			CreateRT(    history,   reflRTSize, 0, settings.useReflectionMipMap, RenderTextureFormat.DefaultHDR, FilterMode.Bilinear, RenderTextureReadWrite.Default, TextureWrapMode.Clamp, "history");
 		//	material.SetTexture(PropertyIDs.History_t, history);
 			material.SetTexture(PropertyIDs.Refl_t, history);
-			isFirstFrame = true;
 			setBufferDirty();
 		}
 
@@ -272,13 +273,9 @@ namespace Cat.PostProcessing {
 			#region RetroReflection
 			if (isFirstFrame || !settings.useRetroReflections) {
 				Blit(buffer, BuiltinRenderTextureType.CameraTarget, lastFrame);
-				if (isFirstFrame) {
-					isFirstFrame = false;
-					setBufferDirty();
-				}
 			}
 			#endregion
-	
+
 			#region CameraMipLevels
 			var maxCameraMipLvl = settings.useCameraMipMap ? 8 : 1;
 			for (int i = 1; i < maxCameraMipLvl; ++i) {
