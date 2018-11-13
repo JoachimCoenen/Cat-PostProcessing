@@ -89,7 +89,8 @@ Shader "Hidden/Cat SSR" {
 		
 		//Pass 2 combineTemporal
 		Pass {
-			Blend One Zero, One Zero
+			Blend One Zero, One Zero 
+			// Blend SrcAlpha One, One Zero
 			Stencil {
 				ref [_StencilNonBackground]
 				readmask [_StencilNonBackground]
@@ -100,7 +101,7 @@ Shader "Hidden/Cat SSR" {
 			
 			CGPROGRAM
 			#pragma target 3.0
-			#pragma vertex vert
+			#pragma vertex vertFull
 			#pragma fragment fragCombineTemporal
 			#include "CatSSR.cginc"
 			ENDCG

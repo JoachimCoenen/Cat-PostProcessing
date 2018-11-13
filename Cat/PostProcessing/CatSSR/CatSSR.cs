@@ -27,8 +27,12 @@ namespace Cat.PostProcessing {
 
 		private CatSSR lastSettings;
 
-		private readonly RenderTextureContainer lastFrame = new RenderTextureContainer();
-		private readonly RenderTextureContainer history = new RenderTextureContainer();
+		// private readonly RenderTextureContainer lastFrame0 = new RenderTextureContainer();
+		// private readonly RenderTextureContainer lastFrame1 = new RenderTextureContainer();
+		private RenderTextureContainer[] lastFramePingPong = { new RenderTextureContainer(), new RenderTextureContainer() };
+		// private readonly RenderTextureContainer history0 = new RenderTextureContainer();
+		// private readonly RenderTextureContainer history1 = new RenderTextureContainer();
+		private RenderTexture[] historyPingPong = { null, null };
 
 	//	[SerializeField]
 		private VectorInt2 rayTraceRTSize = VectorInt2.zero;
@@ -111,16 +115,26 @@ namespace Cat.PostProcessing {
 			};
 		}
 
+		override protected void OnDisable() {
+			RenderTexture.ReleaseTemporary(historyPingPong[1]);
+			RenderTexture.ReleaseTemporary(historyPingPong[0]);
+		}
+
 		override protected void UpdateRenderTextures(Camera camera, VectorInt2 cameraSize) {
 			// Get RenderTexture sizes:
 			rayTraceRTSize = cameraSize * settings.rayTraceResol;
 			reflRTSize = cameraSize * settings.reflectionResolution;
 			HitTextureSize = CatSSR.upSampleHitTexture ? reflRTSize : rayTraceRTSize;
 
-			CreateCopyRT(lastFrame, reflRTSize, 0, settings.useCameraMipMap, RenderTextureFormat.DefaultHDR, FilterMode.Trilinear, RenderTextureReadWrite.Default, TextureWrapMode.Clamp, "lastFrame");
-			CreateCopyRT(history,   reflRTSize, 0, settings.useReflectionMipMap, RenderTextureFormat.DefaultHDR, FilterMode.Bilinear, RenderTextureReadWrite.Default, TextureWrapMode.Clamp, "history");
+			CreateCopyRT(lastFramePingPong[0], reflRTSize, 0, settings.useCameraMipMap, RenderTextureFormat.DefaultHDR, FilterMode.Trilinear, RenderTextureReadWrite.Default, TextureWrapMode.Clamp, "lastFrame");
+			CreateCopyRT(lastFramePingPong[1], reflRTSize, 0, settings.useCameraMipMap, RenderTextureFormat.DefaultHDR, FilterMode.Trilinear, RenderTextureReadWrite.Default, TextureWrapMode.Clamp, "lastFrame");
+
+			RenderTexture.ReleaseTemporary(historyPingPong[1]);
+			historyPingPong[1] = RenderTexture.GetTemporary(reflRTSize.x, reflRTSize.y, 0, RenderTextureFormat.DefaultHDR, RenderTextureReadWrite.Default);
+			//CreateCopyRT(historyPingPong[0],   reflRTSize, 0, settings.useReflectionMipMap, RenderTextureFormat.DefaultHDR, FilterMode.Bilinear, RenderTextureReadWrite.Default, TextureWrapMode.Clamp, "history");
+			//historyPingPong[1].setRT(null);
+			//CreateRT(historyPingPong[1],   reflRTSize, 0, settings.useReflectionMipMap, RenderTextureFormat.DefaultHDR, FilterMode.Bilinear, RenderTextureReadWrite.Default, TextureWrapMode.Clamp, "history");
 		//	material.SetTexture(PropertyIDs.History_t, history);
-			material.SetTexture(PropertyIDs.Refl_t, history);
 			//isFirstFrame = true;
 			setBufferDirty();
 		}
@@ -165,7 +179,6 @@ namespace Cat.PostProcessing {
 			} else {
 				material.DisableKeyword("CAT_TEMPORAL_SSR_ON");
 			}
-			material.SetTexture(PropertyIDs.Refl_t, history);
 
 			material.SetFloat(PropertyIDs.MaxReflectionDistance_f, settings.maxReflectionDistance);
 			material.SetInt(PropertyIDs.StepCount_i, settings.maxStepCount);
@@ -285,9 +298,16 @@ namespace Cat.PostProcessing {
 			Blit(buffer, PropertyIDs.Hit_t, material, (int)SSRPass.RayTrace);
 			#endregion
 
+
+			// var tmp2 = lastFramePingPong[0];
+			// lastFramePingPong[0] = lastFramePingPong[1];
+			// lastFramePingPong[1] = tmp2;
+
+
+
 			#region RetroReflection
 			if (isFirstFrame || !settings.useRetroReflections) {
-				Blit(buffer, BuiltinRenderTextureType.CameraTarget, lastFrame);
+				Blit(buffer, BuiltinRenderTextureType.CameraTarget, lastFramePingPong[0]);
 				if (isFirstFrame) {
 					isFirstFrame = false;
 					setBufferDirty();
@@ -299,7 +319,7 @@ namespace Cat.PostProcessing {
 			//Blit(buffer, lastFrame, PropertyIDs.tempBuffers_t[0], material, (int)SSRPass.Median);
 	
 			#region CameraMipLevels
-			var maxCameraMipLvl = settings.useCameraMipMap ? 6 : 1;
+			var maxCameraMipLvl = settings.useCameraMipMap ? 5 : 1;
 			for (int i = 1; i < maxCameraMipLvl; ++i) {
 				var size = new VectorInt2(reflRTSize.x >> i-1, reflRTSize.y >> i);
 				GetTemporaryRT(buffer, PropertyIDs.tempBuffers_t[i], size, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
@@ -308,11 +328,11 @@ namespace Cat.PostProcessing {
 
 
 				buffer.SetGlobalVector(PropertyIDs.BlurDir_v, new Vector4(0, 1.125f/(reflRTSize.y >> i), 0, -1.125f/(reflRTSize.y >> i)));
-				Blit(buffer, lastFrame, PropertyIDs.tempBuffers_t[i], material, (int)pass);
+				Blit(buffer, lastFramePingPong[0], PropertyIDs.tempBuffers_t[i], material, (int)pass);
 	
 				buffer.SetGlobalVector(PropertyIDs.BlurDir_v, new Vector4(1.125f/(reflRTSize.x >> i), 0, -1.125f/(reflRTSize.x >> i), 0));
 				buffer.SetGlobalTexture("_MainTex", PropertyIDs.tempBuffers_t[i]);
-				buffer.SetRenderTarget(lastFrame, i);
+				buffer.SetRenderTarget(lastFramePingPong[0], i);
 				Blit(buffer, material, (int)SSRPass.MipMapBlur);
 	
 				ReleaseTemporaryRT(buffer, PropertyIDs.tempBuffers_t[i]);	// release temporary RT
@@ -324,23 +344,35 @@ namespace Cat.PostProcessing {
 			var useCombineTemporal = settings.useTemporalSampling && !isSceneView;
 		//	GetT|emporaryRT(buffer, PropertyIDs.Refl_t, mipRTSizes[0], RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
 	
+
+
+
+
 			if (useCombineTemporal) {
 				GetTemporaryRT(buffer, PropertyIDs.tempBuffer0_t, reflRTSize, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
-				Blit(buffer, lastFrame, PropertyIDs.tempBuffer0_t, material, (int)SSRPass.ResolveAdvanced);
+				Blit(buffer, lastFramePingPong[0], PropertyIDs.tempBuffer0_t, material, (int)SSRPass.ResolveAdvanced);
 				//	buffer.SetGlobalTexture(PropertyIDs.History_t, history);
-				GetTemporaryRT(buffer, PropertyIDs.tempBuffer1_t, reflRTSize, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
-				Blit(buffer, PropertyIDs.tempBuffer0_t, PropertyIDs.tempBuffer1_t, material, (int)SSRPass.CombineTemporal);
+
+				//buffer.SetGlobalTexture(PropertyIDs.History_t,  historyPingPong[0]);
+				Blit(buffer, PropertyIDs.tempBuffer0_t, historyPingPong[1], material, (int)SSRPass.CombineTemporal);
 				ReleaseTemporaryRT(buffer, PropertyIDs.tempBuffer0_t);
-				Blit(buffer, PropertyIDs.tempBuffer1_t, history);
-				ReleaseTemporaryRT(buffer, PropertyIDs.tempBuffer1_t);
+				var tmp = historyPingPong[0];
+				historyPingPong[0] = historyPingPong[1];
+				historyPingPong[1] = tmp;
+				buffer.SetGlobalTexture(PropertyIDs.Refl_t,  historyPingPong[0]);
+				// GetTemporaryRT(buffer, PropertyIDs.Refl_t, reflRTSize, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
+				//Blit(buffer, historyPingPong[0], PropertyIDs.Refl_t);
+				// buffer.CopyTexture(historyPingPong[0], PropertyIDs.Refl_t);
+
+
 			//	Blit(buffer, PropertyIDs.Refl_t, history);
 			} else {
-				GetTemporaryRT(buffer, PropertyIDs.tempBuffer0_t, reflRTSize, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
-				Blit(buffer, lastFrame, PropertyIDs.tempBuffer0_t, material, (int)SSRPass.ResolveAdvanced);
+				GetTemporaryRT(buffer, PropertyIDs.Refl_t, reflRTSize, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
+				Blit(buffer, lastFramePingPong[0], PropertyIDs.Refl_t, material, (int)SSRPass.ResolveAdvanced);
+				// Blit(buffer, BuiltinRenderTextureType.CameraTarget, material, (int)SSRPass.ComposeAndApplyReflections);
+				//Blit(buffer, PropertyIDs.Refl_t, historyPingPong[0], material, (int)SSRPass.Median);
 
-				Blit(buffer, PropertyIDs.tempBuffer0_t, history, material, (int)SSRPass.Median);
-
-				ReleaseTemporaryRT(buffer, PropertyIDs.tempBuffer0_t);
+				//ReleaseTemporaryRT(buffer, PropertyIDs.tempBuffer1_t);
 
 			}
 			#endregion
@@ -353,18 +385,20 @@ namespace Cat.PostProcessing {
 			#region RetroReflection
 			if (settings.useRetroReflections) {
 				buffer.SetGlobalTexture("_MainTex", BuiltinRenderTextureType.CameraTarget);
-				buffer.SetRenderTarget(lastFrame, 0);
+				buffer.SetRenderTarget(lastFramePingPong[0], 0);
 				Blit(buffer, material, (int)SSRPass.Median);
 			}                   
 			#endregion
 
 			#region Debug
 			if (settings.debugOn) {
-				Blit(buffer, lastFrame, BuiltinRenderTextureType.CameraTarget, material, (int)SSRPass.Debug);
+				Blit(buffer, lastFramePingPong[0], BuiltinRenderTextureType.CameraTarget, material, (int)SSRPass.Debug);
 			}
 			#endregion
 
-		//	ReleaseT|emporaryRT(buffer, PropertyIDs.Refl_t);
+			if (!useCombineTemporal) {
+				ReleaseTemporaryRT(buffer, PropertyIDs.Refl_t);
+			}
 			ReleaseTemporaryRT(buffer, PropertyIDs.Hit_t);
 			//	ReleaseTemporaryRT(buffer, PropertyIDs.Depth_t);
 

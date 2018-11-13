@@ -182,8 +182,10 @@ half RayAttenBorder(half2 uvHit, half2 dir, half value) {
 }
 
 half3 GetNoise(float2 uv, float4 texelSize) {
+	const float phi = 1.61803398874989484820;
+	const float2 goldenRatio = 1.0/phi * _BlueNoise_TexelSize.zw;
 	float2 pos = uv * texelSize.zw;
-	half3 noise2D = Tex2Dlod(_BlueNoise, (pos + _FrameCounter) *_BlueNoise_TexelSize.xy, 0).rgb;
+	half3 noise2D = Tex2Dlod(_BlueNoise, (pos + _FrameCounter * goldenRatio) *_BlueNoise_TexelSize.xy, 0).rgb;
 	return noise2D;
 }
 
@@ -293,7 +295,7 @@ float getConeTangent(float smoothness, float nv) {
 	return lerp(0.0, roughness, /*pow(saturate(nv), 1.5) * */Pow2(roughness));
 }
 
-static const half maxCameraMipLevel = 6.0 - 1.0;
+static const half maxCameraMipLevel = 5.0 - 1.0;
 float getMipLevelResolve(float coneTangent, float2 hitUV, float2 uv, float maxMipLevel) {
 	float intersectionCircleRadius = coneTangent * length(hitUV - uv);
 	return clamp(log2(intersectionCircleRadius * MaxC(_MainTex_TexelSize.zw)), 0, maxMipLevel);
@@ -394,6 +396,7 @@ float4 combineTemporal(CAT_ARGS_TEX_INFO(currentTex), sampler2D historyTex, floa
 		
 		float2 tx = currentTex_TexelSize.xy;
 		float4 history = tex2D(historyTex, uvPrev);
+		
 		//confidence *= any(history);
 		float4 mainTex = tex2D(currentTex, uv);
 		float4 corner1 = tex2D(currentTex, uv + tx*float2( 0.5, -1.0));
@@ -447,8 +450,48 @@ float4 combineTemporal(CAT_ARGS_TEX_INFO(currentTex), sampler2D historyTex, floa
 		return result;
 }
 
-float4 fragCombineTemporal(VertexOutput i) : SV_Target {
-	return combineTemporal(CAT_PASS_TEX_INFO(_MainTex), _ReflectionsTex, i.uv);
+half4 fragComposeAndApplyReflectionsTemporal(VertexOutputFull i, half4 composedRefl) : SV_Target {
+	//i.uv = SnapToPixel(i.uv, _HitTex_TexelSize);
+	CAT_GET_GBUFFER(s, i.uv)
+	
+	float roughness = 1 - s.smoothness;
+	half confidence = 1 - Pow3(InvLerpSat(0.875*(1-MIN_SMOOTHNESS), 1-MIN_SMOOTHNESS, roughness));
+	
+	//half4 composedRefl = Tex2Dlod(_ReflectionsTex, i.uv, 0);
+//	composedRefl.a = Pow2(composedRefl.a);
+	composedRefl.a = max(0, composedRefl.a * confidence * _Intensity);
+	
+	float3 wsViewDir = normalize(i.wsRay);
+	
+	if (_CullBackFaces) {
+		float3 wsReflDir = normalize(reflect(wsViewDir, normalize(s.normal)));
+		composedRefl.a *= saturate(dot(wsViewDir, wsReflDir) * 2.0);
+	}
+	
+	
+	// Let core Shader functions do the dirty work of applying the BRDF
+	CAT_DECLARE_OUTPUT(UnityGI, gi);
+	ResetUnityGI(/*out*/ gi);
+	gi.indirect.specular = composedRefl.rgb;
+	
+	s.occlusion = 1-(0.5-0.5*s.occlusion) ; // JCO@@@INVESTIGATE: is this REALLY correct? I believe so, but not 100 % shure...
+	half3 reflectionFinal = applyLighting(s, wsViewDir, gi).rgb;
+
+	float3 reflProbes = tex2D(_CameraReflectionsTexture, i.uv).rgb;
+	return float4(reflectionFinal - reflProbes, 1-(1-composedRefl.a));
+}
+
+struct CombineTemporalResult {
+	//float4 color : SV_TARGET0;
+	float4 history : SV_TARGET0;
+};
+
+CombineTemporalResult fragCombineTemporal(VertexOutputFull i) {
+	CombineTemporalResult o;
+	o.history = combineTemporal(CAT_PASS_TEX_INFO(_MainTex), _ReflectionsTex, i.uv);
+	//o.color = fragComposeAndApplyReflectionsTemporal(i, o.history);
+	//o.color.rgb = o.color.rgb * o.color.a + Tex2Dlod(_ReflectionsTex, i.uv, 0).rgb;
+	return o;
 //	return combineTemporal(CAT_PASS_TEX_INFO(_TempTexture_This_texture_is_never_going_to_be_directly_referenced0x), _MainTex, i.uv);
 }
 
@@ -734,7 +777,7 @@ half4 fragDebug(VertexOutputFull i ) : SV_Target {
 /*6*/	half3(reflections.rgb + reflProbes)*reflections.a,
 /*1*/	half3(pureRefl.rgb),
 /*5*/	half3(hitPacked.www),
-/*3*/	half3(HSVtoRGB(half3(GetNoise(i.uv, _HitTex_TexelSize).r, 1, 1))),
+/*3*/	half3((half3(GetNoise(i.uv, _HitTex_TexelSize).rrr))),
 /*2*/	half3(Tex2Dlod(_MainTex, i.uv, _UseCameraMipMap ? _MipLevelForDebug : 0).rgb),
 /*4*/	half3(getMipLevelResolve(vsHitPos, rayLength, s.smoothness, maxCameraMipLevel).xxx / maxCameraMipLevel),
 /*7*/	half3(AreReflectionsAllowed(vsViewDir, vsNormal, 1/invReflectionDistance, s.smoothness).xxx),
