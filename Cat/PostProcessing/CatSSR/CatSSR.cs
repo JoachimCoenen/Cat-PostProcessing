@@ -73,6 +73,7 @@ namespace Cat.PostProcessing {
 			// reflectionResolution
 
 			// useImportanceSampling
+			internal static readonly int ImportanceSampleBias_f			= Shader.PropertyToID("_ImportanceSampleBias");
 			internal static readonly int UseCameraMipMap_b				= Shader.PropertyToID("_UseCameraMipMap");
 			// suppressFlickering	
 
@@ -143,7 +144,7 @@ namespace Cat.PostProcessing {
 		Vector3 frameCounterHelper = new Vector3(0.618256431f, +1-Mathf.Sqrt(2), 1);//0.618256431f);
 		override protected void UpdateMaterialPerFrame(Material material, Camera camera, VectorInt2 cameraSize) {
 			var isSceneView = postProcessingManager.isSceneView;
-			if (!isSceneView) {
+			if (true || !isSceneView) {
 				//frameCounter = (frameCounter + 0.618256431f) % 172.5f;
 				frameCounter = frameCounter + frameCounterHelper;
 				frameCounter.Set(frameCounter.y % 172.5f, frameCounter.x % 172.5f, frameCounter.z % 720);
@@ -197,6 +198,7 @@ namespace Cat.PostProcessing {
 			// reflectionResolution
 
 			// useImportanceSampling
+			material.SetFloat(PropertyIDs.ImportanceSampleBias_f, settings.importanceSampleBias);
 			material.SetFloat(PropertyIDs.UseCameraMipMap_b, settings.useCameraMipMap ? 1 : 0);
 			// suppressFlickering
 
@@ -479,6 +481,9 @@ namespace Cat.PostProcessing {
 
 		[Header("Importance sampling")]
 
+		[CustomLabelRange(0, 1, "Bias (Spread)")]
+		public FloatProperty importanceSampleBias = new FloatProperty();	
+
 		[CustomLabel("Use Mip Map")]
 		public BoolProperty useCameraMipMap = new BoolProperty();
 
@@ -526,6 +531,7 @@ namespace Cat.PostProcessing {
 
 
 		//	useImportanceSampling.rawValue  = true;
+			importanceSampleBias.rawValue   = 0.75f;
 			useCameraMipMap.rawValue        = true;
 		//	suppressFlickering.rawValue     = true;
 
@@ -575,6 +581,7 @@ namespace Cat.PostProcessing {
 						//	newSettings.useReflectionMipMap.rawValue     = false;
 
 						//	newSettings.useImportanceSampling= true;
+							newSettings.importanceSampleBias.rawValue = 0.75f;
 							newSettings.useCameraMipMap.rawValue         = true;
 						//	newSettings.suppressFlickering.rawValue      = true;
 
@@ -603,6 +610,7 @@ namespace Cat.PostProcessing {
 						//	newSettings.useReflectionMipMap.rawValue     = false;
 
 						//	newSettings.useImportanceSampling= true;
+							newSettings.importanceSampleBias.rawValue = 0.75f;
 							newSettings.useCameraMipMap.rawValue         = true;
 						//	newSettings.suppressFlickering.rawValue      = true;
 
@@ -633,6 +641,7 @@ namespace Cat.PostProcessing {
 
 
 						//	newSettings.useImportanceSampling.rawValue  = true;
+							newSettings.importanceSampleBias.rawValue = 0.75f;
 							newSettings.useCameraMipMap.rawValue        = true;
 						//	newSettings.suppressFlickering.rawValue     = true;
 
@@ -667,6 +676,7 @@ namespace Cat.PostProcessing {
 						//	newSettings.useReflectionMipMap.rawValue     = false;
 
 						//	newSettings.useImportanceSampling= true;
+							newSettings.importanceSampleBias.rawValue = 0.75f;
 							newSettings.useCameraMipMap.rawValue         = true;
 						//	newSettings.suppressFlickering.rawValue      = true;
 

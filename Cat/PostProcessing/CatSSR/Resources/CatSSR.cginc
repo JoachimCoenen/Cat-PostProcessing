@@ -48,6 +48,7 @@ bool			_UseReflectionMipMap;
 				// reflectionResolution
 
 				// useImportanceSampling
+float			_ImportanceSampleBias;
 bool			_UseCameraMipMap;
 				// suppressFlickering	
 
@@ -224,9 +225,22 @@ float4 fragRayTrace(VertexOutputVS i) : SV_Target {
 	float invReflectionDistance = rsqrt(dot(vsStartPos, vsStartPos));
 	float reflectionDistance = 1 / invReflectionDistance;
 	if (!AreReflectionsAllowed(vsViewDir, s.normal, reflectionDistance, s.smoothness)) {
-		return float4(uv, +1e5, 0);
+		return float4(uv, 0, +1e5);
 	}
 	
+
+
+	float2 pos = uv * _HitTex_TexelSize.zw;
+	half2 noise1D = -round(noiseSimple(0 + (_FrameCounter)) * _HitTex_TexelSize.wz);
+	//noise1D = 4.00 * (m - m * m);
+	half3 noise2D = Tex2Dlod(_BlueNoise, (pos + noise1D) *_BlueNoise_TexelSize.xy, 0).rgb;
+	noise2D.y *= _ImportanceSampleBias;
+
+	float pdf = 1;
+	s.normal = rotateVector(s.normal, ImportanceSample(noise2D.xy, 1 - s.smoothness, /*out*/pdf));
+
+
+
 	vsStartPos = vsStartPos + s.normal * max(0.005*LinearEyeDepth(depth), 0.001);
 	ssStartPos = ViewToScreenPos(vsStartPos);
 	
@@ -284,8 +298,8 @@ float4 fragRayTrace(VertexOutputVS i) : SV_Target {
 		
 	}
 	
-	//return float4(uvHit, rayHit.w/_StepCount, pdf);
-	return float4(uvHit, rayHit.z, confidence);
+	return float4(uvHit, confidence, pdf);
+	//return float4(uvHit, rayHit.z, confidence);
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -304,7 +318,7 @@ float getMipLevelResolve(float coneTangent, float2 hitUV, float2 uv, float maxMi
 half getMipLevelResolve(float3 vsHitPos, float rayLength, half smoothness, half maxMipLevel) {
 	half roughness = pow(1 - smoothness, 5.0/3.0);
 	float hitDistance = length(vsHitPos);
-	half area = abs(roughness * (rayLength + Pow2(roughness)) * _PixelsPerMeterAtOneMeter / hitDistance);
+	half area = abs(roughness * (rayLength + Pow2(roughness)) * _PixelsPerMeterAtOneMeter / hitDistance) * _ImportanceSampleBias;
 	
 	half mip = log2(area/16.0 + 15.0/16.0);
 	//return (rayLength*0.01) * maxCameraMipLevel;
@@ -331,14 +345,119 @@ float BRDFWeightUnity(float3 V, float3 L, float3 N, float smoothness) {
 //	half D = GGXTerm(nh, roughness); return D * G * UNITY_PI * 0.25;
 }
 
-static const float O_S = 2.35 * 0.75;//2.35;
+int getResolveSampleCount() {
+	return 4;// _ResolveSampleCount;
+}
+
+float2x2 getOffsetRotationMatrix(float2 uv) {
+	//return float2x2(1, 0, 0, 1);
+	float2 pos = uv * _MainTex_TexelSize.zw;
+	float2 blueNoise = tex2D(_BlueNoise, 1*pos *_BlueNoise_TexelSize.xy + _FrameCounter).ba * 2.0 - 1.0; // works better with [-1, 1] range
+	//blueNoise = 0.5;
+	return float2x2(blueNoise.x, blueNoise.y, -blueNoise.y, blueNoise.x);
+}
+
+
+static const float O_S = 2.35 * 0.5;//2.35;
+static const float2 offsetss[4] = {
+	{ -0.5,  0.5 },
+	{ -0.5, -0.5 },
+	{  0.5,  0.5 },
+	{  0.5, -0.5 },
+};
 static const float2 offsets[7] = { {0, 0},
 //	float2(2, -2),
 //	float2(-2, -2),
 //	float2(0, 2), 
 {0.8660254*O_S, -0.5*O_S}, {0, O_S}, {-0.8660254*O_S, -0.5*O_S}, {0.8660254*O_S, 0.5*O_S}, {-0.8660254*O_S, 0.5*O_S}, {0, -O_S} };
 
-float4 fragResolveAdvanced(VertexOutputVS i) : SV_Target {
+float4 fragResolveAdvanced(VertexOutputVS i) : SV_Target{
+	float2 uvCoarse = i.uv;//SnapToPixel(i.uv, _HitTex_TexelSize);
+	float2 uv = i.uv + GetRayTraceSampleOffset(uvCoarse);
+
+
+	CAT_GET_GBUFFER(s, uv);
+	float3 vsNormal = normalize(WorldToViewDir(s.normal));
+
+	float depth = sampleDepthLod(_DepthTexture, uv, 0);
+	float3 ssPos = GetScreenPos(uv, depth);
+	float3 vsPos = i.vsRay * LinearEyeDepth(depth);
+	float invReflectionDistance = rsqrt(dot(vsPos, vsPos));
+	float3 vsViewDir = -vsPos * invReflectionDistance;
+
+	half smoothness = Tex2Dlod(_CameraGBufferTexture1, uvCoarse, 0).a;
+
+	//{	
+	//	CAT_GET_GBUFFER(s, uv)
+	//	smoothness = s.smoothness;
+	//}
+
+	if (!AreReflectionsAllowed(vsViewDir, vsNormal, 1 / invReflectionDistance, s.smoothness)) {
+		return 0;
+	}
+
+	float2x2 offsetRotationMatrix = getOffsetRotationMatrix(uvCoarse);
+
+	//float coneTangent = getConeTangent(smoothness, 1);
+
+	float maxMipLevel = _UseCameraMipMap ? maxCameraMipLevel : 0;
+
+	float rayLength = 0; // Its value is used after the loop, so it is declared here.
+
+	float4 result = 0.0;
+	float weightSum = 0.0;
+	int resolveSteps = getResolveSampleCount();
+	for (int i = 0; i < resolveSteps; i++) {
+		float2 offsetUV = offsets[i] * _HitTex_TexelSize.xy;
+		offsetUV = mul(offsetRotationMatrix, offsetUV);
+
+		// "uv" is the location of the current (or "local") pixel. We want to resolve the local pixel using
+		// intersections spawned from neighboring pixels. The neighboring pixel is this one:
+		float2 neighborUv = uv + offsetUV;
+		//	neighborUv = SnapToPixel(neighborUv, _HitTex_TexelSize);
+
+		// Now we fetch the intersection point and the PDF that the neighbor's ray hit.
+		float4 hitPacked = Tex2Dlod(_HitTex, neighborUv, 0);
+		float2 hitUV = hitPacked.xy;
+		if (_UseRetroReflections) {
+			hitUV += -GetVelocity(hitUV) * float2(1, 1);
+		}
+		float hitZ = sampleDepthLod(_DepthTexture, hitUV, 0);
+		float hitPDF = hitPacked.w;
+		float confidence = hitPacked.z;
+
+		float3 vsHitPos = ScreenToViewPos(GetScreenPos(hitUV, hitZ));
+		rayLength = length(vsHitPos - vsPos);
+		// We assume that the hit point of the neighbor's ray is also visible for our ray, and we blindly pretend
+		// that the current pixel shot that ray. To do that, we treat the hit point as a tiny light source. To calculate
+		// a lighting contribution from it, we evaluate the BRDF. Finally, we need to account for the probability of getting
+		// this specific position of the "light source", and that is approximately 1/PDF, where PDF comes from the neighbor.
+		// Finally, the weight is BRDF/PDF. BRDF uses the local pixel's normal and roughness, but PDF comes from the neighbor.
+		float weight = BRDFWeightUnity(vsViewDir /*V*/, (vsHitPos - vsPos) / rayLength /*L*/, vsNormal /*N*/, max(0.001, s.smoothness)) / max(1e-5, hitPDF);
+		//	weight = 1;
+
+		float mip = getMipLevelResolve(vsHitPos, rayLength, s.smoothness, maxMipLevel);
+		//	float mip = getMipLevelResolve(coneTangent, hitUV, uv, maxMipLevel);
+
+		float4 sampleColor = float4(Tex2Dlod(_MainTex, hitUV, mip).rgb, 1);
+
+		//				sampleColor.rgb /= 2 + DisneyLuminance(sampleColor.rgb);
+		sampleColor.a = confidence;
+		//	weight *= confidence;
+		result += sampleColor * weight;
+		weightSum += weight;
+	}
+
+	result /= weightSum;
+	result.rgb = lerp(result.rgb, _FogColor.rgb, getFogDensity(rayLength, _FogParams));
+	result.a = Pow2(result.a);
+	//		result.rgb /= 0.5 - 0.5*DisneyLuminance(result.rgb);
+	//	result.rgb *= result.a;
+	//	result.rgb += tex2D(_CameraReflectionsTexture, uv).rgb * (1-result.a);
+	return max(0, result);
+}
+
+float4 fragResolveAdvancedSimple(VertexOutputVS i) : SV_Target {
 	float2 uv = i.uv;//SnapToPixel(i.uv, _HitTex_TexelSize);
 	float2 uvFine = i.uv + GetRayTraceSampleOffset(uv);
 	
@@ -396,6 +515,10 @@ float4 combineTemporal(CAT_ARGS_TEX_INFO(currentTex), sampler2D historyTex, floa
 		
 		float2 tx = currentTex_TexelSize.xy;
 		float4 history = tex2D(historyTex, uvPrev);
+		if (!all(history < 1000) || !all(history > -1000)) {
+			history = 0;
+		}
+		//return history;
 		
 		//confidence *= any(history);
 		float4 mainTex = tex2D(currentTex, uv);
@@ -447,6 +570,7 @@ float4 combineTemporal(CAT_ARGS_TEX_INFO(currentTex), sampler2D historyTex, floa
 		
 		result.rgb /= 1 - DisneyLuminance(result.rgb);
 		
+
 		return result;
 }
 
@@ -777,7 +901,7 @@ half4 fragDebug(VertexOutputFull i ) : SV_Target {
 /*6*/	half3(reflections.rgb + reflProbes)*reflections.a,
 /*1*/	half3(pureRefl.rgb),
 /*5*/	half3(hitPacked.www),
-/*3*/	half3((half3(GetNoise(i.uv, _HitTex_TexelSize).rrr))),
+/*3*/	half3(Pow5(Compress(tex2D(_HitTex, i.uv).w)).xxx),
 /*2*/	half3(Tex2Dlod(_MainTex, i.uv, _UseCameraMipMap ? _MipLevelForDebug : 0).rgb),
 /*4*/	half3(getMipLevelResolve(vsHitPos, rayLength, s.smoothness, maxCameraMipLevel).xxx / maxCameraMipLevel),
 /*7*/	half3(AreReflectionsAllowed(vsViewDir, vsNormal, 1/invReflectionDistance, s.smoothness).xxx),
