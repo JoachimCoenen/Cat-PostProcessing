@@ -235,7 +235,6 @@ float4 fragRayTrace(VertexOutputVS i) : SV_Target {
 	//noise1D = 4.00 * (m - m * m);
 	half3 noise2D = Tex2Dlod(_BlueNoise, (pos + noise1D) *_BlueNoise_TexelSize.xy, 0).rgb;
 	noise2D.y *= _ImportanceSampleBias;
-
 	float pdf = 1;
 	s.normal = rotateVector(s.normal, ImportanceSample(noise2D.xy, 1 - s.smoothness, /*out*/pdf));
 
@@ -297,6 +296,8 @@ float4 fragRayTrace(VertexOutputVS i) : SV_Target {
 		confidence *= RayAttenBorder(uvHit, ssRayDir.xy, _EdgeFade);
 		
 	}
+
+	//confidence = rayHit.w / 128;
 	
 	return float4(uvHit, confidence, pdf);
 	//return float4(uvHit, rayHit.z, confidence);
@@ -316,9 +317,9 @@ float getMipLevelResolve(float coneTangent, float2 hitUV, float2 uv, float maxMi
 }
 
 half getMipLevelResolve(float3 vsHitPos, float rayLength, half smoothness, half maxMipLevel) {
-	half roughness = pow(1 - smoothness, 5.0/3.0);
+	half roughness = pow(1 - smoothness, 4.0/3.0);
 	float hitDistance = length(vsHitPos);
-	half area = abs(roughness * (rayLength + Pow2(roughness)) * _PixelsPerMeterAtOneMeter / hitDistance) * _ImportanceSampleBias;
+	half area = abs(roughness * (rayLength + Pow2(roughness)) * _PixelsPerMeterAtOneMeter / hitDistance) * (1-0.25*_ImportanceSampleBias);
 	
 	half mip = log2(area/16.0 + 15.0/16.0);
 	//return (rayLength*0.01) * maxCameraMipLevel;
@@ -357,7 +358,6 @@ float2x2 getOffsetRotationMatrix(float2 uv) {
 	return float2x2(blueNoise.x, blueNoise.y, -blueNoise.y, blueNoise.x);
 }
 
-
 static const float O_S = 2.35 * 0.5;//2.35;
 static const float2 offsetss[4] = {
 	{ -0.5,  0.5 },
@@ -385,7 +385,7 @@ float4 fragResolveAdvanced(VertexOutputVS i) : SV_Target{
 	float invReflectionDistance = rsqrt(dot(vsPos, vsPos));
 	float3 vsViewDir = -vsPos * invReflectionDistance;
 
-	half smoothness = Tex2Dlod(_CameraGBufferTexture1, uvCoarse, 0).a;
+	half smoothness = Tex2Dlod(_CameraGBufferTexture1, uv, 0).a;
 
 	//{	
 	//	CAT_GET_GBUFFER(s, uv)
@@ -513,10 +513,10 @@ float4 combineTemporal(CAT_ARGS_TEX_INFO(currentTex), sampler2D historyTex, floa
 		float2 uvPrev = uv - velocity.xy;
 		//float confidence = all(uvPrev == saturate(uvPrev));
 		
-		float2 tx = currentTex_TexelSize.xy;
+		float2 tx = min(currentTex_TexelSize.xy, _HitTex_TexelSize.xy);
 		float4 history = tex2D(historyTex, uvPrev);
-		if (!all(history < 1000) || !all(history > -1000)) {
-			history = 0;
+		if (!all(history < 5000) || !all(history > -5000)) {
+			//history = 0;
 		}
 		//return history;
 		
@@ -612,7 +612,7 @@ struct CombineTemporalResult {
 
 CombineTemporalResult fragCombineTemporal(VertexOutputFull i) {
 	CombineTemporalResult o;
-	o.history = combineTemporal(CAT_PASS_TEX_INFO(_MainTex), _ReflectionsTex, i.uv);
+	o.history = combineTemporal(CAT_PASS_TEX_INFO(_MainTex), _HistoryTex, i.uv);
 	//o.color = fragComposeAndApplyReflectionsTemporal(i, o.history);
 	//o.color.rgb = o.color.rgb * o.color.a + Tex2Dlod(_ReflectionsTex, i.uv, 0).rgb;
 	return o;
@@ -900,7 +900,7 @@ half4 fragDebug(VertexOutputFull i ) : SV_Target {
 /*7*/	half3(reflections.rgb)*reflections.a + reflProbes,
 /*6*/	half3(reflections.rgb + reflProbes)*reflections.a,
 /*1*/	half3(pureRefl.rgb),
-/*5*/	half3(hitPacked.www),
+/*5*/	half3(hitPacked.zzz),
 /*3*/	half3(Pow5(Compress(tex2D(_HitTex, i.uv).w)).xxx),
 /*2*/	half3(Tex2Dlod(_MainTex, i.uv, _UseCameraMipMap ? _MipLevelForDebug : 0).rgb),
 /*4*/	half3(getMipLevelResolve(vsHitPos, rayLength, s.smoothness, maxCameraMipLevel).xxx / maxCameraMipLevel),

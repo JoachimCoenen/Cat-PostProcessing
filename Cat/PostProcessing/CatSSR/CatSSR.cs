@@ -355,23 +355,25 @@ namespace Cat.PostProcessing {
 				Blit(buffer, lastFramePingPong[0], PropertyIDs.tempBuffer0_t, material, (int)SSRPass.ResolveAdvanced);
 				//	buffer.SetGlobalTexture(PropertyIDs.History_t, history);
 
-				//buffer.SetGlobalTexture(PropertyIDs.History_t,  historyPingPong[0]);
+				buffer.SetGlobalTexture(PropertyIDs.History_t,  historyPingPong[0]);
 				Blit(buffer, PropertyIDs.tempBuffer0_t, historyPingPong[1], material, (int)SSRPass.CombineTemporal);
 				ReleaseTemporaryRT(buffer, PropertyIDs.tempBuffer0_t);
 				var tmp = historyPingPong[0];
 				historyPingPong[0] = historyPingPong[1];
 				historyPingPong[1] = tmp;
-				buffer.SetGlobalTexture(PropertyIDs.Refl_t,  historyPingPong[0]);
+				//buffer.SetGlobalTexture(PropertyIDs.Refl_t, historyPingPong[0]);
+				GetTemporaryRT(buffer, PropertyIDs.Refl_t, reflRTSize, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
+				Blit(buffer, historyPingPong[0], PropertyIDs.Refl_t, material, (int)SSRPass.Median);
 				// GetTemporaryRT(buffer, PropertyIDs.Refl_t, reflRTSize, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
 				//Blit(buffer, historyPingPong[0], PropertyIDs.Refl_t);
 				// buffer.CopyTexture(historyPingPong[0], PropertyIDs.Refl_t);
 
 
-			//	Blit(buffer, PropertyIDs.Refl_t, history);
+				//	Blit(buffer, PropertyIDs.Refl_t, history);
 			} else {
 				GetTemporaryRT(buffer, PropertyIDs.Refl_t, reflRTSize, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, RenderTextureReadWrite.Linear);
 				Blit(buffer, lastFramePingPong[0], PropertyIDs.Refl_t, material, (int)SSRPass.ResolveAdvanced);
-				// Blit(buffer, BuiltinRenderTextureType.CameraTarget, material, (int)SSRPass.ComposeAndApplyReflections);
+				//Blit(buffer, BuiltinRenderTextureType.CameraTarget, material, (int)SSRPass.ComposeAndApplyReflections);
 				//Blit(buffer, PropertyIDs.Refl_t, historyPingPong[0], material, (int)SSRPass.Median);
 
 				//ReleaseTemporaryRT(buffer, PropertyIDs.tempBuffer1_t);
