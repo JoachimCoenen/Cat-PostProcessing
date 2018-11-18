@@ -109,7 +109,7 @@ float4 RayTrace(int stepCount, float objectThickness, float pixelStride, float3 
 	float sMin = saturate(samplePos.z); // this is (samplePos + localRayStep) - 0.5 * localRayStep;
 	
 	const float invTz = 1 / (zBufferParams.z * objectThickness);
-	const float wz = 0; // zBufferParams.w / zBufferParams.z;
+	const float wz = 0;// zBufferParams.w / zBufferParams.z;
 	const float ssLayerThicknessSmall = 6;
 	
 	//CHANGE  float asSmall = ssLayerThicknessSmall * max(abs(normRayStep.z), 0.0000152587890625*3);//0.000244140625);
