@@ -131,8 +131,8 @@ Shader "Hidden/Cat SSR" {
 		
 		//Pass 5 compose and apply reflections
 		Pass {
-			Blend SrcAlpha One, One Zero
-		//	Blend One One, One Zero
+			//Blend SrcAlpha One, One Zero
+			Blend One One, One Zero
 			Stencil {
 				ref [_StencilNonBackground]
 				readmask [_StencilNonBackground]

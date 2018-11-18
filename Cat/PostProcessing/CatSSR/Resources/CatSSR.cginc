@@ -373,7 +373,7 @@ static const float2 offsets[7] = { {0, 0},
 
 float4 fragResolveAdvanced(VertexOutputVS i) : SV_Target{
 	float2 uvCoarse = i.uv;//SnapToPixel(i.uv, _HitTex_TexelSize);
-	float2 uv = i.uv + GetRayTraceSampleOffset(uvCoarse);
+	float2 uv = i.uv;
 
 
 	CAT_GET_GBUFFER(s, uv);
@@ -451,8 +451,7 @@ float4 fragResolveAdvanced(VertexOutputVS i) : SV_Target{
 	result /= weightSum;
 	result.rgb = lerp(result.rgb, _FogColor.rgb, getFogDensity(rayLength, _FogParams));
 	result.a = Pow2(result.a);
-	//		result.rgb /= 0.5 - 0.5*DisneyLuminance(result.rgb);
-	//	result.rgb *= result.a;
+	//	result.rgb /= 0.5 - 0.5*DisneyLuminance(result.rgb);
 	//	result.rgb += tex2D(_CameraReflectionsTexture, uv).rgb * (1-result.a);
 	return max(0, result);
 }
@@ -526,21 +525,23 @@ float4 combineTemporal(CAT_ARGS_TEX_INFO(currentTex), sampler2D historyTex, floa
 		float4 corner3 = tex2D(currentTex, uv + tx*float2( 1.0,  0.5));
 		float4 corner2 = tex2D(currentTex, uv + tx*float2(-0.5,  1.0));
 		float4 corner4 = tex2D(currentTex, uv + tx*float2(-1.0, -0.5));
-		
-		//corner1 = tex2D(currentTex, uv - tx);
-		//corner2 = tex2D(currentTex, uv + tx);
-		//corner3 = tex2D(currentTex, uv - ty);
-		//corner4 = tex2D(currentTex, uv + ty);
-		
-		//mainTex.a = 10*length(velocity);
+
+		const float f = 0.01;
+		const float g = 1;
+		mainTex.rgb *= (f + g * mainTex.a);
+		history.rgb *= (f + g * history.a);
+		corner1.rgb *= (f + g * corner1.a);
+		corner2.rgb *= (f + g * corner2.a);
+		corner3.rgb *= (f + g * corner3.a);
+		corner4.rgb *= (f + g * corner4.a);
 		
 		float3 corners = (corner1 + corner2);
 		// Sharpen output
 		float3 cornerR = 4.0 * corners - 2.0 * mainTex;
 		mainTex.rgb =  max(0.0, mainTex.rgb + (mainTex.rgb - (cornerR * 0.166667)) * 2.718282*0.25 * 0.075*2);
-		
-		history.rgb /= 1 + DisneyLuminance(history.rgb);
+
 		mainTex.rgb /= 1 + DisneyLuminance(mainTex.rgb);
+		history.rgb /= 1 + DisneyLuminance(history.rgb);
 		corner1.rgb /= 1 + DisneyLuminance(corner1.rgb);
 		corner2.rgb /= 1 + DisneyLuminance(corner2.rgb);
 		corner3.rgb /= 1 + DisneyLuminance(corner3.rgb);
@@ -569,6 +570,7 @@ float4 combineTemporal(CAT_ARGS_TEX_INFO(currentTex), sampler2D historyTex, floa
 		//result.a = lerp(mainTex.a, history.a, 0.5);
 		
 		result.rgb /= 1 - DisneyLuminance(result.rgb);
+		result.rgb /= (f + g * result.a);
 		
 
 		return result;
@@ -761,11 +763,11 @@ half4 fragComposeAndApplyReflections(VertexOutputFull i) : SV_Target {
 	ResetUnityGI(/*out*/ gi);
 	gi.indirect.specular = composedRefl.rgb;
 	
-	s.occlusion = 1-(0.5-0.5*s.occlusion) ; // JCO@@@INVESTIGATE: is this REALLY correct? I believe so, but not 100 % shure...
+	s.occlusion = 1-(0.75-0.75*s.occlusion) ; // JCO@@@INVESTIGATE: is this REALLY correct? I believe so, but not 100 % shure...
 	half3 reflectionFinal = applyLighting(s, wsViewDir, gi).rgb;
 
 	float3 reflProbes = tex2D(_CameraReflectionsTexture, i.uv).rgb;
-	return float4(reflectionFinal - reflProbes, 1-(1-composedRefl.a));
+	return float4((reflectionFinal - reflProbes)*composedRefl.a, 1);// -(1 - composedRefl.a));
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -900,7 +902,7 @@ half4 fragDebug(VertexOutputFull i ) : SV_Target {
 /*7*/	half3(reflections.rgb)*reflections.a + reflProbes,
 /*6*/	half3(reflections.rgb + reflProbes)*reflections.a,
 /*1*/	half3(pureRefl.rgb),
-/*5*/	half3(hitPacked.zzz),
+/*5*/	half3(frac(hitPacked.zzz)),
 /*3*/	half3(Pow5(Compress(tex2D(_HitTex, i.uv).w)).xxx),
 /*2*/	half3(Tex2Dlod(_MainTex, i.uv, _UseCameraMipMap ? _MipLevelForDebug : 0).rgb),
 /*4*/	half3(getMipLevelResolve(vsHitPos, rayLength, s.smoothness, maxCameraMipLevel).xxx / maxCameraMipLevel),
