@@ -111,7 +111,7 @@ namespace Cat.PostProcessing {
 		internal IEnumerable<Collider> GetColliders() {
 			// TODO: Optimize !!!
 			var colliders = new List<Collider>();
-			GetComponents<Collider>(colliders);
+			GetComponentsInChildren<Collider>(colliders);
 			return colliders;
 		}
 
