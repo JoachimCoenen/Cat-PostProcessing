@@ -135,9 +135,9 @@ namespace Cat.PostProcessing {
 
 		void OnDrawGizmos() {
 			Gizmos.color = new Color(0.1f, 0.2f, 0.8f, 0.5f);
-			Gizmos.matrix = transform.localToWorldMatrix;
 			var colliders = GetColliders();
 			foreach (var collider in colliders) {
+				Gizmos.matrix = collider.transform.localToWorldMatrix;
 				var type = collider.GetType();
 				if (collider is BoxCollider) {
 					var boxCollider = collider as BoxCollider;
