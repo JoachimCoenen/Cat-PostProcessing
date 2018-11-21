@@ -17,7 +17,7 @@ With the checkboxes on the left of each value you choose which settings to overr
 
 ### The Override Order
 
-
+The profile in the post processing manager of your camera overrides post processing volumes with a higher `importance` value, which override volumes with a lower `importance` value, which override volumes, that are set as global. 
 
 
 
