@@ -6,6 +6,8 @@ using UnityEngine.Assertions;
 
 namespace Cat.PostProcessing {
 	[ExecuteInEditMode]
+	[DisallowMultipleComponent]
+	[AddComponentMenu("Cat/PostProcessing/Post Processing Volume")]
 	public class PostProcessingVoume : MonoBehaviour {
 		static List<PostProcessingVoume> s_Volumes;
 		static List<PostProcessingVoume> Volumes {
