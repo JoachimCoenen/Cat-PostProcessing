@@ -4,14 +4,14 @@ Post processing profiles bundle effects settings together so they can be reused 
 
 Right-click in the Assets tab and select `Create`->`Cat Post processing profile`
 
-&&& ADD IMAGE &&&
+![Imgur](https://i.imgur.com/mW9Xf0O.png)
 
 ### The anatomy of an effect
 
-![Imgur](https://i.imgur.com/eHf4ygk.png)
+![Imgur](https://i.imgur.com/K6BykNZ.png)
 
-
-With the checkboxes on the left of each value you choose which settings to override. The checkbox next to the effects does not turn effects On or Off, but rather acts like a master switch for overriding.
+The checkboxes on the left of each value you choose which settings will be overridden by the profile. The checkbox next to the effects doesn't turn effects On or Off, but rather acts like a master switch for overriding.
+so 
 
 &&& BETTER / MORE EXPLANATION &&&
 
