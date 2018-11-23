@@ -1,14 +1,17 @@
 
 ## Post Processing Volumes
 
-![Imgur](https://i.imgur.com/apz8a1H.png)
+![Imgur](https://i.imgur.com/hKz10bG.png)
 
 Post processing volumes allow to specify different effect settings for different areas, e.g. Inside a building and outside of it or a different visual mood around a graveyard etc. 
 They only affect the space _inside_  the associated colliders as well as a small border around it in order to ease the transition when entering and exiting the volume. 
-To associate a collider with your post processing volume you simply add it to the `GameObject`  or any  child object. 
+To associate a collider with your post processing volume you simply add it to the `GameObject`  or any  child object.
 
-![Imgur](https://i.imgur.com/hKz10bG.png)
+![Imgur](https://i.imgur.com/apz8a1H.png)
 
+- **Blend Distance**: 
+
+- **Importance**: 
 
 <!--For this you've got post processing volumes
 Add an empty GameObject to your scene, add the PostProcessing Volume script and a collider of your choice to it. It will be the area of effect. Pro tip: you can add multiple colliers as children to your volume. 
