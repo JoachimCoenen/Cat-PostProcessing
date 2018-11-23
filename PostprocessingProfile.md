@@ -8,17 +8,16 @@ Right-click in the Assets tab and select `Create`->`Cat Post processing profile`
 
 ### The anatomy of an effect
 
+The checkboxes on the left of each value you choose which settings will be overwritten by the profile. The checkbox next to the effects doesn't turn effects On or Off, but rather acts like a master switch for overwriting.
+
 ![Imgur](https://i.imgur.com/K6BykNZ.png)
 
-The checkboxes on the left of each value you choose which settings will be overridden by the profile. The checkbox next to the effects doesn't turn effects On or Off, but rather acts like a master switch for overriding.
-so 
+Here, for example only the intesity of the ambient oclusion effect is overwritten; as well as some of the bloom setings.
 
 &&& BETTER / MORE EXPLANATION &&&
 
+### The Overwrite Order
 
-### The Override Order
-
-The profile in the post processing manager of your camera overrides post processing volumes with a higher `importance` value, which override volumes with a lower `importance` value, which override volumes, that are set to global. 
-
+The profile in the post processing manager of your camera overwrites post processing volumes with a higher `importance` value, which overwrite volumes with a lower `importance` value, which overwrite volumes, that are set to global. 
 
 
