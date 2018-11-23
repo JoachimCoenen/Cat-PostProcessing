@@ -14,8 +14,6 @@ The checkboxes on the left of each value you choose which settings will be overw
 
 Here, for example only the intesity of the ambient oclusion effect is overwritten; as well as some of the bloom setings.
 
-&&& BETTER / MORE EXPLANATION &&&
-
 ### The Overwrite Order
 
 The profile in the post processing manager of your camera overwrites post processing volumes with a higher `importance` value, which overwrite volumes with a lower `importance` value, which overwrite volumes, that are set to global. 
