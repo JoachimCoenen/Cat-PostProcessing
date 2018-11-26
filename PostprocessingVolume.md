@@ -1,19 +1,18 @@
 
-## Post Processing Volumes
+Post Processing Volumes
 
-![Imgur](https://i.imgur.com/hKz10bG.png)
+￼
 
-Post processing volumes allow to specify different effect settings for different areas, e.g. Inside a building and outside of it or a different visual mood around a graveyard etc. 
-They only affect the space _inside_  the associated colliders as well as a small border around it in order to ease the transition when entering and exiting the volume. 
-To associate a collider with your post processing volume you simply add it to the `GameObject`  or any  child object.
+Post processing volumes allow to specify different effect settings for different areas, e.g. Inside a building and outside of it or a different visual mood around a graveyard etc. They only affect the space inside the associated colliders as well as a small border around it in order to ease the transition when entering and exiting the volume. To associate a collider with your post processing volume you simply add it to the GameObject or any child object.
 
-![Imgur](https://i.imgur.com/apz8a1H.png)
+￼
 
-- **Blend Distance**: 
+• 
+shared Profile : The post processing profile that is applied within the volume.
 
-- **Importance**: 
+• 
+Blend Distance : Distance around volume used for blending.
 
-<!--For this you've got post processing volumes
-Add an empty GameObject to your scene, add the PostProcessing Volume script and a collider of your choice to it. It will be the area of effect. Pro tip: you can add multiple colliers as children to your volume. 
-The profile assigned to the volume is only applied when the camera is inside one of the colliers? of the post processing volume _and_  has a Cat Post Processing Manager. Be aware that Post Processing Volumes with a higher `Importance` value and the profile set in the post processing manager can overwrite some or all settings./>
+• 
+Importance : The degree of “importance” of this volume compared to its neighbours. Higher values indicate greater importance; more important volumes will be applied over less important ones in cases where an object is within range of two or more volumes.
 
