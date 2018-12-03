@@ -16,6 +16,9 @@
 !/Media
 /Media/*.meta
 
+# dont exclude folder Documentation
+!/Documentation
+/Documentation/*.meta
 
 **/[Hh]istory/
 [Hh]istory.meta
