@@ -27,5 +27,6 @@ Cat/Includes/NoiseLib.cginc
 Cat/Includes/NoiseLib.cginc.meta
 *CatDepthOfFieldEditor.cs*
 
-Cat/PostProcessing/Common/New Post-processing Profile v2.asset
-Cat/PostProcessing/Common/New Post-processing Profile v2.asset.meta
+# exclude temporary profiles
+**/Profiles/*.asset*
+Profiles.meta
