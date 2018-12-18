@@ -107,7 +107,7 @@ namespace Cat.PostProcessingEditor {
 						propertyDrawer = new InlinedAttributeDrawer();
 					} else {
 						Type drawerType = null;
-						if (CatPostProcessingProfileEditor.s_PropertyDrawers.TryGetValue(attr.GetType(), out drawerType)) {
+						if (CatPostProcessingProfileEditorWidget.s_PropertyDrawers.TryGetValue(attr.GetType(), out drawerType)) {
 							propertyDrawer = (PropertyDrawer)Activator.CreateInstance(drawerType);
 							var field = drawerType.GetField("m_Attribute", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 							field.SetValue(propertyDrawer, attr);

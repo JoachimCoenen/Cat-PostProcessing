@@ -21,6 +21,7 @@ namespace Cat.PostProcessingEditor {
 
 		private SerializedProperty m_ProfileProperty;
 
+		private CatPostProcessingProfileEditorWidget widget;
 
 		public void OnEnable() {
 			m_Manager = target as PostProcessingManager;
@@ -33,6 +34,13 @@ namespace Cat.PostProcessingEditor {
 			// EditorGUILayout.Space();
 			serializedObject.Update();
 			EditorGUILayout.PropertyField(m_ProfileProperty);
+			CatEditorGUILayout.Splitter();
+
+			UpdatePPEditorWidget(m_ProfileProperty.objectReferenceValue as CatPostProcessingProfile);
+			if (widget != null) {
+				widget.OnInspectorGUI();
+			}
+
 			CatEditorGUILayout.Splitter();
 			//EditorGUILayout.Space();
 			CatEditorGUILayout.Header("Tracked Settings:");
@@ -69,7 +77,20 @@ namespace Cat.PostProcessingEditor {
 			serializedObject.ApplyModifiedProperties();
 		}
 
-		bool DrawPropertyField(SerializedProperty prop, ref bool isFirst, bool includeChildren = false) {
+		void UpdatePPEditorWidget(CatPostProcessingProfile profileTarget) {
+			Debug.Log($"{profileTarget}, UpdatePPEditorWidget");
+			if (widget == null || widget.target != profileTarget) {
+				if (profileTarget != null) {
+					widget = new CatPostProcessingProfileEditorWidget(profileTarget);//, serializedObject, m_ProfileProperty);
+					widget.OnEnable();
+				} else {
+					widget = null;
+				}
+			}
+		}
+
+
+			bool DrawPropertyField(SerializedProperty prop, ref bool isFirst, bool includeChildren = false) {
 			var hasNext = prop.Next(isFirst);
 			isFirst = false;
 			if (hasNext) {
