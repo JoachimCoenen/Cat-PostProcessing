@@ -22,6 +22,7 @@ namespace Cat.PostProcessingEditor {
 		private SerializedProperty m_ProfileProperty;
 
 		private CatPostProcessingProfileEditorWidget widget;
+		private CatPostProcessingProfileEditorWidget virtualWidget;
 
 		public void OnEnable() {
 			m_Manager = target as PostProcessingManager;
@@ -36,21 +37,22 @@ namespace Cat.PostProcessingEditor {
 			EditorGUILayout.PropertyField(m_ProfileProperty);
 			CatEditorGUILayout.Splitter();
 
-			UpdatePPEditorWidget(m_ProfileProperty.objectReferenceValue as CatPostProcessingProfile);
+			UpdatePPEditorWidget(ref widget, m_ProfileProperty.objectReferenceValue as CatPostProcessingProfile);
 			if (widget != null) {
 				widget.OnInspectorGUI();
 			}
+			
+			EditorGUILayout.Space();
 
-			CatEditorGUILayout.Splitter();
-			//EditorGUILayout.Space();
+			/* //for Debugging purposes only:
 			CatEditorGUILayout.Header("Tracked Settings:");
-
 			foreach (var pair in m_VirtualProfile.settings) {
 				var effect = pair.Value;
 				using (new EditorGUI.DisabledScope(!effect.enabled)) {
 					EditorGUILayout.LabelField(effect.effectName);
 				}
 			}
+			*/
 
 			CatEditorGUILayout.Splitter();
 			CatEditorGUILayout.Header("Active Effects:");
@@ -60,6 +62,7 @@ namespace Cat.PostProcessingEditor {
 				}
 			}
 
+			/* //for Debugging purposes only:
 			CatEditorGUILayout.Splitter();
 			CatEditorGUILayout.Header("OldEffects_helper:");
 			foreach (var pair in m_Manager.m_OldEffects_helper) {
@@ -68,7 +71,7 @@ namespace Cat.PostProcessingEditor {
 					EditorGUILayout.LabelField(effect.effectName);
 				}
 			}
-
+			*/
 			if (m_VirtualProfile.settings.Count == 0) {
 				EditorGUILayout.HelpBox("No Post-Processing effects", MessageType.Info);
 			}
@@ -77,7 +80,7 @@ namespace Cat.PostProcessingEditor {
 			serializedObject.ApplyModifiedProperties();
 		}
 
-		void UpdatePPEditorWidget(CatPostProcessingProfile profileTarget) {
+		void UpdatePPEditorWidget(ref CatPostProcessingProfileEditorWidget widget, CatPostProcessingProfile profileTarget) {
 			Debug.Log($"{profileTarget}, UpdatePPEditorWidget");
 			if (widget == null || widget.target != profileTarget) {
 				if (profileTarget != null) {

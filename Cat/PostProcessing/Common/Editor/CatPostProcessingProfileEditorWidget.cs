@@ -141,7 +141,7 @@ namespace Cat.PostProcessingEditor {
 
 
 			DrawFooter();
-			CatEditorGUILayout.Splitter();
+			//CatEditorGUILayout.Splitter();
 			EditorGUILayout.Space();
 		}
 
@@ -194,7 +194,7 @@ namespace Cat.PostProcessingEditor {
 		}
 
 		private void DrawFooter() {
-			CatEditorGUILayout.BeginBox();
+			//CatEditorGUILayout.BeginBox();
 			if (GUILayout.Button("Add effect...", EditorStyles.miniButton))
 			{
 				var menu = new GenericMenu();
@@ -217,7 +217,7 @@ namespace Cat.PostProcessingEditor {
 
 				menu.ShowAsContext();
 			}
-			CatEditorGUILayout.EndBox();
+			//CatEditorGUILayout.EndBox();
 		}
 
 		void AddEffectOverride(Type type) {
