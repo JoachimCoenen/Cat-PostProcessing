@@ -5,7 +5,7 @@ using Cat.Common;
 
 namespace Cat.PostProcessing {
 	public class CatAARenderer : PostProcessingBaseCommandBuffer<CatAA> {
-		private const bool disableTAAInSceneView = true;
+		private const bool disableTAAInSceneView = false;
 
 		private readonly RenderTextureContainer[] history = new[] {new RenderTextureContainer(), new RenderTextureContainer()};
 

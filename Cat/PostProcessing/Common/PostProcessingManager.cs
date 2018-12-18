@@ -317,6 +317,11 @@ namespace Cat.PostProcessing {
 			foreach (var effect in m_ActiveEffects/*.Where(x => x.enabled)*/) {
 				effect.PreRender(cam, size);
 			}
+
+			editorMotionVectorMaterial.SetMatrix(Shader.PropertyToID("_PreviousVP"), _PreviousVP);
+			_PreviousVP = cam.nonJitteredProjectionMatrix * cam.worldToCameraMatrix;
+			editorMotionVectorMaterial.SetMatrix(Shader.PropertyToID("_NonJitteredVP"), _PreviousVP);
+
 		}
 		private void OnPostRender(){
 			var cam = this.camera;
@@ -353,6 +358,9 @@ namespace Cat.PostProcessing {
 			m_EffectsToRemove.Clear();
 			*/
 
+			if (m_EMVCommandBuffer != null) {
+				camera.RemoveCommandBuffer(m_EMVCommandBufferCameraEvent, m_EMVCommandBuffer);
+			}
 			if (m_DepthTexture != null) {
 				m_DepthTexture.Release();
 			}
@@ -407,18 +415,56 @@ namespace Cat.PostProcessing {
 			} 
 		}
 
+		private Matrix4x4 _PreviousVP;
+		private Material m_EditorMotionVectorMaterial = null;
+		protected Material editorMotionVectorMaterial {
+			get {
+				const string shaderName = "Hidden/Internal-MotionVectors";
+				if (m_EditorMotionVectorMaterial == null) {
+					var shader = Shader.Find(shaderName);
+					if (shader == null) {
+						this.enabled = false;
+						throw new ArgumentException(String.Format("Shader not found: '{0}'", shaderName));
+					}
+					m_EditorMotionVectorMaterial = new Material(shader);
+					m_EditorMotionVectorMaterial.hideFlags = HideFlags.DontSave;
+				}
+				return m_EditorMotionVectorMaterial;
+			}
+		}
+		private const CameraEvent m_EMVCommandBufferCameraEvent = CameraEvent.BeforeImageEffectsOpaque;
+		private CommandBuffer m_EMVCommandBuffer;
+		private CommandBuffer EMVCommandBuffer {
+			get {
+				if (m_EMVCommandBuffer == null) {
+					m_EMVCommandBuffer = new CommandBuffer();
+					m_EMVCommandBuffer.name = "EMV Depth Buffer";
+					UpdateMotionVectorCommandBuffer();
+				}
+				return m_EMVCommandBuffer;
+
+			}
+		}
+		void UpdateMotionVectorCommandBuffer() {
+			var cb = EMVCommandBuffer;
+			cb.Clear();
+			cb.Blit(BuiltinRenderTextureType.None, BuiltinRenderTextureType.MotionVectors, editorMotionVectorMaterial, 1);
+		}
+
 		private CameraEvent GetAppropriateDepthBufferCameraEvent(RenderingPath renderingPath) {
 			return renderingPath != RenderingPath.DeferredShading
-			 	? CameraEvent.AfterForwardOpaque 
-			 	: CameraEvent.BeforeLighting;
+			 	? CameraEvent.AfterForwardOpaque
+				 : CameraEvent.BeforeLighting;
 		}
 
 		internal void UpdateCameraDepthBufferCameraEvent() {
 			camera.RemoveCommandBuffer(m_DepthCommandBufferCameraEvent, depthCommandBuffer);
+			camera.RemoveCommandBuffer(m_EMVCommandBufferCameraEvent, EMVCommandBuffer);
 
 			if (m_requiresDepthTexture ) {
 				m_DepthCommandBufferCameraEvent = GetAppropriateDepthBufferCameraEvent(camera.actualRenderingPath);
 				camera.AddCommandBuffer(m_DepthCommandBufferCameraEvent, depthCommandBuffer);
+				camera.AddCommandBuffer(m_EMVCommandBufferCameraEvent, EMVCommandBuffer);
 			}
 		}
 
