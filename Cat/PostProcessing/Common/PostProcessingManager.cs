@@ -99,7 +99,7 @@ namespace Cat.PostProcessing {
 				#endif 
 			}
 		}
-
+		
 		internal void RegisterCommandBuffer(PostProcessingBase effect, CameraEvent cameraEvent, CommandBuffer cb) {
 			var key = new Tuple<Type, CameraEvent>(effect.GetType(), cameraEvent);
 			if (m_CommandBuffers.ContainsKey(key)) {
@@ -299,6 +299,10 @@ namespace Cat.PostProcessing {
 
 			this.cameraSize = new VectorInt2(camera.pixelWidth, camera.pixelHeight);
 
+			const bool enableVelocityPrediction = true;
+			var allowVelocityPrediction = enableVelocityPrediction && !isSceneView;
+			Shader.SetGlobalInt(PropertyIDs.IsVelocityPredictionEnabled_b, allowVelocityPrediction ? 1 : 0);
+
 			var size = this.cameraSize;
 
 			if (m_lastCameraSize != cameraSize) {
@@ -466,6 +470,7 @@ namespace Cat.PostProcessing {
 			internal static readonly int normalsPacked_t				= Shader.PropertyToID("_NormalsPacked");
 			internal static readonly int Depth_t						= Shader.PropertyToID("_DepthTexture");
 			internal static readonly int blueNoise_t					= Shader.PropertyToID("_BlueNoise");
+			internal static readonly int IsVelocityPredictionEnabled_b = Shader.PropertyToID("_IsVelocityPredictionEnabled");
 		}
 			
 		/*

@@ -20,7 +20,6 @@ namespace Cat.PostProcessing {
 		static class PropertyIDs {
 			// jitterStrength
 			internal static readonly int Sharpness_f					= Shader.PropertyToID("_Sharpness");
-			internal static readonly int IsVelocityPredictionEnabled_b	= Shader.PropertyToID("_IsVelocityPredictionEnabled");
 			internal static readonly int VelocityWeightScale_f			= Shader.PropertyToID("_VelocityWeightScale");
 			internal static readonly int Response_f						= Shader.PropertyToID("_Response");
 			internal static readonly int ToleranceMargin_f				= Shader.PropertyToID("_ToleranceMargin");
@@ -106,9 +105,7 @@ namespace Cat.PostProcessing {
 
 		override protected void UpdateMaterial(Material material, Camera camera, VectorInt2 cameraSize) {
 			var isSceneView = postProcessingManager.isSceneView;
-			var allowVelocityPrediction = CatAA.enableVelocityPrediction && !isSceneView;
 			material.SetFloat(PropertyIDs.Sharpness_f, settings.sharpness);
-			material.SetInt(PropertyIDs.IsVelocityPredictionEnabled_b, allowVelocityPrediction ? 1 : 0);
 			material.SetFloat(PropertyIDs.VelocityWeightScale_f, settings.velocityWeightScale);
 			material.SetFloat(PropertyIDs.Response_f, settings.response);
 			material.SetFloat(PropertyIDs.ToleranceMargin_f, settings.toleranceMargin);
@@ -318,9 +315,7 @@ namespace Cat.PostProcessing {
 
 		[Range(0.0f, 2.0f)]
 		public FloatProperty sharpness = new FloatProperty();
-
-		public const bool enableVelocityPrediction = true;
-
+	
 		[CustomLabelRange(0.0f, 80.0f, "Velocity Scale")]
 		public FloatProperty velocityWeightScale = new FloatProperty();
 
@@ -339,7 +334,6 @@ namespace Cat.PostProcessing {
 			m_isEnabled.rawValue = false;
 			//	jitterStrength.rawValue = 1f,
 			sharpness.rawValue = 0.075f;
-			//	enableVelocityPrediction.rawValue = true,
 			velocityWeightScale.rawValue = 40;
 			response.rawValue = 0.075f;
 			toleranceMargin.rawValue = 1;
