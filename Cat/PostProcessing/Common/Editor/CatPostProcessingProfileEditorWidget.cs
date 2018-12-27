@@ -290,7 +290,7 @@ namespace Cat.PostProcessingEditor {
 
 		void ResetEffectOverride(PostProcessingSettingsBase target) {
 
-			var index = m_profile.settings.IndexOf(target);
+			//var index = m_profile.settings.IndexOf(target);
 
 			serializedObject.Update();
 			target.Reset();

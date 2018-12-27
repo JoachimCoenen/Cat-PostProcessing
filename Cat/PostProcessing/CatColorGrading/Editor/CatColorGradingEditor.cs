@@ -13,8 +13,6 @@ namespace Cat.PostProcessingEditor {
 		private ColorMapperChannel colorMapperChannel;
 
 		public override void OnInspectorGUI(IEnumerable<AttributedProperty> properties) {
-			var isFirst = true;
-			var count = 1;
 
 			serializedObject.Update();
 			//
@@ -102,13 +100,7 @@ namespace Cat.PostProcessingEditor {
 
 
 			DrawPropertyField(propertyIterator);
-			//while (DrawPropertyField(propertyIterator)) { /* NOP; */ }
 			serializedObject.ApplyModifiedProperties();
-
-			// serializedObject.Update();
-			// EditorGUILayout.PropertyField(settings);
-			// serializedObject.ApplyModifiedProperties();
-
 
 			//
 			// Tonemapping:
@@ -150,48 +142,9 @@ namespace Cat.PostProcessingEditor {
 			// Grid
 			graph.DrawGrid(new Vector2(4, 4), 0.4f, 2);
 			graph.DrawGrid(new Vector2(2, 2), 0.4f, 3);
-			// Label
-			//Handles.Label(
-			//	PointInRect(0, m_RangeY) + Vector3.right,
-			//	"Brightness Response (linear)", EditorStyles.miniLabel
-			//);
-
-			// Threshold Range
-			// var thresholdRect = new Rect(black, graph.m_Range.y, white - black, graph.m_Range.height);
-			// graph.DrawRect(thresholdRect, 0.25f, -1f);
-			// Threshold line
-			// graph.DrawLine(new Vector2(black, graph.m_Range.yMin), new Vector2(black, graph.m_Range.yMax), 0.85f);
-			// graph.DrawLine(new Vector2(white, graph.m_Range.yMin), new Vector2(white, graph.m_Range.yMax), 0.85f);
-			// var grayLerp = Mathf.Lerp(black, white, gray);
-			// graph.DrawLine(new Vector2(grayLerp,  graph.m_Range.yMin), new Vector2(grayLerp,  graph.m_Range.yMax), 0.85f);
-
-
-			// Precompute some values
-
-			const float scaleFactor = 20f;
-			const float scaleFactorHalf = scaleFactor * 0.5f;
-
-			float inBlack = 0.02f * scaleFactor + 1f;
-			float outBlack = 0f * scaleFactorHalf + 1f;
-			float inWhite = 10f / scaleFactor;
-			float outWhite = 1f - 10f / scaleFactor;
-			float blackRatio = inBlack / outBlack;
-			float whiteRatio = inWhite / outWhite;
-
-			const float a = 0.2f;
-			float b = Mathf.Max(0f, Mathf.LerpUnclamped(0.57f, 0.37f, blackRatio));
-			float c = Mathf.LerpUnclamped(0.01f, 0.24f, whiteRatio);
-			float d = Mathf.Max(0f, Mathf.LerpUnclamped(0.02f, 0.20f, blackRatio));
-			const float e = 0.02f;
-			const float f = 0.30f;
-			float whiteLevel = 5.3f;
-			float whiteClip = 10f / scaleFactorHalf;
 
 			// Graph
-			//graph.DrawFunction(x => x * Mathf.Pow(Mathf.Max(0, x - minLuminance) / (x + 1e-1f), kneeStrength + 1), 0.1f);
-			var curveParams = settings.GetCurveParams();
 			graph.DrawFunction(
-				//x => NeutralTonemap(x, a, b, c, d, e, f, whiteLevel, whiteClip)
 				x => NeutralTonemap(x, 1, 1), 
 				0.90f
 			);
@@ -217,7 +170,7 @@ namespace Cat.PostProcessingEditor {
 		}
 
 		float Uncharted2Tonemap(float x, float response, float gain) {
-			const float k = 1.235f;
+			//const float k = 1.235f;
 			const float a = 0.15f;
 			const float b = 0.50f;
 			const float c = 0.10f;
