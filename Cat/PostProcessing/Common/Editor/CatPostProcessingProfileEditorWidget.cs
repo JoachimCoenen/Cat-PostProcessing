@@ -39,14 +39,11 @@ namespace Cat.PostProcessingEditor {
 				serializedObject = new SerializedObject(target);
 			}
 			m_profile = target;
-			Debug.Log($"{m_profile} OnEnable");
 			if (m_SettingsProperty == null) {
 				if (m_ProfileProperty == null) {
 					m_SettingsProperty = serializedObject.FindProperty("m_settings");
 				} else {
-					Debug.Log("m_ProfileProperty.FindPropertyRelative");
 					m_SettingsProperty = m_ProfileProperty.FindPropertyRelative("m_settings");
-					Debug.Log($"{m_SettingsProperty} OnEnable [m_SettingsProperty]");
 				}
 			}
 			Assert.IsNotNull(m_SettingsProperty);

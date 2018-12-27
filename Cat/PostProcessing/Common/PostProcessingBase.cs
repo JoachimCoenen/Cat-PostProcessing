@@ -27,7 +27,6 @@ namespace Cat.PostProcessing {
 
 		internal void setRT(RenderTexture aRt) {
 			if (this.rt != null) {
-				Debug.Log("RenderTextureContainer::setRT(): new RT added;");
 				this.rt.Release();
 			}
 			this.rt = aRt;

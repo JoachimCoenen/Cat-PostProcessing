@@ -81,7 +81,6 @@ namespace Cat.PostProcessingEditor {
 		}
 
 		void UpdatePPEditorWidget(ref CatPostProcessingProfileEditorWidget widget, CatPostProcessingProfile profileTarget) {
-			Debug.Log($"{profileTarget}, UpdatePPEditorWidget");
 			if (widget == null || widget.target != profileTarget) {
 				if (profileTarget != null) {
 					widget = new CatPostProcessingProfileEditorWidget(profileTarget);//, serializedObject, m_ProfileProperty);
